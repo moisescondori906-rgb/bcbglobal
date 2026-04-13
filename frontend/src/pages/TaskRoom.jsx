@@ -260,6 +260,8 @@ export default function TaskRoom() {
 
   const currentLevel = niveles.find(n => n.id === user?.nivel_id);
   const taskReward = currentLevel?.ganancia_tarea || 0;
+  const totalDiarias = (data?.tareas_completadas || 0) + (data?.tareas_restantes || 0);
+  const progress = totalDiarias > 0 ? ((data?.tareas_completadas || 0) / totalDiarias) * 100 : 0;
 
   return (
     <Layout>

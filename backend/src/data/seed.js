@@ -2,16 +2,16 @@ import bcrypt from 'bcryptjs';
 import { v4 as uuidv4 } from 'uuid';
 
 export const levels = [
-  { id: 'l1', codigo: 'pasante', nombre: 'Pasante', deposito: 0, num_tareas_diarias: 3, ganancia_tarea: 2.00, orden: 0, activo: true },
-  { id: 'l2', codigo: 'global1', nombre: 'GLOBAL 1', deposito: 200.00, num_tareas_diarias: 5, ganancia_tarea: 4.00, orden: 1, activo: true },
-  { id: 'l3', codigo: 'global2', nombre: 'GLOBAL 2', deposito: 720.00, num_tareas_diarias: 10, ganancia_tarea: 7.20, orden: 2, activo: true },
-  { id: 'l4', codigo: 'global3', nombre: 'GLOBAL 3', deposito: 2830.00, num_tareas_diarias: 20, ganancia_tarea: 14.15, orden: 3, activo: true },
-  { id: 'l5', codigo: 'global4', nombre: 'GLOBAL 4', deposito: 5500.00, num_tareas_diarias: 40, ganancia_tarea: 27.50, orden: 4, activo: true },
-  { id: 'l6', codigo: 'global5', nombre: 'GLOBAL 5', deposito: 12000.00, num_tareas_diarias: 60, ganancia_tarea: 60.00, orden: 5, activo: true },
-  { id: 'l7', codigo: 'global6', nombre: 'GLOBAL 6', deposito: 25000.00, num_tareas_diarias: 80, ganancia_tarea: 125.00, orden: 6, activo: true },
-  { id: 'l8', codigo: 'global7', nombre: 'GLOBAL 7', deposito: 50000.00, num_tareas_diarias: 100, ganancia_tarea: 250.00, orden: 7, activo: true },
-  { id: 'l9', codigo: 'global8', nombre: 'GLOBAL 8', deposito: 100000.00, num_tareas_diarias: 150, ganancia_tarea: 500.00, orden: 8, activo: true },
-  { id: 'l10', codigo: 'global9', nombre: 'GLOBAL 9', deposito: 200000.00, num_tareas_diarias: 200, ganancia_tarea: 1000.00, orden: 9, activo: true },
+  { id: 'l1', codigo: 'internar', nombre: 'Internar', deposito: 0, num_tareas_diarias: 2, ganancia_tarea: 1.30, orden: 0, activo: true },
+  { id: 'l2', codigo: 'global1', nombre: 'GLOBAL 1', deposito: 200.00, num_tareas_diarias: 4, ganancia_tarea: 1.80, orden: 1, activo: true },
+  { id: 'l3', codigo: 'global2', nombre: 'GLOBAL 2', deposito: 720.00, num_tareas_diarias: 8, ganancia_tarea: 3.22, orden: 2, activo: true },
+  { id: 'l4', codigo: 'global3', nombre: 'GLOBAL 3', deposito: 2830.00, num_tareas_diarias: 15, ganancia_tarea: 6.76, orden: 3, activo: true },
+  { id: 'l5', codigo: 'global4', nombre: 'GLOBAL 4', deposito: 9150.00, num_tareas_diarias: 30, ganancia_tarea: 11.33, orden: 4, activo: true },
+  { id: 'l6', codigo: 'global5', nombre: 'GLOBAL 5', deposito: 28200.00, num_tareas_diarias: 60, ganancia_tarea: 17.43, orden: 5, activo: true },
+  { id: 'l7', codigo: 'global6', nombre: 'GLOBAL 6', deposito: 58000.00, num_tareas_diarias: 100, ganancia_tarea: 22.35, orden: 6, activo: true },
+  { id: 'l8', codigo: 'global7', nombre: 'GLOBAL 7', deposito: 124000.00, num_tareas_diarias: 160, ganancia_tarea: 31.01, orden: 7, activo: true },
+  { id: 'l9', codigo: 'global8', nombre: 'GLOBAL 8', deposito: 299400.00, num_tareas_diarias: 250, ganancia_tarea: 47.91, orden: 8, activo: true },
+  { id: 'l10', codigo: 'global9', nombre: 'GLOBAL 9', deposito: 541600.00, num_tareas_diarias: 400, ganancia_tarea: 58.87, orden: 9, activo: true },
 ];
 
 export async function initStore() {
@@ -45,7 +45,7 @@ export async function initStore() {
     password_fondo_hash: hashFondo,
     codigo_invitacion: 'VUSBV2GTX',
     invitado_por: null,
-    nivel_id: 'l1', // pasante
+    nivel_id: 'l1', // internar
     saldo_principal: 14.40,
     saldo_comisiones: 28.80,
     rol: 'usuario',

@@ -83,7 +83,7 @@ export default function Profile() {
             </h2>
             <div className="flex items-center gap-2">
               <Badge variant="info" className="px-2 py-0.5">
-                {displayLevelCode(user?.nivel_codigo || 'pasante')}
+                {displayLevelCode(user?.nivel_codigo || 'internar')}
               </Badge>
               <span className="text-[10px] font-bold text-sav-muted uppercase tracking-widest">ID: {user?.id?.slice(0, 8)}</span>
             </div>

@@ -6,12 +6,12 @@ SET FOREIGN_KEY_CHECKS = 0;
 -- 1. NIVELES (Fuente de verdad económica)
 CREATE TABLE IF NOT EXISTS niveles (
   id VARCHAR(36) PRIMARY KEY,
-  codigo VARCHAR(50) UNIQUE NOT NULL, -- pasante, Global 1, Global 2...
+  codigo VARCHAR(50) UNIQUE NOT NULL, -- internar, global1, global2...
   nombre VARCHAR(100) NOT NULL,
   deposito DECIMAL(20, 2) DEFAULT 0.00,
   ganancia_tarea DECIMAL(20, 2) DEFAULT 0.00, -- Unificado: Pago por tarea según nivel
   num_tareas_diarias INT DEFAULT 0,
-  orden INT DEFAULT 0, -- Para jerarquía (S1 < S2...)
+  orden INT DEFAULT 0, -- Para jerarquía (G1 < G2...)
   activo TINYINT(1) DEFAULT 1,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   INDEX idx_niveles_orden (orden)

@@ -27,9 +27,9 @@ router.post('/register', async (req, res) => {
     if (exists) return res.status(400).json({ error: 'Teléfono ya registrado' });
     if (!inviter) return res.status(400).json({ error: 'Código de invitación inválido' });
     
-    const pasanteLevel = levels.find(l => String(l.codigo).toLowerCase() === 'pasante' || String(l.id) === 'l1');
+    const internarLevel = levels.find(l => String(l.codigo).toLowerCase() === 'internar' || String(l.id) === 'l1');
     
-    // REGLA ACTUALIZADA: Los pasantes AHORA pueden invitar, pero no recibirán comisiones (manejado en distributeInvestmentCommissions)
+    // REGLA ACTUALIZADA: Los usuarios AHORA pueden invitar, pero no recibirán comisiones (manejado en distributeInvestmentCommissions)
     const codigo = Math.random().toString(36).slice(2, 10).toUpperCase();
     const user = {
       id: uuidv4(),
@@ -39,7 +39,7 @@ router.post('/register', async (req, res) => {
       password_hash: await bcrypt.hash(password, 10),
       codigo_invitacion: codigo,
       invitado_por: inviter.id,
-      nivel_id: pasanteLevel ? pasanteLevel.id : levels[0].id,
+      nivel_id: internarLevel ? internarLevel.id : levels[0].id,
       saldo_principal: 0,
       saldo_comisiones: 0,
       rol: 'usuario',
@@ -126,9 +126,9 @@ function sanitizeUser(u, levels) {
     nombre_usuario: u.nombre_usuario,
     nombre_real: u.nombre_real,
     codigo_invitacion: u.codigo_invitacion,
-    nivel: level?.nombre || 'Pasante',
+    nivel: level?.nombre || 'Internar',
     nivel_id: u.nivel_id,
-    nivel_codigo: level?.codigo || 'pasante',
+    nivel_codigo: level?.codigo || 'internar',
     saldo_principal: u.saldo_principal || 0,
     saldo_comisiones: u.saldo_comisiones || 0,
     rol: u.rol,

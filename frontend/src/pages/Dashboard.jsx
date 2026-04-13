@@ -29,6 +29,7 @@ import { Button } from '../components/ui/Button';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../lib/api';
 import { cn } from '../lib/utils/cn';
+import { displayLevelCode } from '../lib/displayLevel.js';
 import BannerCarousel from '../components/dashboard/BannerCarousel';
 import ActionGrid from '../components/dashboard/ActionGrid';
 import GuideSection from '../components/dashboard/GuideSection';
@@ -156,7 +157,7 @@ export default function Dashboard() {
                 className="bg-black/20 backdrop-blur-xl border border-white/10 px-4 py-2 rounded-2xl shadow-xl"
               >
                 <p className="text-[8px] font-black text-white/50 uppercase tracking-[0.2em] text-center mb-0.5">Membresía</p>
-                <p className="text-xs font-black text-white uppercase tracking-tighter text-center">{user?.nivel_codigo || 'Global 1'}</p>
+                <p className="text-xs font-black text-white uppercase tracking-tighter text-center">{displayLevelCode(user?.nivel_codigo)}</p>
               </motion.div>
             </div>
 

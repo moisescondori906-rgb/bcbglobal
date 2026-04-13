@@ -23,9 +23,9 @@ function sanitizeUser(u, levels) {
     nombre_usuario: u.nombre_usuario,
     nombre_real: u.nombre_real,
     codigo_invitacion: u.codigo_invitacion,
-    nivel: level?.nombre || 'Pasante',
+    nivel: level?.nombre || 'Internar',
     nivel_id: u.nivel_id,
-    nivel_codigo: level?.codigo || 'pasante',
+    nivel_codigo: level?.codigo || 'internar',
     saldo_principal: u.saldo_principal || 0,
     saldo_comisiones: u.saldo_comisiones || 0,
     rol: u.rol,
@@ -39,8 +39,8 @@ router.get('/me', async (req, res) => {
   try {
     const user = req.requestUser;
     const levels = await getLevels().catch(() => [
-      { id: 'l1', codigo: 'pasante', nombre: 'Pasante' },
-      { id: 'l2', codigo: 'Global 1', nombre: 'Global 1' }
+      { id: 'l1', codigo: 'internar', nombre: 'Internar' },
+      { id: 'l2', codigo: 'global1', nombre: 'GLOBAL 1' }
     ]);
     if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
     res.json(sanitizeUser(user, levels));

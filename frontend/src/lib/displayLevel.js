@@ -3,7 +3,7 @@
  * No altera nivel_id ni lógica de negocio.
  */
 const CODE_TO_NAME = {
-  pasante: 'Pasante',
+  internar: 'Internar',
   global1: 'GLOBAL 1',
   global2: 'GLOBAL 2',
   global3: 'GLOBAL 3',
@@ -18,7 +18,7 @@ const CODE_TO_NAME = {
 export function displayLevelCode(codigo) {
   const c = String(codigo || '').toLowerCase().trim();
   
-  if (c === 'internar' || c === 'pasante') return 'Pasante';
+  if (c === 'internar' || c === 'pasante') return 'Internar';
   
   // Si ya es un nombre Global X, normalizar a GLOBAL X
   const match = c.match(/^global\s*([1-9])$/);

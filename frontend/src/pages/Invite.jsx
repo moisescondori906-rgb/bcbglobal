@@ -112,7 +112,7 @@ export default function Invite() {
     );
   }
 
-  const isPasante = user?.nivel_codigo === 'pasante';
+  const isPasante = user?.nivel_codigo === 'internar';
 
   return (
     <Layout>

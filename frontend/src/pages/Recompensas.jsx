@@ -165,6 +165,33 @@ export default function Recompensas() {
     );
   }
 
+  // Bloqueo para Internar
+  if (user?.nivel_codigo === 'internar') {
+    return (
+      <Layout>
+        <div className="p-6 flex flex-col items-center justify-center min-h-[70vh] text-center space-y-8 animate-fade">
+          <div className="w-24 h-24 bg-sav-primary/10 text-sav-primary rounded-[2.5rem] flex items-center justify-center shadow-2xl border border-sav-primary/20">
+            <Lock size={48} />
+          </div>
+          <div className="space-y-3">
+            <h2 className="text-3xl font-black text-white uppercase tracking-tighter">Ruleta Bloqueada</h2>
+            <p className="text-sm text-sav-muted font-bold leading-relaxed max-w-xs mx-auto">
+              Como <span className="text-white">Internar</span>, aún no tienes acceso a los premios de la ruleta BCB Global.
+            </p>
+          </div>
+          <div className="bg-sav-surface p-6 rounded-[2rem] border border-sav-border text-left w-full shadow-inner">
+            <p className="text-[10px] text-sav-primary font-black uppercase tracking-[0.2em] mb-2 flex items-center gap-2">
+              <AlertCircle size={14} /> Requisito:
+            </p>
+            <p className="text-xs text-sav-muted leading-relaxed font-bold uppercase tracking-widest">
+              Sube a nivel <span className="text-white">GLOBAL 1</span> o superior para desbloquear la ruleta de premios y ganar tickets por cada ascenso.
+            </p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
   const amigosRequeridos = config?.recompensa_amigos_cantidad || 10;
   const nivelMinimoAmigos = config?.recompensa_amigos_nivel_minimo || 'Global';
   const nivelMinimoAmigosLabel = displayLevelCode(nivelMinimoAmigos);

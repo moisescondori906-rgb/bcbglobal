@@ -21,16 +21,16 @@ const DEFAULT_CONFIG = {
 };
 
 const DEFAULT_LEVELS = [
-  { id: 'l1', codigo: 'pasante', nombre: 'Pasante', deposito: 0, num_tareas_diarias: 3, ganancia_tarea: 2.00, orden: 0, activo: 1 },
-  { id: 'l2', codigo: 'global1', nombre: 'GLOBAL 1', deposito: 200.00, num_tareas_diarias: 5, ganancia_tarea: 4.00, orden: 1, activo: 1 },
-  { id: 'l3', codigo: 'global2', nombre: 'GLOBAL 2', deposito: 720.00, num_tareas_diarias: 10, ganancia_tarea: 7.20, orden: 2, activo: 1 },
-  { id: 'l4', codigo: 'global3', nombre: 'GLOBAL 3', deposito: 2830.00, num_tareas_diarias: 20, ganancia_tarea: 14.15, orden: 3, activo: 1 },
-  { id: 'l5', codigo: 'global4', nombre: 'GLOBAL 4', deposito: 5500.00, num_tareas_diarias: 40, ganancia_tarea: 27.50, orden: 4, activo: 1 },
-  { id: 'l6', codigo: 'global5', nombre: 'GLOBAL 5', deposito: 12000.00, num_tareas_diarias: 60, ganancia_tarea: 60.00, orden: 5, activo: 1 },
-  { id: 'l7', codigo: 'global6', nombre: 'GLOBAL 6', deposito: 25000.00, num_tareas_diarias: 80, ganancia_tarea: 125.00, orden: 6, activo: 1 },
-  { id: 'l8', codigo: 'global7', nombre: 'GLOBAL 7', deposito: 50000.00, num_tareas_diarias: 100, ganancia_tarea: 250.00, orden: 7, activo: 1 },
-  { id: 'l9', codigo: 'global8', nombre: 'GLOBAL 8', deposito: 100000.00, num_tareas_diarias: 150, ganancia_tarea: 500.00, orden: 8, activo: 1 },
-  { id: 'l10', codigo: 'global9', nombre: 'GLOBAL 9', deposito: 200000.00, num_tareas_diarias: 200, ganancia_tarea: 1000.00, orden: 9, activo: 1 }
+  { id: 'l1', codigo: 'internar', nombre: 'Internar', deposito: 0, num_tareas_diarias: 2, ganancia_tarea: 1.30, orden: 0, activo: 1 },
+  { id: 'l2', codigo: 'global1', nombre: 'GLOBAL 1', deposito: 200.00, num_tareas_diarias: 4, ganancia_tarea: 1.80, orden: 1, activo: 1 },
+  { id: 'l3', codigo: 'global2', nombre: 'GLOBAL 2', deposito: 720.00, num_tareas_diarias: 8, ganancia_tarea: 3.22, orden: 2, activo: 1 },
+  { id: 'l4', codigo: 'global3', nombre: 'GLOBAL 3', deposito: 2830.00, num_tareas_diarias: 15, ganancia_tarea: 6.76, orden: 3, activo: 1 },
+  { id: 'l5', codigo: 'global4', nombre: 'GLOBAL 4', deposito: 9150.00, num_tareas_diarias: 30, ganancia_tarea: 11.33, orden: 4, activo: 1 },
+  { id: 'l6', codigo: 'global5', nombre: 'GLOBAL 5', deposito: 28200.00, num_tareas_diarias: 60, ganancia_tarea: 17.43, orden: 5, activo: 1 },
+  { id: 'l7', codigo: 'global6', nombre: 'GLOBAL 6', deposito: 58000.00, num_tareas_diarias: 100, ganancia_tarea: 22.35, orden: 6, activo: 1 },
+  { id: 'l8', codigo: 'global7', nombre: 'GLOBAL 7', deposito: 124000.00, num_tareas_diarias: 160, ganancia_tarea: 31.01, orden: 7, activo: 1 },
+  { id: 'l9', codigo: 'global8', nombre: 'GLOBAL 8', deposito: 299400.00, num_tareas_diarias: 250, ganancia_tarea: 47.91, orden: 8, activo: 1 },
+  { id: 'l10', codigo: 'global9', nombre: 'GLOBAL 9', deposito: 541600.00, num_tareas_diarias: 400, ganancia_tarea: 58.87, orden: 9, activo: 1 }
 ];
 
 /**
@@ -134,11 +134,12 @@ export async function getLevels() {
   if (levelsCache.data && now - levelsCache.lastFetch < 60000) {
     return levelsCache.data.map(l => {
       const ingreso_diario = Number((Number(l.num_tareas_diarias) * Number(l.ganancia_tarea)).toFixed(2));
+      const isInternar = String(l.codigo).toLowerCase() === 'internar';
       return {
         ...l,
         ingreso_diario,
-        ingreso_mensual: Number((ingreso_diario * 30).toFixed(2)),
-        ingreso_anual: Number((ingreso_diario * 365).toFixed(2))
+        ingreso_mensual: isInternar ? 0 : Number((ingreso_diario * 30).toFixed(2)),
+        ingreso_anual: isInternar ? 0 : Number((ingreso_diario * 365).toFixed(2))
       };
     });
   }
@@ -154,22 +155,24 @@ export async function getLevels() {
     levelsCache.lastFetch = now;
     return levels.map(l => {
       const ingreso_diario = Number((Number(l.num_tareas_diarias) * Number(l.ganancia_tarea)).toFixed(2));
+      const isInternar = String(l.codigo).toLowerCase() === 'internar';
       return {
         ...l,
         ingreso_diario,
-        ingreso_mensual: Number((ingreso_diario * 30).toFixed(2)),
-        ingreso_anual: Number((ingreso_diario * 365).toFixed(2))
+        ingreso_mensual: isInternar ? 0 : Number((ingreso_diario * 30).toFixed(2)),
+        ingreso_anual: isInternar ? 0 : Number((ingreso_diario * 365).toFixed(2))
       };
     });
   } catch (e) {
     logger.warn('[DB] Usando niveles por defecto (DB Offline)');
     return DEFAULT_LEVELS.map(l => {
       const ingreso_diario = Number((Number(l.num_tareas_diarias) * Number(l.ganancia_tarea)).toFixed(2));
+      const isInternar = String(l.codigo).toLowerCase() === 'internar';
       return {
         ...l,
         ingreso_diario,
-        ingreso_mensual: Number((ingreso_diario * 30).toFixed(2)),
-        ingreso_anual: Number((ingreso_diario * 365).toFixed(2))
+        ingreso_mensual: isInternar ? 0 : Number((ingreso_diario * 30).toFixed(2)),
+        ingreso_anual: isInternar ? 0 : Number((ingreso_diario * 365).toFixed(2))
       };
     });
   }
@@ -194,7 +197,7 @@ export async function syncLevels() {
           activo = VALUES(activo)
       `, [level.id, level.codigo, level.nombre, level.deposito, level.ganancia_tarea, level.num_tareas_diarias, level.orden, level.activo]);
     }
-    // Eliminar niveles que no estén en los defaults (S1, S2, etc)
+    // Eliminar niveles que no estén en los defaults (G1, G2, etc)
     const codes = DEFAULT_LEVELS.map(l => l.codigo);
     await conn.query(`DELETE FROM niveles WHERE codigo NOT IN (?)`, [codes]);
     invalidateLevelsCache();
@@ -403,9 +406,9 @@ export async function distributeInvestmentCommissions(userId, amount) {
         if (!upline) return;
 
         // REGLA OFICIAL: 
-        // 1. Pasantes no cobran comisiones.
+        // 1. Internares no cobran comisiones.
         // 2. El nivel del upline debe ser mayor o igual al nivel del usuario que genera la comisión.
-        if (upline.nivel_codigo === 'pasante' || upline.nivel_orden < userLevel.orden) {
+        if (upline.nivel_codigo === 'internar' || upline.nivel_orden < userLevel.orden) {
           currentUplineId = upline.invitado_por;
           return;
         }
@@ -597,9 +600,9 @@ export async function distributeTaskCommissions(userId, taskAmount) {
         if (!upline) return;
 
         // REGLA OFICIAL: 
-        // 1. Pasantes no cobran comisiones.
+        // 1. Internares no cobran comisiones.
         // 2. El nivel del upline debe ser mayor o igual al nivel del usuario que genera la comisión.
-        if (upline.nivel_codigo === 'pasante' || upline.nivel_orden < userLevel.orden) {
+        if (upline.nivel_codigo === 'internar' || upline.nivel_orden < userLevel.orden) {
           currentUplineId = upline.invitado_por;
           return;
         }

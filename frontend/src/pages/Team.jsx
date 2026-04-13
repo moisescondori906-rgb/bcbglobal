@@ -46,8 +46,8 @@ export default function Team() {
     );
   }
 
-  // Si es pasante, mostrar bloqueo
-  if (user?.nivel_codigo === 'pasante') {
+  // Si es internar, mostrar bloqueo
+  if (user?.nivel_codigo === 'internar') {
     return (
       <Layout>
         <Header title="Informe del equipo" />
@@ -59,7 +59,7 @@ export default function Team() {
             <div className="space-y-2">
               <h2 className="text-2xl font-black uppercase tracking-tight text-white">Función Bloqueada</h2>
               <p className="text-[10px] font-bold text-sav-muted uppercase tracking-widest leading-relaxed">
-                Como <span className="text-white font-black">Pasante</span>, aún no puedes acceder al sistema de red de BCB Global.
+                Como <span className="text-white font-black">Internar</span>, aún no puedes acceder al sistema de red de BCB Global.
               </p>
             </div>
             <div className="bg-sav-surface p-5 rounded-2xl border border-sav-border text-left w-full">

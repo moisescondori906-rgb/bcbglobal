@@ -24,8 +24,8 @@ async function migrate() {
         await conn.query(`
           INSERT INTO niveles (id, codigo, nombre, deposito, ganancia_tarea, num_tareas_diarias, orden, activo)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-          ON DUPLICATE KEY UPDATE nombre=VALUES(nombre), deposito=VALUES(deposito)
-        `, [level.id, level.codigo, level.nombre, level.deposito, level.comision_por_tarea, level.num_tareas_diarias, level.orden, level.activo]);
+          ON DUPLICATE KEY UPDATE nombre=VALUES(nombre), deposito=VALUES(deposito), ganancia_tarea=VALUES(ganancia_tarea), num_tareas_diarias=VALUES(num_tareas_diarias)
+        `, [level.id, level.codigo, level.nombre, level.deposito, level.ganancia_tarea, level.num_tareas_diarias, level.orden, level.activo]);
       }
 
       // 3. Migrar Usuarios

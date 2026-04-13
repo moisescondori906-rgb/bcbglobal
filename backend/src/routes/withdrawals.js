@@ -50,11 +50,11 @@ router.post('/', async (req, res) => {
     const day = boliviaTime.getDay(); // 0=Dom, 1=Lun, 2=Mar...
     
     const rules = {
-      'Global 1': 2, // Martes
-      'Global 2': 3, // Miércoles
-      'Global 3': 4, // Jueves
-      'Global 4': 5, // Viernes
-      'Global 5': 6, // Sábado
+      'global1': 2, // Martes
+      'global2': 3, // Miércoles
+      'global3': 4, // Jueves
+      'global4': 5, // Viernes
+      'global5': 6, // Sábado
     };
 
     const allowedDay = rules[userLevel?.codigo];

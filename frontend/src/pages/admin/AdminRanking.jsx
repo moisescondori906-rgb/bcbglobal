@@ -64,7 +64,7 @@ export default function AdminRanking() {
             Ranking de Invitados Reales (Red A/B/C)
           </h2>
           <p className="text-xs text-gray-500 font-medium uppercase tracking-widest mt-1">
-            Solo cuenta invitados con inversión real (Global1+) • Excluye pasantes
+            Solo cuenta invitados con inversión real (GLOBAL 1+) • Excluye internares
           </p>
         </div>
       </div>
