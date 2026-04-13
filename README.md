@@ -1,12 +1,28 @@
-# Global (v4.2.1 - Logo Update)
+# BCB Global Institutional (v7.0.0)
 
-🚀 **Actualización Crítica**: Sistema de Recargas Seleccionables, Reembolso Automático de Inversión, Botones de Telegram (Polling) y Logo Nativo de Alta Resolución implementados.
+🚀 **Actualización Premium**: Auditoría Técnica Total completada. Sistema unificado en MySQL, eliminación de dependencias de Supabase, y alineación total con la Tabla de Inversiones Global 1-9.
 
-Plataforma profesional de Activos Virtuales con sistema de tareas por video, niveles VIP, gestión financiera y panel administrativo en tiempo real.
+Plataforma profesional de Activos Virtuales con sistema de tareas por video, niveles VIP Institucionales, gestión financiera robusta y panel administrativo en tiempo real optimizado para alta concurrencia.
+
+## Tabla Oficial de Niveles
+
+| Nivel | Inversión (BOB) | Tareas/Día | Pago Tarea | Ingreso Diario |
+| :--- | :--- | :--- | :--- | :--- |
+| Pasante | 0 | 3 | 2.00 | 6.00 |
+| GLOBAL 1 | 200 | 5 | 4.00 | 20.00 |
+| GLOBAL 2 | 720 | 10 | 7.20 | 72.00 |
+| GLOBAL 3 | 2,830 | 20 | 14.15 | 283.00 |
+| GLOBAL 4 | 5,500 | 40 | 27.50 | 1,100.00 |
+| GLOBAL 5 | 12,000 | 60 | 60.00 | 3,600.00 |
+| GLOBAL 6 | 25,000 | 80 | 125.00 | 10,000.00 |
+| GLOBAL 7 | 50,000 | 100 | 250.00 | 25,000.00 |
+| GLOBAL 8 | 100,000 | 150 | 500.00 | 75,000.00 |
+| GLOBAL 9 | 200,000 | 200 | 1,000.00 | 200,000.00 |
 
 ## Requisitos
 
 - Node.js 18+
+- MySQL 8.0+ (Optimizado para Contabo)
 - npm
 
 ## Instalación
@@ -18,62 +34,64 @@ cd backend
 npm install
 ```
 
-Crear archivo `.env` (opcional, hay valores por defecto para demo):
+Configurar archivo `.env`:
 
 ```
 PORT=4000
 JWT_SECRET=tu_clave_secreta
+MYSQL_HOST=localhost
+MYSQL_USER=root
+MYSQL_PASSWORD=tu_password
+MYSQL_DATABASE=bcb_global
+```
+
+Sincronizar niveles y base de datos:
+```bash
+node src/data/migrate.js
 ```
 
 Iniciar:
-
 ```bash
 npm run dev
 ```
-
-El API estará en `http://localhost:4000`
 
 ### 2. Frontend
 
 ```bash
 cd frontend
 npm install
+```
+
+Configurar archivo `.env`:
+```
+VITE_API_URL=http://localhost:4000/api
+VITE_BACKEND_URL=http://localhost:4000
+```
+
+Iniciar:
+```bash
 npm run dev
 ```
 
-La aplicación estará en `http://localhost:5173`
-
-### 3. Base de datos (Supabase)
-
-Este proyecto requiere una conexión activa a Supabase. El **Modo Demo (memoria) ha sido desactivado** para garantizar la consistencia de datos en producción.
-
-1. Crea un proyecto en [Supabase](https://supabase.com)
-2. Ejecuta los scripts en `supabase/migrations/` en el SQL Editor (del 001 al 006)
-3. Añade en `backend/.env`:
-   - `SUPABASE_URL`
-   - `SUPABASE_SERVICE_KEY` (Solo en el servidor)
-   - `SUPABASE_ANON_KEY` (Para el cliente frontend)
-
-## Estructura
+## Estructura del Proyecto
 
 ```
-global/
-├── backend/          # API Node.js + Express
+bcb_global/
+├── backend/          # API Node.js + Express + MySQL
 ├── frontend/         # React + Vite + Tailwind (App Android Capacitor)
-├── supabase/         # Migraciones SQL
-├── video/            # Repositorio oficial de videos
+├── public/           # Recursos estáticos (Videos/Imágenes)
 └── DISENO-VISUAL-SAV.md
 ```
 
-## Funcionalidades
+## Funcionalidades Clave
 
-- ✅ Tiempo Real: Saldo y ganancias actualizados al instante vía WebSockets.
-- ✅ Videos Locales: Reproducción directa desde el servidor, sin dependencias externas.
-- ✅ App Nativa: Lista para generar APK Android mediante Capacitor.
-- ✅ Multinivel: Sistema de comisiones por red de afiliados.
-- ✅ Seguridad: Encriptación de contraseñas y claves de retiro.
-- ✅ Panel Admin: Control total de usuarios, finanzas y contenido.
+- ✅ **Arquitectura MySQL**: Transacciones SQL para integridad financiera total.
+- ✅ **Idempotencia**: Protección contra doble acreditación de tareas y pagos.
+- ✅ **Sistema de Red**: Comisiones de 3 niveles (10%, 3%, 1%) con validación de jerarquía.
+- ✅ **Tickets de Ruleta**: Premios automáticos por ascenso de nivel.
+- ✅ **Modo Demo**: Sistema de respaldo para pruebas sin base de datos activa.
+- ✅ **Seguridad**: Encriptación robusta y protección de endpoints administrativos.
 
 ## Observaciones
 
-Este proyecto es una plataforma de gestión de activos virtuales. No usar en producción sin revisión de seguridad y legalidad financiera.
+Este proyecto es una plataforma institucional de alto rendimiento. Se recomienda una auditoría de seguridad adicional antes de despliegues en entornos financieros críticos.
