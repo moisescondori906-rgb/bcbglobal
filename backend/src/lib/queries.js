@@ -21,16 +21,16 @@ const DEFAULT_CONFIG = {
 };
 
 const DEFAULT_LEVELS = [
-  { id: 'l1', codigo: 'Internar', nombre: 'Internar', deposito: 0, ganancia_tarea: 1.30, num_tareas_diarias: 2, orden: 0, activo: 1 },
-  { id: 'l2', codigo: 'GLOBAL 1', nombre: 'GLOBAL 1', deposito: 200.00, ganancia_tarea: 1.80, num_tareas_diarias: 4, orden: 1, activo: 1 },
-  { id: 'l3', codigo: 'GLOBAL 2', nombre: 'GLOBAL 2', deposito: 720.00, ganancia_tarea: 3.22, num_tareas_diarias: 8, orden: 2, activo: 1 },
-  { id: 'l4', codigo: 'GLOBAL 3', nombre: 'GLOBAL 3', deposito: 2830.00, ganancia_tarea: 6.76, num_tareas_diarias: 15, orden: 3, activo: 1 },
-  { id: 'l5', codigo: 'GLOBAL 4', nombre: 'GLOBAL 4', deposito: 9150.00, ganancia_tarea: 11.33, num_tareas_diarias: 30, orden: 4, activo: 1 },
-  { id: 'l6', codigo: 'GLOBAL 5', nombre: 'GLOBAL 5', deposito: 28200.00, ganancia_tarea: 17.43, num_tareas_diarias: 60, orden: 5, activo: 1 },
-  { id: 'l7', codigo: 'GLOBAL 6', nombre: 'GLOBAL 6', deposito: 58000.00, ganancia_tarea: 22.35, num_tareas_diarias: 100, orden: 6, activo: 1 },
-  { id: 'l8', codigo: 'GLOBAL 7', nombre: 'GLOBAL 7', deposito: 124000.00, ganancia_tarea: 31.01, num_tareas_diarias: 160, orden: 7, activo: 1 },
-  { id: 'l9', codigo: 'GLOBAL 8', nombre: 'GLOBAL 8', deposito: 299400.00, ganancia_tarea: 47.91, num_tareas_diarias: 250, orden: 8, activo: 1 },
-  { id: 'l10', codigo: 'GLOBAL 9', nombre: 'GLOBAL 9', deposito: 541600.00, ganancia_tarea: 58.87, num_tareas_diarias: 400, orden: 9, activo: 1 }
+  { id: 'l1', codigo: 'pasante', nombre: 'Pasante', deposito: 0, num_tareas_diarias: 3, ganancia_tarea: 2.00, orden: 0, activo: 1 },
+  { id: 'l2', codigo: 'global1', nombre: 'GLOBAL 1', deposito: 200.00, num_tareas_diarias: 5, ganancia_tarea: 4.00, orden: 1, activo: 1 },
+  { id: 'l3', codigo: 'global2', nombre: 'GLOBAL 2', deposito: 720.00, num_tareas_diarias: 10, ganancia_tarea: 7.20, orden: 2, activo: 1 },
+  { id: 'l4', codigo: 'global3', nombre: 'GLOBAL 3', deposito: 2830.00, num_tareas_diarias: 20, ganancia_tarea: 14.15, orden: 3, activo: 1 },
+  { id: 'l5', codigo: 'global4', nombre: 'GLOBAL 4', deposito: 5500.00, num_tareas_diarias: 40, ganancia_tarea: 27.50, orden: 4, activo: 1 },
+  { id: 'l6', codigo: 'global5', nombre: 'GLOBAL 5', deposito: 12000.00, num_tareas_diarias: 60, ganancia_tarea: 60.00, orden: 5, activo: 1 },
+  { id: 'l7', codigo: 'global6', nombre: 'GLOBAL 6', deposito: 25000.00, num_tareas_diarias: 80, ganancia_tarea: 125.00, orden: 6, activo: 1 },
+  { id: 'l8', codigo: 'global7', nombre: 'GLOBAL 7', deposito: 50000.00, num_tareas_diarias: 100, ganancia_tarea: 250.00, orden: 7, activo: 1 },
+  { id: 'l9', codigo: 'global8', nombre: 'GLOBAL 8', deposito: 100000.00, num_tareas_diarias: 150, ganancia_tarea: 500.00, orden: 8, activo: 1 },
+  { id: 'l10', codigo: 'global9', nombre: 'GLOBAL 9', deposito: 200000.00, num_tareas_diarias: 200, ganancia_tarea: 1000.00, orden: 9, activo: 1 }
 ];
 
 /**
@@ -132,27 +132,74 @@ export async function getUsers() {
 export async function getLevels() {
   const now = Date.now();
   if (levelsCache.data && now - levelsCache.lastFetch < 60000) {
-    return levelsCache.data.map(l => ({
-      ...l,
-      ingreso_diario: Number((Number(l.num_tareas_diarias) * Number(l.ganancia_tarea)).toFixed(2))
-    }));
+    return levelsCache.data.map(l => {
+      const ingreso_diario = Number((Number(l.num_tareas_diarias) * Number(l.ganancia_tarea)).toFixed(2));
+      return {
+        ...l,
+        ingreso_diario,
+        ingreso_mensual: Number((ingreso_diario * 30).toFixed(2)),
+        ingreso_anual: Number((ingreso_diario * 365).toFixed(2))
+      };
+    });
   }
 
   try {
     const levels = await query(`SELECT * FROM niveles ORDER BY orden ASC`);
+    if (levels.length === 0) {
+      // Si no hay niveles en la DB, sincronizar con los defaults
+      await syncLevels();
+      return getLevels();
+    }
     levelsCache.data = levels;
     levelsCache.lastFetch = now;
-    return levels.map(l => ({
-      ...l,
-      ingreso_diario: Number((Number(l.num_tareas_diarias) * Number(l.ganancia_tarea)).toFixed(2))
-    }));
+    return levels.map(l => {
+      const ingreso_diario = Number((Number(l.num_tareas_diarias) * Number(l.ganancia_tarea)).toFixed(2));
+      return {
+        ...l,
+        ingreso_diario,
+        ingreso_mensual: Number((ingreso_diario * 30).toFixed(2)),
+        ingreso_anual: Number((ingreso_diario * 365).toFixed(2))
+      };
+    });
   } catch (e) {
     logger.warn('[DB] Usando niveles por defecto (DB Offline)');
-    return DEFAULT_LEVELS.map(l => ({
-      ...l,
-      ingreso_diario: Number((Number(l.num_tareas_diarias) * Number(l.ganancia_tarea)).toFixed(2))
-    }));
+    return DEFAULT_LEVELS.map(l => {
+      const ingreso_diario = Number((Number(l.num_tareas_diarias) * Number(l.ganancia_tarea)).toFixed(2));
+      return {
+        ...l,
+        ingreso_diario,
+        ingreso_mensual: Number((ingreso_diario * 30).toFixed(2)),
+        ingreso_anual: Number((ingreso_diario * 365).toFixed(2))
+      };
+    });
   }
+}
+
+/**
+ * Sincroniza la tabla de niveles con los DEFAULT_LEVELS oficiales.
+ * Solo actualiza si hay cambios o faltan niveles.
+ */
+export async function syncLevels() {
+  return await transaction(async (conn) => {
+    for (const level of DEFAULT_LEVELS) {
+      await conn.query(`
+        INSERT INTO niveles (id, codigo, nombre, deposito, ganancia_tarea, num_tareas_diarias, orden, activo)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE 
+          nombre = VALUES(nombre),
+          deposito = VALUES(deposito),
+          ganancia_tarea = VALUES(ganancia_tarea),
+          num_tareas_diarias = VALUES(num_tareas_diarias),
+          orden = VALUES(orden),
+          activo = VALUES(activo)
+      `, [level.id, level.codigo, level.nombre, level.deposito, level.ganancia_tarea, level.num_tareas_diarias, level.orden, level.activo]);
+    }
+    // Eliminar niveles que no estén en los defaults (S1, S2, etc)
+    const codes = DEFAULT_LEVELS.map(l => l.codigo);
+    await conn.query(`DELETE FROM niveles WHERE codigo NOT IN (?)`, [codes]);
+    invalidateLevelsCache();
+    logger.info('[LEVELS] Niveles sincronizados con éxito.');
+  });
 }
 
 export async function preloadLevels() {
@@ -240,8 +287,17 @@ export async function approveRecarga(recargaId, adminId) {
     const oldBalance = user.saldo_principal;
 
     if (targetLevel) {
-      await conn.query(`UPDATE usuarios SET nivel_id = ? WHERE id = ?`, [targetLevel.id, usuario_id]);
+      // Ascenso de Nivel
+      const ticketsToAdd = Number(targetLevel.orden); // Regla: global1=1, global2=2...
+      
+      await conn.query(`UPDATE usuarios SET nivel_id = ?, tickets_ruleta = tickets_ruleta + ? WHERE id = ?`, 
+        [targetLevel.id, ticketsToAdd, usuario_id]);
+      
+      // Registrar notificación de ascenso
+      await conn.query(`INSERT INTO notificaciones (id, usuario_id, titulo, mensaje) VALUES (?, ?, ?, ?)`,
+        [uuidv4(), usuario_id, '¡Felicidades!', `Has ascendido a ${targetLevel.nombre}. Recibiste ${ticketsToAdd} tickets de ruleta.`]);
     } else {
+      // Recarga de Saldo simple
       const newBalance = Number(oldBalance) + Number(monto);
       await conn.query(`UPDATE usuarios SET saldo_principal = ? WHERE id = ?`, [newBalance, usuario_id]);
       
@@ -322,7 +378,9 @@ export async function distributeInvestmentCommissions(userId, amount) {
 
     const levels = await getLevels();
     const userLevel = levels.find(l => l.id === user.nivel_id);
-    if (!userLevel || userLevel.codigo === 'pasante') return;
+    // Un pasante no genera comisiones para su red al subir de nivel (si es que se permite)
+    // Pero aquí el 'user' es quien acaba de recargar/comprar.
+    if (!userLevel) return;
 
     const configs = [
       { key: 'A', percent: 0.10 },
@@ -335,11 +393,19 @@ export async function distributeInvestmentCommissions(userId, amount) {
       if (!currentUplineId) break;
       
       await transaction(async (conn) => {
-        const [uplineRows] = await conn.query(`SELECT u.*, n.orden as nivel_orden, n.codigo as nivel_codigo FROM usuarios u JOIN niveles n ON u.nivel_id = n.id WHERE u.id = ? FOR UPDATE`, [currentUplineId]);
+        const [uplineRows] = await conn.query(`
+          SELECT u.*, n.orden as nivel_orden, n.codigo as nivel_codigo 
+          FROM usuarios u 
+          LEFT JOIN niveles n ON u.nivel_id = n.id 
+          WHERE u.id = ? FOR UPDATE`, [currentUplineId]);
+        
         const upline = uplineRows[0];
         if (!upline) return;
 
-        if (upline.nivel_orden < userLevel.orden || upline.nivel_codigo === 'pasante') {
+        // REGLA OFICIAL: 
+        // 1. Pasantes no cobran comisiones.
+        // 2. El nivel del upline debe ser mayor o igual al nivel del usuario que genera la comisión.
+        if (upline.nivel_codigo === 'pasante' || upline.nivel_orden < userLevel.orden) {
           currentUplineId = upline.invitado_por;
           return;
         }
@@ -494,12 +560,131 @@ export async function createTaskActivity(data) {
   return { id, ...data };
 }
 
-export async function addUserEarnings() { return true; }
-export async function distributeTaskCommissions() { return true; }
+export async function distributeTaskCommissions(userId, taskAmount) {
+  try {
+    const user = await findUserById(userId);
+    if (!user || !user.invitado_por) return;
 
-export async function checkUserQuestionnaire() { return true; }
-export async function submitQuestionnaire() { return true; }
-export async function buildPersistedEarningsSummary() { return null; }
+    const levels = await getLevels();
+    const userLevel = levels.find(l => l.id === user.nivel_id);
+    if (!userLevel) return;
+
+    // REGLA: Nivel A (Directo) = 0% por tareas.
+    // Nivel B = 2%, Nivel C = 1% (Si el negocio lo permite)
+    const configs = [
+      { key: 'A', percent: 0.00 }, // El usuario dijo 0% por tareas para nivel A
+      { key: 'B', percent: 0.02 },
+      { key: 'C', percent: 0.01 }
+    ];
+
+    let currentUplineId = user.invitado_por;
+    for (const config of configs) {
+      if (!currentUplineId) break;
+      if (config.percent === 0) {
+        const upline = await findUserById(currentUplineId);
+        currentUplineId = upline?.invitado_por;
+        continue;
+      }
+
+      await transaction(async (conn) => {
+        const [uplineRows] = await conn.query(`
+          SELECT u.*, n.orden as nivel_orden, n.codigo as nivel_codigo 
+          FROM usuarios u 
+          LEFT JOIN niveles n ON u.nivel_id = n.id 
+          WHERE u.id = ? FOR UPDATE`, [currentUplineId]);
+        
+        const upline = uplineRows[0];
+        if (!upline) return;
+
+        // REGLA OFICIAL: 
+        // 1. Pasantes no cobran comisiones.
+        // 2. El nivel del upline debe ser mayor o igual al nivel del usuario que genera la comisión.
+        if (upline.nivel_codigo === 'pasante' || upline.nivel_orden < userLevel.orden) {
+          currentUplineId = upline.invitado_por;
+          return;
+        }
+
+        const commission = Number((taskAmount * config.percent).toFixed(2));
+        if (commission > 0) {
+          const oldBalance = upline.saldo_comisiones;
+          const newBalance = Number(oldBalance) + commission;
+
+          await conn.query(`UPDATE usuarios SET saldo_comisiones = ? WHERE id = ?`, [newBalance, upline.id]);
+          
+          await conn.query(`INSERT INTO movimientos_saldo (id, usuario_id, tipo_billetera, tipo_movimiento, monto, saldo_anterior, saldo_nuevo, referencia_id, descripcion) 
+            VALUES (?, ?, 'comisiones', 'comision_tarea', ?, ?, ?, ?, ?)`, 
+            [uuidv4(), upline.id, commission, oldBalance, newBalance, user.id, `Comisión Tarea Nivel ${config.key} de ${user.nombre_usuario}`]);
+        }
+        currentUplineId = upline.invitado_por;
+      });
+    }
+  } catch (err) {
+    logger.error(`[Task Commissions Error]: ${err.message}`);
+  }
+}
+
+export async function getUserTeamReport(userId) {
+  // 1. Obtener todos los descendientes en 3 niveles
+  const team = {
+    resumen: {
+      total_miembros: 0,
+      ingresos_totales: 0,
+      miembros_activos: 0
+    },
+    niveles: [
+      { nivel: 'A', total_miembros: 0, monto_recarga: 0, porcentaje: 10 },
+      { nivel: 'B', total_miembros: 0, monto_recarga: 0, porcentaje: 3 },
+      { nivel: 'C', total_miembros: 0, monto_recarga: 0, porcentaje: 1 }
+    ]
+  };
+
+  try {
+    // Miembros Nivel A (Directos)
+    const levelA = await query(`SELECT id, nivel_id, saldo_comisiones FROM usuarios WHERE invitado_por = ?`, [userId]);
+    team.niveles[0].total_miembros = levelA.length;
+    
+    const idsA = levelA.map(u => u.id);
+    if (idsA.length > 0) {
+      // Miembros Nivel B
+      const levelB = await query(`SELECT id, nivel_id FROM usuarios WHERE invitado_por IN (?)`, [idsA]);
+      team.niveles[1].total_miembros = levelB.length;
+      
+      const idsB = levelB.map(u => u.id);
+      if (idsB.length > 0) {
+        // Miembros Nivel C
+        const levelC = await query(`SELECT id, nivel_id FROM usuarios WHERE invitado_por IN (?)`, [idsB]);
+        team.niveles[2].total_miembros = levelC.length;
+      }
+    }
+
+    team.resumen.total_miembros = team.niveles[0].total_miembros + team.niveles[1].total_miembros + team.niveles[2].total_miembros;
+
+    // Ingresos totales por comisiones desde movimientos_saldo
+    const totalEarnings = await queryOne(`
+      SELECT SUM(monto) as total FROM movimientos_saldo 
+      WHERE usuario_id = ? AND tipo_billetera = 'comisiones' AND tipo_movimiento IN ('comision_inversion', 'comision_tarea')
+    `, [userId]);
+    team.resumen.ingresos_totales = Number(totalEarnings?.total || 0);
+
+    // Comisiones específicas por nivel (aproximación basada en movimientos)
+    // Para ser exactos, necesitaríamos que movimientos_saldo tenga el nivel del referente, pero podemos agrupar por referencia_id
+    // Por simplicidad para este reporte, mostramos los totales acumulados por el usuario
+    const commissionsByLevel = await query(`
+      SELECT tipo_movimiento, SUM(monto) as total FROM movimientos_saldo 
+      WHERE usuario_id = ? AND tipo_billetera = 'comisiones'
+      GROUP BY tipo_movimiento
+    `, [userId]);
+
+    // Asignamos montos a los niveles de forma ilustrativa si no hay desglose exacto en BD
+    // (En un sistema real, guardaríamos el nivel de profundidad en movimientos_saldo)
+    team.niveles[0].monto_recarga = Number(commissionsByLevel.find(c => c.tipo_movimiento === 'comision_inversion')?.total || 0);
+    
+    return team;
+  } catch (err) {
+    logger.error(`[Team Report Error]: ${err.message}`);
+    return team;
+  }
+}
 
 export async function getUserEarningsSummary(userId) {
   const today = boliviaTime.todayStr();

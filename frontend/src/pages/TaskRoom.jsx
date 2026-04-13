@@ -4,7 +4,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/AuthContext.jsx';
 import Layout from '../components/Layout.jsx';
 import { api } from '../lib/api.js';
-import { supabase } from '../lib/supabase.js';
 import { 
   ShieldCheck, Play, Check, Clock, Wallet, 
   ArrowRight, X, Sparkles, AlertCircle, 
@@ -259,7 +258,8 @@ export default function TaskRoom() {
     );
   }
 
-  const progress = ((data?.tareas_completadas || 0) / ((data?.tareas_completadas || 0) + (data?.tareas_restantes || 0))) * 100;
+  const currentLevel = niveles.find(n => n.id === user?.nivel_id);
+  const taskReward = currentLevel?.ganancia_tarea || 0;
 
   return (
     <Layout>
@@ -314,7 +314,7 @@ export default function TaskRoom() {
               <div className="flex-1 min-w-0 space-y-1">
                 <div className="flex items-center justify-between">
                   <Badge className="px-2 py-0.5" variant="info">VIDEO</Badge>
-                  <span className="text-sm font-black text-sav-success">+{t.recompensa} <span className="text-[9px]">BOB</span></span>
+                  <span className="text-sm font-black text-sav-success">+{taskReward.toFixed(2)} <span className="text-[9px]">BOB</span></span>
                 </div>
                 <h3 className="text-sm font-black text-white uppercase tracking-tight truncate">{t.nombre}</h3>
                 <p className="text-[10px] text-sav-muted font-bold uppercase tracking-widest flex items-center gap-1.5">

@@ -1,6 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { api } from '../lib/api';
-import { supabase } from '../lib/supabase';
 
 const AuthContext = createContext(null);
 
@@ -18,8 +17,6 @@ export function AuthProvider({ children }) {
     sessionStorage.removeItem('sav_popup_seen');
     sessionStorage.removeItem('cv_global_popup_seen');
     setUser(null);
-    // Ya no usamos window.location.replace('/login') para evitar pantalla blanca
-    // La redirección debe ser manejada por el componente que llama a logout o por las rutas (PrivateRoute)
   }, []);
 
   const getDeviceId = useCallback(() => {
@@ -42,8 +39,7 @@ export function AuthProvider({ children }) {
     const now = Date.now();
     
     // Evitar recargas si la última fue hace menos de 10 segundos para /me, a menos que sea forzado
-    // Esto reduce significativamente las peticiones redundantes
-    if (!force && lastUpdate && now - parseInt(lastUpdate) < 15000) {
+    if (!force && lastUpdate && now - parseInt(lastUpdate) < 10000) {
       return;
     }
 
@@ -51,40 +47,6 @@ export function AuthProvider({ children }) {
     isUpdatingRef.current = true;
 
     try {
-      // START DB BYPASS
-      if (token === 'bypass-token-admin') {
-        const adminMock = {
-          id: 'admin-bypass',
-          telefono: '+59100000000',
-          nombre_usuario: 'Admin Local',
-          rol: 'admin',
-          saldo_principal: 9999,
-          nivel_id: 'l1',
-          nivel_codigo: 'internar',
-          nivel: 'Admin',
-        };
-        setUser(adminMock);
-        setLoading(false);
-        isUpdatingRef.current = false;
-        return;
-      }
-      if (token === 'bypass-token-user') {
-        const userMock = {
-          id: 'user-bypass',
-          telefono: '+59111111111',
-          nombre_usuario: 'Usuario Prueba',
-          rol: 'usuario',
-          saldo_principal: 100,
-          nivel_id: 'l1',
-          nivel_codigo: 'pasante',
-          nivel: 'Pasante',
-        };
-        setUser(userMock);
-        setLoading(false);
-        isUpdatingRef.current = false;
-        return;
-      }
-      // END DB BYPASS
       const data = await api.get('/users/me');
       if (data && data.id) {
         setUser(data);
@@ -93,7 +55,6 @@ export function AuthProvider({ children }) {
       }
     } catch (err) {
       if (err.name === 'AbortError' || err.message?.includes('aborted')) {
-        console.warn('[AuthContext] Request aborted, ignoring...');
         return;
       }
       console.error('[AuthContext] Error loading user:', err.message);
@@ -109,7 +70,6 @@ export function AuthProvider({ children }) {
     const init = async () => {
       const token = localStorage.getItem('token');
       if (token) {
-        // Solo forzamos si no tenemos datos en el ref o son muy viejos
         await loadUser();
       } else {
         setLoading(false);
@@ -117,16 +77,16 @@ export function AuthProvider({ children }) {
     };
     init();
     
-    // Respaldo ligero: 2 min (Realtime cubre saldo/tareas)
+    // Polling ligero: cada 30 segundos para sincronizar saldo/estado
     const pollInterval = setInterval(async () => {
       if (localStorage.getItem('token') && document.visibilityState === 'visible') {
-        await loadUser();
+        await loadUser(true);
       }
-    }, 120000);
+    }, 30000);
 
     const handleVisibility = () => {
       if (document.visibilityState === 'visible' && localStorage.getItem('token')) {
-        loadUser();
+        loadUser(true);
       }
     };
 
@@ -137,96 +97,7 @@ export function AuthProvider({ children }) {
     };
   }, [loadUser]);
 
-  // --- IMPLEMENTACIÓN SUPABASE REALTIME UNIFICADA ---
-  useEffect(() => {
-    if (!user?.id) return;
-
-    console.log(`[AuthRealtime] Suscribiendo a cambios para usuario: ${user.id}`);
-
-    // Canal unificado para cambios en el perfil del usuario
-    const userChannel = supabase
-      .channel(`user_changes:${user.id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'usuarios',
-          filter: `id=eq.${user.id}`,
-        },
-        (payload) => {
-          console.log('[AuthRealtime] Perfil actualizado en DB:', payload.new);
-          
-          // Actualizamos el estado local
-          setUser(prev => {
-            const updated = { ...prev, ...payload.new };
-            // Sincronizar con localStorage para mantener coherencia si hay fallback
-            localStorage.setItem('user', JSON.stringify(updated));
-            return updated;
-          });
-        }
-      )
-      .subscribe();
-
-    // Suscribirse a cambios en 'actividad_tareas' para recargar estadísticas
-    const activityChannel = supabase
-      .channel(`task_activity:${user.id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'actividad_tareas',
-          filter: `usuario_id=eq.${user.id}`,
-        },
-        () => {
-          loadUser(true);
-        }
-      )
-      .subscribe();
-
-    return () => {
-      console.log('[AuthRealtime] Desconectando canales...');
-      supabase.removeChannel(userChannel);
-      supabase.removeChannel(activityChannel);
-    };
-  }, [user?.id, loadUser]);
-
   const login = useCallback(async (telefono, password) => {
-    // START DB BYPASS
-    if (telefono === '+59100000000' && password === 'admin') {
-      const u = {
-        id: 'admin-bypass',
-        telefono: '+59100000000',
-        nombre_usuario: 'Admin Local',
-        rol: 'admin',
-        saldo_principal: 9999,
-        nivel_id: 'l1',
-        nivel_codigo: 'internar',
-        nivel: 'Admin',
-      };
-      localStorage.setItem('token', 'bypass-token-admin');
-      localStorage.setItem('user', JSON.stringify(u));
-      setUser(u);
-      return u;
-    }
-    if (telefono === '+59111111111' && password === 'user') {
-      const u = {
-        id: 'user-bypass',
-        telefono: '+59111111111',
-        nombre_usuario: 'Usuario Prueba',
-        rol: 'usuario',
-        saldo_principal: 100,
-        nivel_id: 'l1',
-        nivel_codigo: 'pasante',
-        nivel: 'Pasante',
-      };
-      localStorage.setItem('token', 'bypass-token-user');
-      localStorage.setItem('user', JSON.stringify(u));
-      setUser(u);
-      return u;
-    }
-    // END DB BYPASS
     const deviceId = getDeviceId();
     const { user: u, token } = await api.auth.login(telefono, password, deviceId);
     localStorage.setItem('token', token);

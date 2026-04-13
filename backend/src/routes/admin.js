@@ -5,7 +5,7 @@ import {
   getUsers, getLevels, findUserById, updateUser, 
   getPublicContent, approveRecarga, rejectRetiro,
   boliviaTime, distributeInvestmentCommissions, refreshPublicContent, 
-  invalidateLevelsCache, preloadLevels,
+  invalidateLevelsCache, preloadLevels, syncLevels,
   getMensajesGlobales, createMensajeGlobal, deleteMensajeGlobal
 } from '../lib/queries.js';
 import { query, queryOne } from '../config/db.js';
@@ -123,6 +123,38 @@ router.delete('/mensajes/:id', async (req, res) => {
   try {
     await deleteMensajeGlobal(req.params.id);
     res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/levels/sync', async (req, res) => {
+  try {
+    await syncLevels();
+    res.json({ ok: true, message: 'Niveles sincronizados con la tabla oficial' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/usuarios/:id/ajuste', async (req, res) => {
+  try {
+    const { tipo, monto, motivo } = req.body;
+    const userId = req.params.id;
+    const user = await findUserById(userId);
+    if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+
+    const field = tipo === 'comisiones' ? 'saldo_comisiones' : 'saldo_principal';
+    const oldBalance = Number(user[field]);
+    const newBalance = oldBalance + Number(monto);
+
+    await updateUser(userId, { [field]: newBalance });
+
+    await query(`INSERT INTO movimientos_saldo (id, usuario_id, tipo_billetera, tipo_movimiento, monto, saldo_anterior, saldo_nuevo, descripcion) 
+      VALUES (?, ?, ?, 'ajuste_admin', ?, ?, ?, ?)`, 
+      [uuidv4(), userId, tipo === 'comisiones' ? 'comisiones' : 'principal', monto, oldBalance, newBalance, motivo || 'Ajuste administrativo']);
+
+    res.json({ ok: true, newBalance });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

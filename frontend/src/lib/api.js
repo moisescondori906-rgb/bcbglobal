@@ -154,6 +154,7 @@ export const api = {
     stats: () => request('/users/stats'),
     earnings: () => request('/users/earnings'),
     team: () => request('/users/team'),
+    teamReport: () => request('/users/team-report'),
     tarjetas: () => request('/users/tarjetas'),
     addTarjeta: (data) => request('/users/tarjetas', { method: 'POST', body: JSON.stringify(data) }),
     deleteTarjeta: (id) => request(`/users/tarjetas/${id}`, { method: 'DELETE' }),

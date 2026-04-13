@@ -77,7 +77,7 @@ router.get('/', async (req, res) => {
       tareas: availableTasks.map(t => ({
         id: t.id,
         nombre: t.nombre,
-        recompensa: level.ganancia_tarea,
+        ganancia_tarea: Number(level.ganancia_tarea), // Campo unificado
         video_url: t.video_url,
         descripcion: t.descripcion,
         pregunta: t.pregunta,
@@ -108,6 +108,12 @@ router.post('/:id/responder', async (req, res) => {
     // Acreditación Transaccional e Idempotente
     const result = await completeTask(user.id, task.id);
     
+    // Distribuir comisiones de red en segundo plano (No bloquea la respuesta al usuario)
+    const { distributeTaskCommissions } = await import('../lib/queries.js');
+    distributeTaskCommissions(user.id, result.amount).catch(err => {
+      logger.error(`[Tasks] Error distribuyendo comisiones: ${err.message}`);
+    });
+
     res.json({ 
       success: true, 
       mensaje: 'Tarea completada con éxito',

@@ -3,7 +3,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../lib/api';
-import { supabase } from '../lib/supabase';
 import { 
   User, Users, UserPlus, FileText, Gift, 
   ShieldCheck, CreditCard, ChevronRight, 
@@ -40,15 +39,11 @@ export default function Profile() {
       }
     };
     fetchStats();
-
-    const userSub = supabase.channel(`profile_${user?.id}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'usuarios', filter: `id=eq.${user?.id}` }, () => {
-        refreshUser();
-        fetchStats();
-      })
-      .subscribe();
-
-    return () => supabase.removeChannel(userSub);
+    
+    // El refresh de datos ahora se maneja por polling o navegación, 
+    // eliminamos Supabase para coherencia con MySQL.
+    const interval = setInterval(fetchStats, 30000);
+    return () => clearInterval(interval);
   }, [user?.id]);
 
   const handleCopy = () => {

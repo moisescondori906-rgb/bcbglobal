@@ -23,7 +23,7 @@ export default function Team() {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    api.get('/users/team-report')
+    api.users.teamReport()
       .then(setData)
       .finally(() => setLoading(false));
   }, []);
@@ -47,7 +47,7 @@ export default function Team() {
   }
 
   // Si es pasante, mostrar bloqueo
-  if (user?.nivel_codigo === 'pasante' || user?.nivel_codigo === 'internar') {
+  if (user?.nivel_codigo === 'pasante') {
     return (
       <Layout>
         <Header title="Informe del equipo" />
@@ -67,7 +67,7 @@ export default function Team() {
                 <Info size={12} /> Requisito:
               </p>
               <p className="text-[10px] text-sav-muted leading-relaxed font-bold uppercase tracking-widest">
-                Sube a nivel <span className="text-white">Global1</span> o superior para desbloquear comisiones por cada tarea de tu equipo.
+                Sube a nivel <span className="text-white">GLOBAL 1</span> o superior para desbloquear comisiones por cada tarea de tu equipo.
               </p>
             </div>
             <Link to="/vip" className="w-full">

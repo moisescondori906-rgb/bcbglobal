@@ -1,29 +1,30 @@
 /**
- * Mapeo solo visual: códigos internos (S1–S9) -> Global1–Global9.
+ * Mapeo solo visual: códigos internos -> Nombres legibles.
  * No altera nivel_id ni lógica de negocio.
  */
-const S_TO_GLOBAL = {
-  S1: 'Global 1',
-  S2: 'Global 2',
-  S3: 'Global 3',
-  S4: 'Global 4',
-  S5: 'Global 5',
-  S6: 'Global 6',
-  S7: 'Global 7',
-  S8: 'Global 8',
-  S9: 'Global 9',
+const CODE_TO_NAME = {
+  pasante: 'Pasante',
+  global1: 'GLOBAL 1',
+  global2: 'GLOBAL 2',
+  global3: 'GLOBAL 3',
+  global4: 'GLOBAL 4',
+  global5: 'GLOBAL 5',
+  global6: 'GLOBAL 6',
+  global7: 'GLOBAL 7',
+  global8: 'GLOBAL 8',
+  global9: 'GLOBAL 9',
 };
 
 export function displayLevelCode(codigo) {
-  const c = String(codigo || '').toUpperCase();
-  if (c === 'INTERNAR' || c === 'PASANTE') return 'Pasante';
+  const c = String(codigo || '').toLowerCase().trim();
   
-  // Mapeo exhaustivo para asegurar que "S" se convierta en "Global"
-  const match = c.match(/^(S|GLOBAL)\s*([1-9])?$/);
+  if (c === 'internar' || c === 'pasante') return 'Pasante';
+  
+  // Si ya es un nombre Global X, normalizar a GLOBAL X
+  const match = c.match(/^global\s*([1-9])$/);
   if (match) {
-    const num = match[2] || '';
-    return `Global ${num}`.trim();
+    return `GLOBAL ${match[1]}`;
   }
   
-  return S_TO_GLOBAL[c] || codigo || '—';
+  return CODE_TO_NAME[c] || codigo || '—';
 }

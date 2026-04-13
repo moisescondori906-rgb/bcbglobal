@@ -150,15 +150,15 @@ export default function VIP() {
                     <div className="grid grid-cols-3 gap-2">
                       <div className="text-center space-y-1">
                         <p className="text-[7px] font-black text-sav-muted uppercase tracking-widest">Diario</p>
-                        <p className="text-sm font-black text-sav-success">+{formatBOB(nivel.ingreso_diario || (Number(nivel.num_tareas_diarias || 0) * Number(nivel.ganancia_tarea || 0)))}</p>
+                        <p className="text-sm font-black text-sav-success">+{formatBOB(nivel.ingreso_diario)}</p>
                       </div>
                       <div className="text-center space-y-1 border-x border-white/5">
                         <p className="text-[7px] font-black text-sav-muted uppercase tracking-widest">Mensual</p>
-                        <p className="text-sm font-black text-white">{formatBOB(nivel.ingreso_mensual || (Number(nivel.num_tareas_diarias || 0) * Number(nivel.ganancia_tarea || 0) * 30))}</p>
+                        <p className="text-sm font-black text-white">{formatBOB(nivel.ingreso_mensual)}</p>
                       </div>
                       <div className="text-center space-y-1">
                         <p className="text-[7px] font-black text-sav-muted uppercase tracking-widest">Anual</p>
-                        <p className="text-sm font-black text-white">{formatBOB(nivel.ingreso_anual || (Number(nivel.num_tareas_diarias || 0) * Number(nivel.ganancia_tarea || 0) * 365))}</p>
+                        <p className="text-sm font-black text-white">{formatBOB(nivel.ingreso_anual)}</p>
                       </div>
                     </div>
                   </div>

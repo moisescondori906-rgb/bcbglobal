@@ -2,16 +2,16 @@ import bcrypt from 'bcryptjs';
 import { v4 as uuidv4 } from 'uuid';
 
 export const levels = [
-  { id: 'l1', codigo: 'Internar', nombre: 'Internar', deposito: 0, ingreso_diario: 2.60, num_tareas_diarias: 2, comision_por_tarea: 1.30, orden: 0, activo: true },
-  { id: 'l2', codigo: 'GLOBAL 1', nombre: 'GLOBAL 1', deposito: 200.00, ingreso_diario: 7.20, num_tareas_diarias: 4, comision_por_tarea: 1.80, orden: 1, activo: true },
-  { id: 'l3', codigo: 'GLOBAL 2', nombre: 'GLOBAL 2', deposito: 720.00, ingreso_diario: 25.76, num_tareas_diarias: 8, comision_por_tarea: 3.22, orden: 2, activo: true },
-  { id: 'l4', codigo: 'GLOBAL 3', nombre: 'GLOBAL 3', deposito: 2830.00, ingreso_diario: 101.40, num_tareas_diarias: 15, comision_por_tarea: 6.76, orden: 3, activo: true },
-  { id: 'l5', codigo: 'GLOBAL 4', nombre: 'GLOBAL 4', deposito: 9150.00, ingreso_diario: 339.90, num_tareas_diarias: 30, comision_por_tarea: 11.33, orden: 4, activo: true },
-  { id: 'l6', codigo: 'GLOBAL 5', nombre: 'GLOBAL 5', deposito: 28200.00, ingreso_diario: 1045.80, num_tareas_diarias: 60, comision_por_tarea: 17.43, orden: 5, activo: true },
-  { id: 'l7', codigo: 'GLOBAL 6', nombre: 'GLOBAL 6', deposito: 58000.00, ingreso_diario: 2235.00, num_tareas_diarias: 100, comision_por_tarea: 22.35, orden: 6, activo: true },
-  { id: 'l8', codigo: 'GLOBAL 7', nombre: 'GLOBAL 7', deposito: 124000.00, ingreso_diario: 4961.60, num_tareas_diarias: 160, comision_por_tarea: 31.01, orden: 7, activo: true },
-  { id: 'l9', codigo: 'GLOBAL 8', nombre: 'GLOBAL 8', deposito: 299400.00, ingreso_diario: 11977.50, num_tareas_diarias: 250, comision_por_tarea: 47.91, orden: 8, activo: true },
-  { id: 'l10', codigo: 'GLOBAL 9', nombre: 'GLOBAL 9', deposito: 541600.00, ingreso_diario: 23548.00, num_tareas_diarias: 400, comision_por_tarea: 58.87, orden: 9, activo: true },
+  { id: 'l1', codigo: 'pasante', nombre: 'Pasante', deposito: 0, num_tareas_diarias: 3, ganancia_tarea: 2.00, orden: 0, activo: true },
+  { id: 'l2', codigo: 'global1', nombre: 'GLOBAL 1', deposito: 200.00, num_tareas_diarias: 5, ganancia_tarea: 4.00, orden: 1, activo: true },
+  { id: 'l3', codigo: 'global2', nombre: 'GLOBAL 2', deposito: 720.00, num_tareas_diarias: 10, ganancia_tarea: 7.20, orden: 2, activo: true },
+  { id: 'l4', codigo: 'global3', nombre: 'GLOBAL 3', deposito: 2830.00, num_tareas_diarias: 20, ganancia_tarea: 14.15, orden: 3, activo: true },
+  { id: 'l5', codigo: 'global4', nombre: 'GLOBAL 4', deposito: 5500.00, num_tareas_diarias: 40, ganancia_tarea: 27.50, orden: 4, activo: true },
+  { id: 'l6', codigo: 'global5', nombre: 'GLOBAL 5', deposito: 12000.00, num_tareas_diarias: 60, ganancia_tarea: 60.00, orden: 5, activo: true },
+  { id: 'l7', codigo: 'global6', nombre: 'GLOBAL 6', deposito: 25000.00, num_tareas_diarias: 80, ganancia_tarea: 125.00, orden: 6, activo: true },
+  { id: 'l8', codigo: 'global7', nombre: 'GLOBAL 7', deposito: 50000.00, num_tareas_diarias: 100, ganancia_tarea: 250.00, orden: 7, activo: true },
+  { id: 'l9', codigo: 'global8', nombre: 'GLOBAL 8', deposito: 100000.00, num_tareas_diarias: 150, ganancia_tarea: 500.00, orden: 8, activo: true },
+  { id: 'l10', codigo: 'global9', nombre: 'GLOBAL 9', deposito: 200000.00, num_tareas_diarias: 200, ganancia_tarea: 1000.00, orden: 9, activo: true },
 ];
 
 export async function initStore() {
@@ -29,7 +29,7 @@ export async function initStore() {
     password_hash: await bcrypt.hash('admin123', 10),
     password_fondo_hash: hashFondo,
     codigo_invitacion: 'ADMIN001',
-    nivel_id: 'l2', // S1
+    nivel_id: 'l2', // global1
     rol: 'admin',
     saldo_principal: 0,
     saldo_comisiones: 0,
@@ -53,18 +53,16 @@ export async function initStore() {
   };
 
   // Generamos tareas limpias con nombres reales de marcas y URLs de video
+  // REGLA: Las tareas son globales, el pago lo define el nivel del usuario.
   const tasks = [
-    // Tareas Pasante
-    { id: uuidv4(), nivel_id: 'pasante', nombre: 'Adidas Global', recompensa: 1.80, video_url: '/video/adidas1.mp4', descripcion: 'Nueva campaña Adidas 2026', pregunta: '¿Qué marca viste?', respuesta_correcta: 'ADIDAS', opciones: ['ADIDAS', 'NIKE', 'PUMA', 'REEBOK'] },
-    { id: uuidv4(), nivel_id: 'pasante', nombre: 'Coca-Cola Summer', recompensa: 1.80, video_url: '/video/cocacola1.mp4', descripcion: 'Refrescante sabor Coca-Cola', pregunta: '¿Qué marca viste?', respuesta_correcta: 'COCACOLA', opciones: ['COCACOLA', 'PEPSI', 'SPRITE', 'FANTA'] },
-    { id: uuidv4(), nivel_id: 'pasante', nombre: 'Chanel Classic', recompensa: 1.80, video_url: '/video/chanel1.mp4', descripcion: 'Elegancia atemporal Chanel', pregunta: '¿Qué marca viste?', respuesta_correcta: 'CHANEL', opciones: ['CHANEL', 'DIOR', 'GUCCI', 'PRADA'] },
-    { id: uuidv4(), nivel_id: 'pasante', nombre: 'Dior Fashion', recompensa: 1.80, video_url: '/video/dior1.mp4', descripcion: 'Alta costura con Dior', pregunta: '¿Qué marca viste?', respuesta_correcta: 'DIOR', opciones: ['DIOR', 'CHANEL', 'HERMES', 'PRADA'] },
-    
-    // Tareas Global 1
-    { id: uuidv4(), nivel_id: 'Global 1', nombre: 'Nike Air Max', recompensa: 1.80, video_url: '/video/nike1.mp4', descripcion: 'Innovación en cada paso', pregunta: '¿Qué marca viste?', respuesta_correcta: 'NIKE', opciones: ['NIKE', 'ADIDAS', 'PUMA', 'REEBOK'] },
-    { id: uuidv4(), nivel_id: 'Global 1', nombre: 'Puma Speed', recompensa: 1.80, video_url: '/video/puma1.mp4', descripcion: 'Diseño y velocidad Puma', pregunta: '¿Qué marca viste?', respuesta_correcta: 'PUMA', opciones: ['PUMA', 'NIKE', 'ADIDAS', 'REEBOK'] },
-    { id: uuidv4(), nivel_id: 'Global 1', nombre: 'Rolex Luxury', recompensa: 1.80, video_url: '/video/rolex1.mp4', descripcion: 'Precisión y prestigio Rolex', pregunta: '¿Qué marca viste?', respuesta_correcta: 'ROLEX', opciones: ['ROLEX', 'OMEGA', 'CASIO', 'CARTIER'] },
-    { id: uuidv4(), nivel_id: 'Global 1', nombre: 'Ferrari F8', recompensa: 1.80, video_url: '/video/lamborghini1.mp4', descripcion: 'Potencia pura en pista', pregunta: '¿Qué marca viste?', respuesta_correcta: 'LAMBORGHINI', opciones: ['LAMBORGHINI', 'FERRARI', 'PORSCHE', 'MCLAREN'] },
+    { id: uuidv4(), nombre: 'Adidas Global', video_url: '/video/adidas1.mp4', descripcion: 'Nueva campaña Adidas 2026', pregunta: '¿Qué marca viste?', respuesta_correcta: 'ADIDAS', opciones: ['ADIDAS', 'NIKE', 'PUMA', 'REEBOK'], orden: 0 },
+    { id: uuidv4(), nombre: 'Coca-Cola Summer', video_url: '/video/cocacola1.mp4', descripcion: 'Refrescante sabor Coca-Cola', pregunta: '¿Qué marca viste?', respuesta_correcta: 'COCACOLA', opciones: ['COCACOLA', 'PEPSI', 'SPRITE', 'FANTA'], orden: 1 },
+    { id: uuidv4(), nombre: 'Chanel Classic', video_url: '/video/chanel1.mp4', descripcion: 'Elegancia atemporal Chanel', pregunta: '¿Qué marca viste?', respuesta_correcta: 'CHANEL', opciones: ['CHANEL', 'DIOR', 'GUCCI', 'PRADA'], orden: 2 },
+    { id: uuidv4(), nombre: 'Dior Fashion', video_url: '/video/dior1.mp4', descripcion: 'Alta costura con Dior', pregunta: '¿Qué marca viste?', respuesta_correcta: 'DIOR', opciones: ['DIOR', 'CHANEL', 'HERMES', 'PRADA'], orden: 3 },
+    { id: uuidv4(), nombre: 'Nike Air Max', video_url: '/video/nike1.mp4', descripcion: 'Innovación en cada paso', pregunta: '¿Qué marca viste?', respuesta_correcta: 'NIKE', opciones: ['NIKE', 'ADIDAS', 'PUMA', 'REEBOK'], orden: 4 },
+    { id: uuidv4(), nombre: 'Puma Speed', video_url: '/video/puma1.mp4', descripcion: 'Diseño y velocidad Puma', pregunta: '¿Qué marca viste?', respuesta_correcta: 'PUMA', opciones: ['PUMA', 'NIKE', 'ADIDAS', 'REEBOK'], orden: 5 },
+    { id: uuidv4(), nombre: 'Rolex Luxury', video_url: '/video/rolex1.mp4', descripcion: 'Precisión y prestigio Rolex', pregunta: '¿Qué marca viste?', respuesta_correcta: 'ROLEX', opciones: ['ROLEX', 'OMEGA', 'CASIO', 'CARTIER'], orden: 6 },
+    { id: uuidv4(), nombre: 'Lamborghini F8', video_url: '/video/lamborghini1.mp4', descripcion: 'Potencia pura en pista', pregunta: '¿Qué marca viste?', respuesta_correcta: 'LAMBORGHINI', opciones: ['LAMBORGHINI', 'FERRARI', 'PORSCHE', 'MCLAREN'], orden: 7 },
   ];
 
   const banners = [

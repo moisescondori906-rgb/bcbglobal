@@ -233,7 +233,7 @@ export default function Dashboard() {
                     </div>
                     <div className="space-y-0.5">
                       <p className="text-[8px] font-black text-sav-muted uppercase tracking-widest leading-none">Renta Diaria</p>
-                      <p className="text-lg font-black text-white">+{Number(n.ingreso_diario || (Number(n.num_tareas_diarias || 0) * Number(n.ganancia_tarea || 0))).toFixed(2)}</p>
+                      <p className="text-lg font-black text-white">+{Number(n.ingreso_diario).toFixed(2)}</p>
                     </div>
                     <div className="pt-3 border-t border-white/5 flex justify-between items-center">
                       <span className="text-[8px] font-bold text-sav-muted uppercase">Inversión</span>

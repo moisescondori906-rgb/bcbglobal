@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import { v4 as uuidv4 } from 'uuid';
 import { 
   getLevels, updateUser, findUserWithAuthSecrets,
-  getMensajesGlobales, boliviaTime
+  getMensajesGlobales, boliviaTime, getUserTeamReport
 } from '../lib/queries.js';
 import { authenticate } from '../middleware/auth.js';
 import { attachRequestUser, DEMO_USER_ID } from '../middleware/requestContext.js';
@@ -115,6 +115,24 @@ router.get('/earnings', async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({ error: 'Error al obtener historial' });
+  }
+});
+
+router.get('/team', async (req, res) => {
+  try {
+    const report = await getUserTeamReport(req.user.id);
+    res.json(report);
+  } catch (err) {
+    res.status(500).json({ error: 'Error al obtener reporte de equipo' });
+  }
+});
+
+router.get('/team-report', async (req, res) => {
+  try {
+    const report = await getUserTeamReport(req.user.id);
+    res.json(report);
+  } catch (err) {
+    res.status(500).json({ error: 'Error al obtener reporte de equipo' });
   }
 });
 
