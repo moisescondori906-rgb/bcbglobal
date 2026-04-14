@@ -128,6 +128,15 @@ export default function TaskRoom() {
 
   if ((error || data?.bloqueado || (data && !data.tareas_restantes && data.num_tareas_diarias === 0)) && !activeTask) {
     const isLevelBlocked = data && !data.tareas_restantes && data.num_tareas_diarias === 0;
+    
+    // Determinar el título basado en el mensaje del backend
+    let displayTitle = isLevelBlocked ? 'Sube de Nivel' : 'Acceso Restringido';
+    const msg = (error || data?.mensaje || '').toLowerCase();
+    
+    if (msg.includes('domingo')) displayTitle = 'No hay tareas hoy';
+    else if (msg.includes('feriado')) displayTitle = 'Tareas suspendidas';
+    else if (msg.includes('mantenimiento')) displayTitle = 'Sistema en mantenimiento';
+
     return (
       <Layout>
         <div className="p-6 flex flex-col items-center justify-center min-h-[70vh] text-center space-y-8">
@@ -139,7 +148,7 @@ export default function TaskRoom() {
             </div>
             <div className="space-y-2">
               <h2 className="text-2xl font-black uppercase tracking-tight text-white leading-none">
-                {isLevelBlocked ? 'Sube de Nivel' : 'Acceso Restringido'}
+                {displayTitle}
               </h2>
               <p className="text-[10px] font-bold text-sav-muted uppercase tracking-widest leading-relaxed max-w-[250px]">
                 {error || data?.mensaje || (isLevelBlocked ? 'Tu nivel actual no tiene tareas disponibles. Adquiere un nivel GLOBAL para comenzar.' : 'Las tareas no están disponibles en este momento.')}
