@@ -1,18 +1,21 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { api } from '../../lib/api';
-import { Plus, Trash2, Edit2, Save, X, Play, Clock, Award } from 'lucide-react';
+import { Plus, Trash2, Edit2, Save, X, Play, Clock, Award, Upload, CheckCircle } from 'lucide-react';
+import { cn } from '../../lib/utils/cn';
 
 export default function AdminTareas() {
   const [tareas, setTareas] = useState([]);
   const [niveles, setNiveles] = useState([]);
   const [editing, setEditing] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [uploadingVideo, setUploadingVideo] = useState(false);
   const [form, setForm] = useState({
     nombre: '',
     video_url: '',
     respuesta_correcta: '',
     opciones: ''
   });
+  const [selectedVideoFile, setSelectedVideoFile] = useState(null);
 
   useEffect(() => {
     Promise.all([
@@ -23,8 +26,42 @@ export default function AdminTareas() {
     }).catch(console.error).finally(() => setLoading(false));
   }, []);
 
+  const handleVideoSelect = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const maxSize = 50 * 1024 * 1024;
+    if (file.size > maxSize) {
+      alert('El video excede el límite de 50MB.');
+      return;
+    }
+
+    const allowedTypes = ['video/mp4', 'video/webm', 'video/quicktime', 'video/x-msvideo'];
+    if (!allowedTypes.includes(file.type)) {
+      alert('Formato no permitido. Solo MP4, WebM, MOV o AVI.');
+      return;
+    }
+
+    setSelectedVideoFile(file);
+    setUploadingVideo(true);
+
+    try {
+      const result = await api.admin.subirVideoTarea(file);
+      setForm(prev => ({ ...prev, video_url: result.video_url }));
+      alert('Video subido exitosamente: ' + result.video_url);
+    } catch (err) {
+      alert('Error al subir video: ' + err.message);
+    } finally {
+      setUploadingVideo(false);
+    }
+  };
+
   const handleCreate = async (e) => {
     e.preventDefault();
+    if (!form.video_url) {
+      alert('Primero debes subir un video.');
+      return;
+    }
     try {
       const payload = { 
         ...form, 
@@ -33,6 +70,7 @@ export default function AdminTareas() {
       const nueva = await api.admin.crearTarea(payload);
       setTareas([...tareas, { ...nueva, opciones: nueva.opciones.join(', ') }]);
       setForm({ nombre: '', video_url: '', respuesta_correcta: '', opciones: '' });
+      setSelectedVideoFile(null);
     } catch (err) {
       alert(err.message);
     }
@@ -93,15 +131,49 @@ export default function AdminTareas() {
           </div>
 
           <div className="space-y-2">
-            <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2">URL del Video (MP4)</label>
-            <input
-              type="url"
-              placeholder="https://servidor.com/video.mp4"
-              className="w-full px-5 py-4 rounded-2xl bg-gray-50 border-2 border-gray-50 text-gray-800 font-bold text-sm focus:border-sav-primary/20 transition-all outline-none"
-              value={form.video_url}
-              onChange={e => setForm({...form, video_url: e.target.value})}
-              required
-            />
+            <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2">Video de la Campaña</label>
+            {form.video_url ? (
+              <div className="flex items-center gap-3 p-4 rounded-2xl bg-green-50 border border-green-100">
+                <CheckCircle size={20} className="text-green-500" />
+                <span className="text-xs font-bold text-green-700 truncate flex-1">{form.video_url.split('/').pop()}</span>
+                <button
+                  type="button"
+                  onClick={() => { setForm({...form, video_url: ''}); setSelectedVideoFile(null); }}
+                  className="text-xs font-black text-red-500 hover:text-red-700 uppercase"
+                >
+                  Cambiar
+                </button>
+              </div>
+            ) : (
+              <label className={cn(
+                "flex flex-col items-center justify-center w-full h-32 rounded-2xl border-2 border-dashed cursor-pointer transition-all",
+                uploadingVideo
+                  ? "bg-gray-50 border-gray-300 text-gray-400"
+                  : "bg-gray-50 border-gray-200 hover:border-sav-primary/30 hover:bg-sav-primary/5 text-gray-400 hover:text-sav-primary"
+              )}>
+                <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                  {uploadingVideo ? (
+                    <>
+                      <div className="w-10 h-10 border-4 border-sav-primary/20 border-t-sav-primary rounded-full animate-spin mb-3" />
+                      <p className="text-xs font-black uppercase tracking-widest">Subiendo video...</p>
+                    </>
+                  ) : (
+                    <>
+                      <Upload size={28} className="mb-2" />
+                      <p className="text-xs font-black uppercase tracking-widest">Seleccionar video</p>
+                      <p className="text-[9px] font-medium mt-1">MP4, WebM, MOV, AVI (máx. 50MB)</p>
+                    </>
+                  )}
+                </div>
+                <input
+                  type="file"
+                  accept="video/mp4,video/webm,video/quicktime,video/x-msvideo"
+                  className="hidden"
+                  onChange={handleVideoSelect}
+                  disabled={uploadingVideo}
+                />
+              </label>
+            )}
           </div>
 
           <div className="space-y-2">

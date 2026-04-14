@@ -208,6 +208,19 @@ export const api = {
     crearTarea: (data) => request('/admin/tareas', { method: 'POST', body: JSON.stringify(data) }),
     actualizarTarea: (id, data) => request(`/admin/tareas/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
     eliminarTarea: (id) => request(`/admin/tareas/${id}`, { method: 'DELETE' }),
+    subirVideoTarea: async (file, onProgress) => {
+      const formData = new FormData();
+      formData.append('video', file);
+      const token = getToken();
+      const res = await fetch(API + '/admin/tareas/video', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al subir video');
+      return data;
+    },
     aprobarRecarga: (id) => request(`/admin/recargas/${id}/aprobar`, { method: 'POST' }),
     rechazarRecarga: (id, motivo) => request(`/admin/recargas/${id}/rechazar`, { method: 'POST', body: JSON.stringify({ motivo }) }),
     aprobarRetiro: (id) => request(`/admin/retiros/${id}/aprobar`, { method: 'POST' }),

@@ -10,6 +10,7 @@ import {
 } from '../lib/queries.js';
 import { query, queryOne } from '../config/db.js';
 import { authenticate, requireAdmin } from '../middleware/auth.js';
+import { uploadToCloudinary, uploadVideoBuffer } from '../lib/cloudinary.js';
 import logger from '../lib/logger.js';
 
 const router = Router();
@@ -262,6 +263,53 @@ router.delete('/tareas/:id', async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// ========================
+// SUBIDA DE VIDEOS A CLOUDINARY
+// ========================
+
+router.post('/tareas/video', uploadToCloudinary.single('video'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No se recibió ningún archivo de video.' });
+    }
+    res.json({
+      ok: true,
+      video_url: req.file.path,
+      public_id: req.file.filename,
+      original_name: req.file.originalname,
+      size_bytes: req.file.size
+    });
+  } catch (err) {
+    logger.error('[Admin] Error subiendo video:', err);
+    res.status(500).json({ error: err.message || 'Error al subir el video a Cloudinary.' });
+  }
+});
+
+router.post('/tareas/video/base64', async (req, res) => {
+  try {
+    const { video_base64, nombre } = req.body;
+    if (!video_base64) {
+      return res.status(400).json({ error: 'Se requiere el video en base64.' });
+    }
+
+    const base64Data = video_base64.replace(/^data:video\/\w+;base64,/, '');
+    const buffer = Buffer.from(base64Data, 'base64');
+
+    const result = await uploadVideoBuffer(buffer, {
+      public_id: nombre ? `tarea_${nombre.replace(/\s+/g, '_')}_${Date.now()}` : undefined
+    });
+
+    res.json({
+      ok: true,
+      video_url: result.secure_url,
+      public_id: result.public_id
+    });
+  } catch (err) {
+    logger.error('[Admin] Error subiendo video base64:', err);
+    res.status(500).json({ error: err.message || 'Error al subir el video a Cloudinary.' });
   }
 });
 
