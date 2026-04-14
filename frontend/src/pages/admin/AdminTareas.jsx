@@ -73,7 +73,12 @@ export default function AdminTareas() {
 
       {/* Formulario Crear */}
       <div className="bg-white rounded-[2rem] p-6 md:p-8 shadow-sm border border-gray-100 mb-8">
-        <h2 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-6">Nuevo Contenido de Video</h2>
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-xs font-black text-gray-400 uppercase tracking-widest">Nuevo Contenido de Video</h2>
+          <span className="text-[9px] font-black bg-amber-50 text-amber-600 px-3 py-1 rounded-full uppercase tracking-tighter border border-amber-100">
+            EL PAGO DEPENDE DEL NIVEL DEL USUARIO
+          </span>
+        </div>
         <form onSubmit={handleCreate} className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-2">
             <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2">Título de la Campaña</label>

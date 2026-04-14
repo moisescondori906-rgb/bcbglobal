@@ -97,22 +97,18 @@ export async function getDayStatus(dateStr = boliviaTime.todayStr()) {
     
     // Obtenemos el día de la semana de forma segura en UTC para comparar
     const [y, m, d] = dateStr.split('-').map(Number);
-    const dateObj = new Date(y, m - 1, d);
-    const dayOfWeek = dateObj.getDay(); // 0=Dom, 1=Lun...
-
-    // Feriados Hardcoded (Fallback si no hay DB)
-    const holidays = ['2026-01-01', '2026-02-02', '2026-03-03', '2026-05-01', '2026-08-06'];
-    const isHoliday = holidays.includes(dateStr);
+    const dateObj = new Date(Date.UTC(y, m - 1, d));
+    const dayOfWeek = dateObj.getUTCDay(); // 0=Dom, 1=Lun...
 
     // Reglas Base (Si no hay registro en el calendario)
     const status = day || {
       fecha: dateStr,
-      tipo_dia: isHoliday ? 'feriado' : (dayOfWeek === 0 ? 'mantenimiento' : 'laboral'),
-      es_feriado: isHoliday ? 1 : 0,
-      tareas_habilitadas: (dayOfWeek === 0 || isHoliday) ? 0 : 1, // Domingos y Feriados bloqueados por defecto
-      retiros_habilitados: isHoliday ? 0 : 1,
+      tipo_dia: (dayOfWeek === 0 ? 'mantenimiento' : 'laboral'),
+      es_feriado: 0,
+      tareas_habilitadas: (dayOfWeek === 0) ? 0 : 1, // Domingos bloqueados por defecto
+      retiros_habilitados: 1,
       recargas_habilitadas: 1,
-      motivo: isHoliday ? 'Feriado Nacional' : (dayOfWeek === 0 ? 'Mantenimiento Dominical' : null),
+      motivo: (dayOfWeek === 0 ? 'Mantenimiento Dominical' : null),
       reglas_niveles: {}
     };
 
@@ -137,6 +133,7 @@ export async function canPerformTasks(userId, dateStr = boliviaTime.todayStr()) 
   // Verificar reglas por nivel si existen
   const user = await findUserById(userId);
   if (!user) return { ok: false, message: 'Usuario no encontrado.' };
+  if (user.bloqueado) return { ok: false, message: 'Tu cuenta ha sido bloqueada.' };
   
   const levels = await getLevels();
   const userLevel = levels.find(l => String(l.id) === String(user.nivel_id));
@@ -155,6 +152,24 @@ export async function canPerformTasks(userId, dateStr = boliviaTime.todayStr()) 
 /**
  * Validación Centralizada: ¿Puede retirar hoy?
  */
+/**
+ * Verifica si el usuario puede realizar recargas según el calendario operativo
+ */
+export async function canRecharge(userId, dateStr = boliviaTime.todayStr()) {
+  const status = await getDayStatus(dateStr);
+  if (!status) return { ok: true };
+
+  if (!status.recargas_habilitadas) {
+    return { ok: false, message: status.motivo || 'Las recargas están suspendidas temporalmente por administración.' };
+  }
+
+  const user = await findUserById(userId);
+  if (!user) return { ok: false, message: 'Usuario no encontrado.' };
+  if (user.bloqueado) return { ok: false, message: 'Tu cuenta ha sido bloqueada.' };
+
+  return { ok: true };
+}
+
 export async function canWithdraw(userId, dateStr = boliviaTime.todayStr()) {
   const status = await getDayStatus(dateStr);
   if (!status) return { ok: true };
@@ -165,6 +180,7 @@ export async function canWithdraw(userId, dateStr = boliviaTime.todayStr()) {
 
   const user = await findUserById(userId);
   if (!user) return { ok: false, message: 'Usuario no encontrado.' };
+  if (user.bloqueado) return { ok: false, message: 'Tu cuenta ha sido bloqueada. Contacta a soporte.' };
 
   const levels = await getLevels();
   const userLevel = levels.find(l => String(l.id) === String(user.nivel_id));
@@ -174,7 +190,9 @@ export async function canWithdraw(userId, dateStr = boliviaTime.todayStr()) {
   }
 
   // 1. Regla de Día de la Semana (Prioridad: Calendario > Nivel > Default)
-  const dayOfWeek = boliviaTime.getDay();
+  // Obtenemos el día de la semana basado en la fecha proporcionada (UTC Bolivia)
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const dayOfWeek = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
   
   const levelRules = typeof status.reglas_niveles === 'string' 
     ? JSON.parse(status.reglas_niveles) 
@@ -413,6 +431,7 @@ export async function completeTask(userId, taskId) {
     const [userRows] = await conn.query('SELECT * FROM usuarios WHERE id = ? FOR UPDATE', [userId]);
     const user = userRows[0];
     if (!user) throw new Error('Usuario no encontrado');
+    if (user.bloqueado) throw new Error('Tu cuenta ha sido bloqueada.');
 
     // 2. Verificar si la tarea específica ya se hizo hoy (Idempotencia)
     const [existing] = await conn.query(
@@ -475,6 +494,7 @@ export async function approveRecarga(recargaId, adminId) {
     const [userRows] = await conn.query(`SELECT * FROM usuarios WHERE id = ? FOR UPDATE`, [usuario_id]);
     const user = userRows[0];
     if (!user) throw new Error('Usuario no encontrado');
+    if (user.bloqueado) throw new Error('Usuario bloqueado.');
     const oldBalance = Number(user.saldo_principal);
 
     if (targetLevel) {
@@ -709,7 +729,7 @@ export async function getDashboardStats() {
   const [userCount, rechargeTotal, withdrawalTotal, activeTasks] = await Promise.all([
     queryOne(`SELECT COUNT(*) as total FROM usuarios WHERE rol = 'usuario'`),
     queryOne(`SELECT SUM(monto) as total FROM recargas WHERE estado = 'aprobada'`),
-    queryOne(`SELECT SUM(monto) as total FROM retiros WHERE estado = 'completado'`),
+    queryOne(`SELECT SUM(monto) as total FROM retiros WHERE estado = 'pagado'`),
     queryOne(`SELECT COUNT(*) as total FROM actividad_tareas WHERE fecha_dia = ?`, [boliviaTime.todayStr()])
   ]);
 
@@ -719,6 +739,129 @@ export async function getDashboardStats() {
     retiros: Number(withdrawalTotal.total || 0),
     tareas_hoy: activeTasks.total
   };
+}
+
+export async function getTeamReport(userId) {
+  try {
+    // Nivel 1 (Directos)
+    const level1 = await query(`
+      SELECT u.id, u.nombre_usuario, u.telefono, u.created_at, n.nombre as nivel_nombre
+      FROM usuarios u 
+      LEFT JOIN niveles n ON u.nivel_id = n.id
+      WHERE u.invitado_por = ?`, [userId]);
+
+    // Nivel 2
+    const level2 = level1.length > 0 ? await query(`
+      SELECT u.id, u.nombre_usuario, u.telefono, u.created_at, n.nombre as nivel_nombre
+      FROM usuarios u 
+      LEFT JOIN niveles n ON u.nivel_id = n.id
+      WHERE u.invitado_por IN (?)`, [level1.map(u => u.id)]) : [];
+
+    // Nivel 3
+    const level3 = level2.length > 0 ? await query(`
+      SELECT u.id, u.nombre_usuario, u.telefono, u.created_at, n.nombre as nivel_nombre
+      FROM usuarios u 
+      LEFT JOIN niveles n ON u.nivel_id = n.id
+      WHERE u.invitado_por IN (?)`, [level2.map(u => u.id)]) : [];
+
+    // Obtener comisiones acumuladas por nivel de red (Solo inversión)
+    const commissions = await query(`
+      SELECT 
+        CASE 
+          WHEN descripcion LIKE '%Nivel A%' THEN 'A'
+          WHEN descripcion LIKE '%Nivel B%' THEN 'B'
+          WHEN descripcion LIKE '%Nivel C%' THEN 'C'
+          ELSE 'Otros'
+        END as nivel_red,
+        SUM(monto) as total
+      FROM movimientos_saldo 
+      WHERE usuario_id = ? AND tipo_movimiento = 'comision_inversion'
+      GROUP BY nivel_red
+    `, [userId]);
+
+    const commMap = commissions.reduce((acc, curr) => {
+      acc[curr.nivel_red] = Number(curr.total || 0);
+      return acc;
+    }, {});
+
+    const totalCommissions = Object.values(commMap).reduce((a, b) => a + b, 0);
+
+    return {
+      resumen: {
+        total_miembros: level1.length + level2.length + level3.length,
+        ingresos_totales: totalCommissions,
+        comisiones_hoy: 0 
+      },
+      niveles: [
+        { nivel: 'A', porcentaje: 10, total_miembros: level1.length, monto_recarga: commMap['A'] || 0 },
+        { nivel: 'B', porcentaje: 3, total_miembros: level2.length, monto_recarga: commMap['B'] || 0 },
+        { nivel: 'C', porcentaje: 1, total_miembros: level3.length, monto_recarga: commMap['C'] || 0 }
+      ],
+      detalles: {
+        level1: level1.map(u => ({ ...u, join_date: u.created_at })),
+        level2: level2.map(u => ({ ...u, join_date: u.created_at })),
+        level3: level3.map(u => ({ ...u, join_date: u.created_at }))
+      }
+    };
+  } catch (err) {
+    logger.error(`[Team Report Error]: ${err.message}`);
+    return { resumen: { total_miembros: 0, ingresos_totales: 0 }, niveles: [] };
+  }
+}
+
+export async function getUserEarningsSummary(userId) {
+  const today = boliviaTime.todayStr();
+  const yesterday = boliviaTime.yesterdayStr();
+  const stats = await queryOne(`
+    SELECT 
+      COALESCE(SUM(CASE WHEN fecha_dia = ? THEN monto_ganado ELSE 0 END), 0) as hoy,
+      COALESCE(SUM(CASE WHEN fecha_dia = ? THEN monto_ganado ELSE 0 END), 0) as ayer
+    FROM actividad_tareas WHERE usuario_id = ?`, [today, yesterday, userId]);
+  return stats;
+}
+
+export async function isUserPunished(userId) {
+  return false; 
+}
+
+export async function resetDailyEarnings() {
+  try {
+    logger.audit('[CRON] Verificación diaria de integridad completada (Hora Bolivia).');
+    return true;
+  } catch (err) {
+    logger.error(`[Reset Error]: ${err.message}`);
+  }
+}
+
+export async function getPremiosRuleta() {
+  return await query(`SELECT * FROM premios_ruleta WHERE activo = 1 ORDER BY orden ASC`);
+}
+
+export async function createSorteoGanador(data) {
+  const id = uuidv4();
+  await query(`INSERT INTO sorteos_ganadores (id, usuario_id, premio_id, monto_ganado) VALUES (?, ?, ?, ?)`,
+    [id, data.usuario_id, data.premio_id, data.monto_ganado || 0]);
+  return { id, ...data };
+}
+
+export async function createMovimiento(data) {
+  const id = uuidv4();
+  await query(`
+    INSERT INTO movimientos_saldo (id, usuario_id, tipo_billetera, tipo_movimiento, monto, saldo_anterior, saldo_nuevo, descripcion, referencia_id) 
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [id, data.usuario_id, data.tipo_billetera || 'principal', data.tipo_movimiento, data.monto, data.saldo_anterior, data.saldo_nuevo, data.descripcion, data.referencia_id]);
+  return { id, ...data };
+}
+
+export async function getSorteosGanadores() {
+  return await query(`
+    SELECT s.*, u.nombre_usuario, p.nombre as premio_nombre 
+    FROM sorteos_ganadores s 
+    JOIN usuarios u ON s.usuario_id = u.id 
+    JOIN premios_ruleta p ON s.premio_id = p.id 
+    ORDER BY s.created_at DESC 
+    LIMIT 20
+  `);
 }
 
 export async function findUserByCodigo(codigo) {
@@ -787,187 +930,4 @@ export async function createTaskActivity(data) {
   return { id, ...data };
 }
 
-export async function distributeTaskCommissions(userId, taskAmount) {
-  try {
-    const user = await findUserById(userId);
-    if (!user || !user.invitado_por) return;
 
-    const levels = await getLevels();
-    const userLevel = levels.find(l => String(l.id) === String(user.nivel_id));
-    if (!userLevel) return;
-
-    const configs = [
-      { key: 'A', percent: 0.00 },
-      { key: 'B', percent: 0.02 },
-      { key: 'C', percent: 0.01 }
-    ];
-
-    let currentUplineId = user.invitado_por;
-    for (const config of configs) {
-      if (!currentUplineId) break;
-      
-      const upline = await findUserById(currentUplineId);
-      if (!upline) break;
-
-      if (config.percent > 0) {
-        await transaction(async (conn) => {
-          const [uplineRows] = await conn.query(`
-            SELECT u.*, n.orden as nivel_orden, n.codigo as nivel_codigo 
-            FROM usuarios u 
-            LEFT JOIN niveles n ON u.nivel_id = n.id 
-            WHERE u.id = ? FOR UPDATE`, [currentUplineId]);
-          
-          const uplineData = uplineRows[0];
-          if (!uplineData) return;
-
-          if (uplineData.nivel_codigo !== 'internar' && Number(uplineData.nivel_orden) >= Number(userLevel.orden)) {
-            const commission = Number((taskAmount * config.percent).toFixed(2));
-            if (commission > 0) {
-              const oldBalance = Number(uplineData.saldo_comisiones);
-              const newBalance = oldBalance + commission;
-
-              await conn.query(`UPDATE usuarios SET saldo_comisiones = ? WHERE id = ?`, [newBalance, uplineData.id]);
-              
-              await conn.query(`INSERT INTO movimientos_saldo (id, usuario_id, tipo_billetera, tipo_movimiento, monto, saldo_anterior, saldo_nuevo, referencia_id, descripcion) 
-                VALUES (?, ?, 'comisiones', 'comision_tarea', ?, ?, ?, ?, ?)`, 
-                [uuidv4(), uplineData.id, commission, oldBalance, newBalance, user.id, `Comisión Tarea Nivel ${config.key} de ${user.nombre_usuario}`]);
-            }
-          }
-        });
-      }
-
-      currentUplineId = upline.invitado_por;
-    }
-  } catch (err) {
-    logger.error(`[Task Commissions Error]: ${err.message}`);
-  }
-}
-
-export async function getTeamReport(userId) {
-  try {
-    // Nivel 1 (Directos)
-    const level1 = await query(`
-      SELECT u.id, u.nombre_usuario, u.telefono, u.created_at, n.nombre as nivel_nombre
-      FROM usuarios u 
-      LEFT JOIN niveles n ON u.nivel_id = n.id
-      WHERE u.invitado_por = ?`, [userId]);
-
-    // Nivel 2
-    const level2 = level1.length > 0 ? await query(`
-      SELECT u.id, u.nombre_usuario, u.telefono, u.created_at, n.nombre as nivel_nombre
-      FROM usuarios u 
-      LEFT JOIN niveles n ON u.nivel_id = n.id
-      WHERE u.invitado_por IN (?)`, [level1.map(u => u.id)]) : [];
-
-    // Nivel 3
-    const level3 = level2.length > 0 ? await query(`
-      SELECT u.id, u.nombre_usuario, u.telefono, u.created_at, n.nombre as nivel_nombre
-      FROM usuarios u 
-      LEFT JOIN niveles n ON u.nivel_id = n.id
-      WHERE u.invitado_por IN (?)`, [level2.map(u => u.id)]) : [];
-
-    // Obtener comisiones acumuladas por nivel de red
-    const commissions = await query(`
-      SELECT 
-        CASE 
-          WHEN descripcion LIKE '%Nivel A%' THEN 'A'
-          WHEN descripcion LIKE '%Nivel B%' THEN 'B'
-          WHEN descripcion LIKE '%Nivel C%' THEN 'C'
-          ELSE 'Otros'
-        END as nivel_red,
-        SUM(monto) as total
-      FROM movimientos_saldo 
-      WHERE usuario_id = ? AND tipo_movimiento IN ('comision_tarea', 'comision_inversion')
-      GROUP BY nivel_red
-    `, [userId]);
-
-    const commMap = commissions.reduce((acc, curr) => {
-      acc[curr.nivel_red] = Number(curr.total || 0);
-      return acc;
-    }, {});
-
-    const totalCommissions = Object.values(commMap).reduce((a, b) => a + b, 0);
-
-    return {
-      resumen: {
-        total_miembros: level1.length + level2.length + level3.length,
-        ingresos_totales: totalCommissions,
-        comisiones_hoy: 0 // Podría calcularse si fuera necesario
-      },
-      niveles: [
-        { nivel: 'A', porcentaje: 10, total_miembros: level1.length, monto_recarga: commMap['A'] || 0 },
-        { nivel: 'B', porcentaje: 3, total_miembros: level2.length, monto_recarga: commMap['B'] || 0 },
-        { nivel: 'C', porcentaje: 1, total_miembros: level3.length, monto_recarga: commMap['C'] || 0 }
-      ],
-      detalles: {
-        level1: level1.map(u => ({ ...u, join_date: u.created_at })),
-        level2: level2.map(u => ({ ...u, join_date: u.created_at })),
-        level3: level3.map(u => ({ ...u, join_date: u.created_at }))
-      }
-    };
-  } catch (err) {
-    logger.error(`[Team Report Error]: ${err.message}`);
-    return { resumen: { total_miembros: 0, ingresos_totales: 0 }, niveles: [] };
-  }
-}
-
-export async function getUserEarningsSummary(userId) {
-  const today = boliviaTime.todayStr();
-  const yesterday = boliviaTime.yesterdayStr();
-  const stats = await queryOne(`
-    SELECT 
-      COALESCE(SUM(CASE WHEN fecha_dia = ? THEN monto_ganado ELSE 0 END), 0) as hoy,
-      COALESCE(SUM(CASE WHEN fecha_dia = ? THEN monto_ganado ELSE 0 END), 0) as ayer
-    FROM actividad_tareas WHERE usuario_id = ?`, [today, yesterday, userId]);
-  return stats;
-}
-
-export async function isUserPunished(userId) {
-  return false; 
-}
-
-export async function resetDailyEarnings() {
-  try {
-    // 1. Limpiar actividad de tareas antigua (opcional, p.ej. más de 30 días)
-    // await query(`DELETE FROM actividad_tareas WHERE created_at < DATE_SUB(NOW(), INTERVAL 30 DAY)`);
-    
-    // 2. Resetear contador de tareas si se usara un campo denormalizado en usuarios
-    // Pero como lo calculamos dinámicamente con COUNT(*), no es necesario.
-    
-    logger.audit('[CRON] Verificación diaria de integridad completada (Hora Bolivia).');
-    return true;
-  } catch (err) {
-    logger.error(`[Reset Error]: ${err.message}`);
-  }
-}
-
-export async function getPremiosRuleta() {
-  return await query(`SELECT * FROM premios_ruleta WHERE activo = 1 ORDER BY orden ASC`);
-}
-
-export async function createSorteoGanador(data) {
-  const id = uuidv4();
-  await query(`INSERT INTO sorteos_ganadores (id, usuario_id, premio_id, monto_ganado) VALUES (?, ?, ?, ?)`,
-    [id, data.usuario_id, data.premio_id, data.monto_ganado || 0]);
-  return { id, ...data };
-}
-
-export async function createMovimiento(data) {
-  const id = uuidv4();
-  await query(`
-    INSERT INTO movimientos_saldo (id, usuario_id, tipo_billetera, tipo_movimiento, monto, saldo_anterior, saldo_nuevo, descripcion, referencia_id) 
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [id, data.usuario_id, data.tipo_billetera || 'principal', data.tipo_movimiento, data.monto, data.saldo_anterior, data.saldo_nuevo, data.descripcion, data.referencia_id]);
-  return { id, ...data };
-}
-
-export async function getSorteosGanadores() {
-  return await query(`
-    SELECT s.*, u.nombre_usuario, p.nombre as premio_nombre 
-    FROM sorteos_ganadores s 
-    JOIN usuarios u ON s.usuario_id = u.id 
-    JOIN premios_ruleta p ON s.premio_id = p.id 
-    ORDER BY s.created_at DESC 
-    LIMIT 20
-  `);
-}

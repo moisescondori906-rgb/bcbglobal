@@ -104,12 +104,6 @@ router.post('/:id/responder', async (req, res) => {
     // Acreditación Transaccional e Idempotente
     const result = await completeTask(user.id, task.id);
     
-    // Distribuir comisiones de red en segundo plano (No bloquea la respuesta al usuario)
-    const { distributeTaskCommissions } = await import('../lib/queries.js');
-    distributeTaskCommissions(user.id, result.amount).catch(err => {
-      logger.error(`[Tasks] Error distribuyendo comisiones: ${err.message}`);
-    });
-
     res.json({ success: true, monto: result.amount });
   } catch (err) {
     if (err.message === 'Tarea ya completada hoy' || err.message === 'Has alcanzado tu límite de tareas diarias para tu nivel.') {

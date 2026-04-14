@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { 
-  getPublicContent, getLevels, boliviaTime 
+  getPublicContent, getLevels, boliviaTime, canRecharge 
 } from '../lib/queries.js';
 import { query, queryOne } from '../config/db.js';
 import { authenticate } from '../middleware/auth.js';
@@ -36,6 +36,12 @@ router.post('/', async (req, res) => {
     const { monto, metodo_qr_id, comprobante_url } = req.body;
     if (!monto || isNaN(parseFloat(monto))) {
       return res.status(400).json({ error: 'Monto inválido' });
+    }
+
+    // 1. VALIDACIÓN CENTRALIZADA (CALENDARIO)
+    const opStatus = await canRecharge(req.user.id);
+    if (!opStatus.ok) {
+      return res.status(403).json({ error: opStatus.message });
     }
 
     const todayStr = boliviaTime.todayStr();
