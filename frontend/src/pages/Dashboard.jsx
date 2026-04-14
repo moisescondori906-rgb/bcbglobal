@@ -35,6 +35,7 @@ import ActionGrid from '../components/dashboard/ActionGrid';
 import GuideSection from '../components/dashboard/GuideSection';
 import FloatingQuestionnaire from '../components/FloatingQuestionnaire';
 import GlobalLoader from '../components/ui/GlobalLoader';
+import DownloadButton from '../components/DownloadButton';
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -118,6 +119,9 @@ export default function Dashboard() {
 
         {/* Banner Section */}
         <BannerCarousel banners={pc?.banners || []} />
+
+        {/* Download App Banner - Solo visible en web, oculto en app */}
+        <DownloadButton variant="intelligent" />
 
         {/* Main Wallet Card */}
         <Card variant="premium" className="p-8 border-none bg-gradient-to-br from-sav-primary via-sav-primary to-rose-700 relative overflow-hidden group shadow-[0_30px_70px_-15px_rgba(220,38,38,0.5)] active:scale-[0.99] transition-transform duration-500">
