@@ -268,16 +268,18 @@ export default function TaskRoom() {
   }
 
   const currentLevel = niveles.find(n => n.id === user?.nivel_id);
-  const taskReward = currentLevel?.ganancia_tarea || 0;
-  const totalDiarias = (data?.tareas_completadas || 0) + (data?.tareas_restantes || 0);
-  const progress = totalDiarias > 0 ? ((data?.tareas_completadas || 0) / totalDiarias) * 100 : 0;
+  const taskReward = Number(currentLevel?.ganancia_tarea || 0);
+  const tareasCompletadas = Number(data?.tareas_completadas || 0);
+  const tareasRestantes = Number(data?.tareas_restantes || 0);
+  const totalDiarias = tareasCompletadas + tareasRestantes;
+  const progress = totalDiarias > 0 ? (tareasCompletadas / totalDiarias) * 100 : 0;
 
   return (
     <Layout>
       <header className="px-6 py-8 space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-black text-white uppercase tracking-tighter leading-none">Tareas</h1>
-          <Badge variant="info">{data?.nivel}</Badge>
+          <Badge variant="info">{data?.nivel || 'Cargando...'}</Badge>
         </div>
         
         <Card variant="flat" className="p-6 space-y-4 border-sav-primary/10 bg-gradient-to-br from-sav-card to-sav-dark">
@@ -285,8 +287,8 @@ export default function TaskRoom() {
             <div className="space-y-1">
               <p className="text-[10px] font-black text-sav-muted uppercase tracking-widest">Progreso Diario</p>
               <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-black text-white">{data?.tareas_completadas}</span>
-                <span className="text-xs font-bold text-sav-muted uppercase">/ {(data?.tareas_completadas || 0) + (data?.tareas_restantes || 0)}</span>
+                <span className="text-2xl font-black text-white">{tareasCompletadas}</span>
+                <span className="text-xs font-bold text-sav-muted uppercase">/ {totalDiarias}</span>
               </div>
             </div>
             <span className="text-[10px] font-black text-sav-primary uppercase tracking-widest">{Math.round(progress)}%</span>

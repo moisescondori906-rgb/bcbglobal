@@ -72,6 +72,7 @@ router.get('/stats', async (req, res) => {
       SELECT 
         COALESCE(SUM(CASE WHEN fecha_dia = ? THEN monto_ganado ELSE 0 END), 0) as hoy,
         COALESCE(SUM(CASE WHEN fecha_dia = ? THEN monto_ganado ELSE 0 END), 0) as ayer,
+        COALESCE(SUM(monto_ganado), 0) as total_acumulado,
         COUNT(CASE WHEN fecha_dia = ? THEN 1 END) as tareas_hoy
       FROM actividad_tareas 
       WHERE usuario_id = ?
@@ -80,6 +81,7 @@ router.get('/stats', async (req, res) => {
     res.json({
       ingresos_hoy: stats.hoy,
       ingresos_ayer: stats.ayer,
+      total_acumulado: stats.total_acumulado,
       total_completadas: stats.tareas_hoy,
       saldo_principal: user.saldo_principal,
       saldo_comisiones: user.saldo_comisiones,

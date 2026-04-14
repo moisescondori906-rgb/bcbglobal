@@ -106,13 +106,9 @@ router.post('/:id/responder', async (req, res) => {
       logger.error(`[Tasks] Error distribuyendo comisiones: ${err.message}`);
     });
 
-    res.json({ 
-      success: true, 
-      mensaje: 'Tarea completada con éxito',
-      monto: result.amount
-    });
+    res.json({ success: true, monto: result.amount });
   } catch (err) {
-    if (err.message === 'Tarea ya completada hoy' || err.message === 'Límite de tareas diarias alcanzado') {
+    if (err.message === 'Tarea ya completada hoy' || err.message === 'Has alcanzado tu límite de tareas diarias para tu nivel.') {
       return res.status(400).json({ error: err.message });
     }
     logger.error('[Tasks] responder:', err);

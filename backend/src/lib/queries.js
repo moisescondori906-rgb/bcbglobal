@@ -74,6 +74,10 @@ export const boliviaTime = {
   getDay: () => {
     return boliviaTime.now().getDay();
   },
+  getDayName: () => {
+    const days = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+    return days[boliviaTime.getDay()];
+  },
   isTimeInWindow: (timeStr, start = '00:00', end = '23:59') => {
     if (start <= end) return timeStr >= start && timeStr <= end;
     return timeStr >= start || timeStr <= end;
@@ -92,19 +96,23 @@ export async function getDayStatus(dateStr = boliviaTime.todayStr()) {
     const day = await queryOne(`SELECT * FROM calendario_operativo WHERE fecha = ?`, [dateStr]);
     
     // Obtenemos el día de la semana de forma segura en UTC para comparar
-    // dateStr es YYYY-MM-DD
     const [y, m, d] = dateStr.split('-').map(Number);
-    const dayOfWeek = new Date(y, m - 1, d).getDay(); // 0=Dom, 1=Lun...
+    const dateObj = new Date(y, m - 1, d);
+    const dayOfWeek = dateObj.getDay(); // 0=Dom, 1=Lun...
+
+    // Feriados Hardcoded (Fallback si no hay DB)
+    const holidays = ['2026-01-01', '2026-02-02', '2026-03-03', '2026-05-01', '2026-08-06'];
+    const isHoliday = holidays.includes(dateStr);
 
     // Reglas Base (Si no hay registro en el calendario)
     const status = day || {
       fecha: dateStr,
-      tipo_dia: dayOfWeek === 0 ? 'mantenimiento' : 'laboral',
-      es_feriado: 0,
-      tareas_habilitadas: dayOfWeek === 0 ? 0 : 1, // Domingos bloqueados por defecto
-      retiros_habilitados: 1,
+      tipo_dia: isHoliday ? 'feriado' : (dayOfWeek === 0 ? 'mantenimiento' : 'laboral'),
+      es_feriado: isHoliday ? 1 : 0,
+      tareas_habilitadas: (dayOfWeek === 0 || isHoliday) ? 0 : 1, // Domingos y Feriados bloqueados por defecto
+      retiros_habilitados: isHoliday ? 0 : 1,
       recargas_habilitadas: 1,
-      motivo: dayOfWeek === 0 ? 'Mantenimiento Dominical' : null,
+      motivo: isHoliday ? 'Feriado Nacional' : (dayOfWeek === 0 ? 'Mantenimiento Dominical' : null),
       reglas_niveles: {}
     };
 
@@ -152,60 +160,67 @@ export async function canWithdraw(userId, dateStr = boliviaTime.todayStr()) {
   if (!status) return { ok: true };
 
   if (!status.retiros_habilitados) {
-    return { ok: false, message: status.motivo || 'Los retiros están suspendidos temporalmente.' };
+    return { ok: false, message: status.motivo || 'Los retiros están suspendidos temporalmente por administración.' };
   }
 
   const user = await findUserById(userId);
   const levels = await getLevels();
   const userLevel = levels.find(l => String(l.id) === String(user.nivel_id));
   
-  if (userLevel?.codigo === 'internar') {
-    return { ok: false, message: 'El nivel Internar no tiene permitido realizar retiros.' };
+  if (!userLevel || userLevel.codigo === 'internar') {
+    return { ok: false, message: 'El nivel Internar no tiene permitido realizar retiros. Sube a GLOBAL 1 o superior.' };
   }
 
-  // Regla: G1=Mar(2), G2=Mie(3), G3=Jue(4), G4=Vie(5), G5+=Sab(6)
+  // 1. Regla de Día de la Semana (Prioridad: Calendario > Nivel > Default)
   const dayOfWeek = boliviaTime.getDay();
-  const rules = {
-    'global1': 2,
-    'global2': 3,
-    'global3': 4,
-    'global4': 5
-  };
-
-  let allowedDay = rules[userLevel?.codigo];
-  if (allowedDay === undefined && userLevel && userLevel.orden >= 5) {
-    allowedDay = 6; // Sábado
-  }
-
-  // Solo validar día si no hay una regla específica de calendario para este día
+  
+  // Obtenemos reglas específicas del calendario para este día
   const levelRules = typeof status.reglas_niveles === 'string' 
     ? JSON.parse(status.reglas_niveles) 
-    : status.reglas_niveles;
+    : (status.reglas_niveles || {});
 
-  const hasSpecificRule = levelRules && levelRules[userLevel?.codigo]?.retiro !== undefined;
+  const hasSpecificCalendarRule = levelRules[userLevel.codigo]?.retiro !== undefined;
 
-  if (hasSpecificRule) {
-    if (levelRules[userLevel?.codigo]?.retiro === false) {
-      return { ok: false, message: `Los retiros no están habilitados para el nivel ${userLevel?.nombre} hoy según calendario.` };
+  if (hasSpecificCalendarRule) {
+    if (levelRules[userLevel.codigo].retiro === false) {
+      return { ok: false, message: `Los retiros para el nivel ${userLevel.nombre} están bloqueados hoy por calendario operativo.` };
     }
   } else {
-    // Si no hay regla específica en el calendario, aplicamos el cronograma semanal institucional
-    if (allowedDay !== undefined && dayOfWeek !== allowedDay) {
-      const DAY_NAMES = { 2: 'Martes', 3: 'Miércoles', 4: 'Jueves', 5: 'Viernes', 6: 'Sábado' };
-      const dayName = DAY_NAMES[allowedDay] || 'su día asignado';
-      return { ok: false, message: `Tu nivel (${userLevel?.nombre}) solo permite retirar los días ${dayName}.` };
+    // Si no hay regla en el calendario, usamos la del nivel o el cronograma institucional
+    if (userLevel.retiro_horario_habilitado) {
+      // Validación por rango de días del nivel
+      if (dayOfWeek < userLevel.retiro_dia_inicio || dayOfWeek > userLevel.retiro_dia_fin) {
+        const DAYS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+        return { ok: false, message: `Tu nivel permite retiros de ${DAYS[userLevel.retiro_dia_inicio]} a ${DAYS[userLevel.retiro_dia_fin]}.` };
+      }
+    } else {
+      // Cronograma Institucional Default: G1=Mar, G2=Mie, G3=Jue, G4=Vie, G5+=Sab
+      const defaultRules = { 'global1': 2, 'global2': 3, 'global3': 4, 'global4': 5 };
+      let allowedDay = defaultRules[userLevel.codigo];
+      if (allowedDay === undefined && userLevel.orden >= 5) allowedDay = 6;
+
+      if (allowedDay !== undefined && dayOfWeek !== allowedDay) {
+        const DAY_NAMES = { 2: 'Martes', 3: 'Miércoles', 4: 'Jueves', 5: 'Viernes', 6: 'Sábado' };
+        return { ok: false, message: `Tu nivel (${userLevel.nombre}) solo permite retirar los días ${DAY_NAMES[allowedDay]}.` };
+      }
     }
   }
 
-  // Regla de Horario (si existe en el nivel o config)
+  // 2. Regla de Horario (Prioridad: Nivel > Config Global)
   const time = boliviaTime.getTimeString();
   const config = await getPublicContent();
-  const schedule = userLevel?.retiro_horario_habilitado 
-    ? { enabled: true, hora_inicio: userLevel.retiro_hora_inicio, hora_fin: userLevel.retiro_hora_fin }
-    : config.horario_retiro;
+  
+  let schedule = { enabled: true, inicio: '09:00', fin: '18:00' };
+  
+  if (userLevel.retiro_horario_habilitado) {
+    schedule = { enabled: true, inicio: userLevel.retiro_hora_inicio, fin: userLevel.retiro_hora_fin };
+  } else if (config.horario_retiro) {
+    const c = typeof config.horario_retiro === 'string' ? JSON.parse(config.horario_retiro) : config.horario_retiro;
+    schedule = { enabled: !!c.enabled, inicio: c.hora_inicio, fin: c.hora_fin };
+  }
 
-  if (schedule?.enabled && !boliviaTime.isTimeInWindow(time, schedule.hora_inicio, schedule.hora_fin)) {
-    return { ok: false, message: `El horario de retiros es de ${schedule.hora_inicio} a ${schedule.hora_fin} (Bolivia).` };
+  if (schedule.enabled && !boliviaTime.isTimeInWindow(time, schedule.inicio, schedule.fin)) {
+    return { ok: false, message: `El horario de retiros para tu nivel es de ${schedule.inicio} a ${schedule.fin} (Hora Bolivia).` };
   }
 
   return { ok: true };
@@ -234,7 +249,7 @@ export async function findUserByTelefono(telefono) {
 }
 
 export async function findUserWithAuthSecrets(id) {
-  return await queryOne(`SELECT password_hash, password_fondo_hash, ${USER_FIELDS} FROM usuarios WHERE id = ?`, [id]);
+  return await queryOne(`SELECT id, password_hash, password_fondo_hash, rol FROM usuarios WHERE id = ?`, [id]);
 }
 
 export async function createUser(userData) {
@@ -297,9 +312,24 @@ export async function getLevels() {
       await syncLevels();
       return getLevels();
     }
-    levelsCache.data = levels;
+    
+    // Aseguramos que los campos booleanos y numéricos sean correctos desde la DB
+    const processed = levels.map(l => ({
+      ...l,
+      deposito: Number(l.deposito),
+      ganancia_tarea: Number(l.ganancia_tarea),
+      num_tareas_diarias: Number(l.num_tareas_diarias),
+      orden: Number(l.orden),
+      activo: !!l.activo,
+      retiro_horario_habilitado: !!l.retiro_horario_habilitado,
+      retiro_dia_inicio: l.retiro_dia_inicio !== null ? Number(l.retiro_dia_inicio) : 1,
+      retiro_dia_fin: l.retiro_dia_fin !== null ? Number(l.retiro_dia_fin) : 5
+    }));
+
+    levelsCache.data = processed;
     levelsCache.lastFetch = now;
-    return levels.map(l => {
+
+    return processed.map(l => {
       const ingreso_diario = Number((Number(l.num_tareas_diarias) * Number(l.ganancia_tarea)).toFixed(2));
       const isInternar = String(l.codigo).toLowerCase() === 'internar';
       return {
@@ -329,26 +359,22 @@ export async function getLevels() {
  * Solo actualiza si hay cambios o faltan niveles.
  */
 export async function syncLevels() {
-  return await transaction(async (conn) => {
+  try {
     for (const level of DEFAULT_LEVELS) {
-      await conn.query(`
-        INSERT INTO niveles (id, codigo, nombre, deposito, ganancia_tarea, num_tareas_diarias, orden, activo)
+      await query(`
+        INSERT INTO niveles (id, codigo, nombre, deposito, num_tareas_diarias, ganancia_tarea, orden, activo) 
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         ON DUPLICATE KEY UPDATE 
-          nombre = VALUES(nombre),
           deposito = VALUES(deposito),
-          ganancia_tarea = VALUES(ganancia_tarea),
           num_tareas_diarias = VALUES(num_tareas_diarias),
-          orden = VALUES(orden),
-          activo = VALUES(activo)
-      `, [level.id, level.codigo, level.nombre, level.deposito, level.ganancia_tarea, level.num_tareas_diarias, level.orden, level.activo]);
+          ganancia_tarea = VALUES(ganancia_tarea),
+          orden = VALUES(orden)
+      `, [level.id, level.codigo, level.nombre, level.deposito, level.num_tareas_diarias, level.ganancia_tarea, level.orden, level.activo]);
     }
-    // Eliminar niveles que no estén en los defaults (G1, G2, etc)
-    const codes = DEFAULT_LEVELS.map(l => l.codigo);
-    await conn.query(`DELETE FROM niveles WHERE codigo NOT IN (?)`, [codes]);
-    invalidateLevelsCache();
-    logger.info('[LEVELS] Niveles sincronizados con éxito.');
-  });
+    logger.info('[SYNC] Niveles sincronizados con la tabla oficial.');
+  } catch (err) {
+    logger.error(`[Sync Error]: ${err.message}`);
+  }
 }
 
 export async function preloadLevels() {
@@ -383,21 +409,27 @@ export async function completeTask(userId, taskId) {
   return await transaction(async (conn) => {
     const today = boliviaTime.todayStr();
     
-    // 1. Verificar idempotencia
+    // 1. Verificar idempotencia (Si ya hizo esta tarea específica hoy)
     const [alreadyDone] = await conn.query(`SELECT id FROM actividad_tareas WHERE usuario_id = ? AND tarea_id = ? AND fecha_dia = ?`, [userId, taskId, today]);
     if (alreadyDone.length > 0) throw new Error('Tarea ya completada hoy');
 
-    // 2. Obtener datos del usuario y su nivel
-    const [userRows] = await conn.query(`SELECT u.id, u.saldo_principal, n.ganancia_tarea, n.num_tareas_diarias FROM usuarios u JOIN niveles n ON u.nivel_id = n.id WHERE u.id = ? FOR UPDATE`, [userId]);
+    // 2. Bloquear usuario para evitar race conditions de saldo y contador de tareas
+    const [userRows] = await conn.query(`
+      SELECT u.id, u.saldo_principal, n.ganancia_tarea, n.num_tareas_diarias 
+      FROM usuarios u 
+      JOIN niveles n ON u.nivel_id = n.id 
+      WHERE u.id = ? FOR UPDATE`, [userId]);
+    
     const user = userRows[0];
     if (!user) throw new Error('Usuario no encontrado');
 
-    // 3. Verificar límite de tareas diarias
+    // 3. Verificar límite de tareas diarias (Contar cuántas lleva hoy)
     const [countRows] = await conn.query(`SELECT COUNT(*) as total FROM actividad_tareas WHERE usuario_id = ? AND fecha_dia = ?`, [userId, today]);
-    if (countRows[0].total >= user.num_tareas_diarias) throw new Error('Límite de tareas diarias alcanzado');
+    if (countRows[0].total >= user.num_tareas_diarias) throw new Error('Has alcanzado tu límite de tareas diarias para tu nivel.');
 
     const amount = Number(user.ganancia_tarea);
-    const newBalance = Number(user.saldo_principal) + amount;
+    const oldBalance = Number(user.saldo_principal);
+    const newBalance = oldBalance + amount;
 
     // 4. Insertar Actividad
     const activityId = uuidv4();
@@ -407,10 +439,10 @@ export async function completeTask(userId, taskId) {
     // 5. Actualizar Saldo
     await conn.query(`UPDATE usuarios SET saldo_principal = ? WHERE id = ?`, [newBalance, userId]);
 
-    // 6. Registrar Movimiento
+    // 6. Registrar Movimiento de Saldo
     await conn.query(`INSERT INTO movimientos_saldo (id, usuario_id, tipo_billetera, tipo_movimiento, monto, saldo_anterior, saldo_nuevo, referencia_id, descripcion) 
       VALUES (?, ?, 'principal', 'tarea', ?, ?, ?, ?, ?)`, 
-      [uuidv4(), userId, amount, user.saldo_principal, newBalance, activityId, 'Ganancia por tarea completada']);
+      [uuidv4(), userId, amount, oldBalance, newBalance, activityId, 'Ganancia por tarea publicitaria completada']);
 
     return { success: true, amount };
   });
@@ -433,7 +465,8 @@ export async function approveRecarga(recargaId, adminId) {
 
     const [userRows] = await conn.query(`SELECT * FROM usuarios WHERE id = ? FOR UPDATE`, [usuario_id]);
     const user = userRows[0];
-    const oldBalance = user.saldo_principal;
+    if (!user) throw new Error('Usuario no encontrado');
+    const oldBalance = Number(user.saldo_principal);
 
     if (targetLevel) {
       // Ascenso de Nivel
@@ -445,19 +478,36 @@ export async function approveRecarga(recargaId, adminId) {
       // Registrar notificación de ascenso
       await conn.query(`INSERT INTO notificaciones (id, usuario_id, titulo, mensaje) VALUES (?, ?, ?, ?)`,
         [uuidv4(), usuario_id, '¡Felicidades!', `Has ascendido a ${targetLevel.nombre}. Recibiste ${ticketsToAdd} tickets de ruleta.`]);
+      
+      logger.info(`[RECHARGE] Usuario ${usuario_id} ascendido a ${targetLevel.nombre} por monto ${monto}`);
     } else {
       // Recarga de Saldo simple
-      const newBalance = Number(oldBalance) + Number(monto);
+      const newBalance = oldBalance + Number(monto);
       await conn.query(`UPDATE usuarios SET saldo_principal = ? WHERE id = ?`, [newBalance, usuario_id]);
       
       await conn.query(`INSERT INTO movimientos_saldo (id, usuario_id, tipo_billetera, tipo_movimiento, monto, saldo_anterior, saldo_nuevo, referencia_id, descripcion) 
         VALUES (?, ?, 'principal', 'recarga', ?, ?, ?, ?, ?)`, 
         [uuidv4(), usuario_id, monto, oldBalance, newBalance, recargaId, 'Recarga de saldo aprobada']);
+      
+      logger.info(`[RECHARGE] Saldo de usuario ${usuario_id} incrementado en ${monto}`);
     }
 
     await conn.query(`UPDATE recargas SET estado = 'aprobada', procesado_por = ?, procesado_at = NOW() WHERE id = ?`, [adminId, recargaId]);
 
     return { success: true, levelUp: !!targetLevel };
+  });
+}
+
+export async function approveRetiro(retiroId, adminId) {
+  return await transaction(async (conn) => {
+    const [retiroRows] = await conn.query(`SELECT * FROM retiros WHERE id = ? AND estado = 'pendiente' FOR UPDATE`, [retiroId]);
+    const retiro = retiroRows[0];
+    if (!retiro) throw new Error('Retiro no encontrado o ya procesado');
+
+    await conn.query(`UPDATE retiros SET estado = 'completado', procesado_por = ?, procesado_at = NOW() WHERE id = ?`, [adminId, retiroId]);
+
+    logger.info(`[WITHDRAWAL] Retiro ${retiroId} aprobado por admin ${adminId}`);
+    return { success: true };
   });
 }
 
@@ -472,8 +522,9 @@ export async function rejectRetiro(retiroId, adminId, motivo) {
 
     const [userRows] = await conn.query(`SELECT ${field} as balance FROM usuarios WHERE id = ? FOR UPDATE`, [usuario_id]);
     const user = userRows[0];
-    const oldBalance = user.balance;
-    const newBalance = Number(oldBalance) + Number(monto);
+    if (!user) throw new Error('Usuario no encontrado');
+    const oldBalance = Number(user.balance);
+    const newBalance = oldBalance + Number(monto);
 
     await conn.query(`UPDATE usuarios SET ${field} = ? WHERE id = ?`, [newBalance, usuario_id]);
 
@@ -483,6 +534,7 @@ export async function rejectRetiro(retiroId, adminId, motivo) {
 
     await conn.query(`UPDATE retiros SET estado = 'rechazado', admin_notas = ?, procesado_por = ?, procesado_at = NOW() WHERE id = ?`, [motivo, adminId, retiroId]);
 
+    logger.info(`[WITHDRAWAL] Retiro ${retiroId} rechazado. Motivo: ${motivo}. Reembolso de ${monto} a ${tipo_billetera}`);
     return { success: true };
   });
 }
@@ -526,9 +578,7 @@ export async function distributeInvestmentCommissions(userId, amount) {
     if (!user || !user.invitado_por) return;
 
     const levels = await getLevels();
-    const userLevel = levels.find(l => l.id === user.nivel_id);
-    // Un pasante no genera comisiones para su red al subir de nivel (si es que se permite)
-    // Pero aquí el 'user' es quien acaba de recargar/comprar.
+    const userLevel = levels.find(l => String(l.id) === String(user.nivel_id));
     if (!userLevel) return;
 
     const configs = [
@@ -551,18 +601,18 @@ export async function distributeInvestmentCommissions(userId, amount) {
         const upline = uplineRows[0];
         if (!upline) return;
 
-        // REGLA OFICIAL: 
+        // REGLA DE JERARQUÍA: 
         // 1. Internares no cobran comisiones.
         // 2. El nivel del upline debe ser mayor o igual al nivel del usuario que genera la comisión.
-        if (upline.nivel_codigo === 'internar' || upline.nivel_orden < userLevel.orden) {
+        if (upline.nivel_codigo === 'internar' || Number(upline.nivel_orden) < Number(userLevel.orden)) {
           currentUplineId = upline.invitado_por;
           return;
         }
 
         const commission = Number((amount * config.percent).toFixed(2));
         if (commission > 0) {
-          const oldBalance = upline.saldo_comisiones;
-          const newBalance = Number(oldBalance) + commission;
+          const oldBalance = Number(upline.saldo_comisiones);
+          const newBalance = oldBalance + commission;
 
           await conn.query(`UPDATE usuarios SET saldo_comisiones = ? WHERE id = ?`, [newBalance, upline.id]);
           
@@ -616,7 +666,7 @@ export async function refreshPublicContent() {
 
 export async function getMensajesGlobales() {
   try {
-    return await query(`SELECT * FROM mensajes_globales WHERE activo = 1 ORDER BY fecha DESC`);
+    return await query(`SELECT * FROM mensajes_globales WHERE activo = 1 ORDER BY fecha DESC LIMIT 20`);
   } catch (e) {
     return [];
   }
@@ -641,6 +691,22 @@ export async function findAdminByTelegramId(id) {
 export async function getDailyWithdrawalSummary() {
   const today = boliviaTime.todayStr();
   return await queryOne(`SELECT COUNT(*) as total, SUM(monto) as monto FROM retiros WHERE DATE(created_at) = ?`, [today]);
+}
+
+export async function getDashboardStats() {
+  const [userCount, rechargeTotal, withdrawalTotal, activeTasks] = await Promise.all([
+    queryOne(`SELECT COUNT(*) as total FROM usuarios WHERE rol = 'usuario'`),
+    queryOne(`SELECT SUM(monto) as total FROM recargas WHERE estado = 'aprobada'`),
+    queryOne(`SELECT SUM(monto) as total FROM retiros WHERE estado = 'completado'`),
+    queryOne(`SELECT COUNT(*) as total FROM actividad_tareas WHERE fecha_dia = ?`, [boliviaTime.todayStr()])
+  ]);
+
+  return {
+    usuarios: userCount.total,
+    recargas: Number(rechargeTotal.total || 0),
+    retiros: Number(withdrawalTotal.total || 0),
+    tareas_hoy: activeTasks.total
+  };
 }
 
 export async function findUserByCodigo(codigo) {
@@ -715,13 +781,14 @@ export async function distributeTaskCommissions(userId, taskAmount) {
     if (!user || !user.invitado_por) return;
 
     const levels = await getLevels();
-    const userLevel = levels.find(l => l.id === user.nivel_id);
+    const userLevel = levels.find(l => String(l.id) === String(user.nivel_id));
     if (!userLevel) return;
 
-    // REGLA: Nivel A (Directo) = 0% por tareas.
-    // Nivel B = 2%, Nivel C = 1% (Si el negocio lo permite)
+    // REGLA OFICIAL: 
+    // Nivel A (Directo) = 0% por tareas.
+    // Nivel B = 2%, Nivel C = 1%
     const configs = [
-      { key: 'A', percent: 0.00 }, // El usuario dijo 0% por tareas para nivel A
+      { key: 'A', percent: 0.00 },
       { key: 'B', percent: 0.02 },
       { key: 'C', percent: 0.01 }
     ];
@@ -729,6 +796,8 @@ export async function distributeTaskCommissions(userId, taskAmount) {
     let currentUplineId = user.invitado_por;
     for (const config of configs) {
       if (!currentUplineId) break;
+      
+      // Si el porcentaje es 0, pasamos al siguiente nivel sin procesar transacción
       if (config.percent === 0) {
         const upline = await findUserById(currentUplineId);
         currentUplineId = upline?.invitado_por;
@@ -745,24 +814,24 @@ export async function distributeTaskCommissions(userId, taskAmount) {
         const upline = uplineRows[0];
         if (!upline) return;
 
-        // REGLA OFICIAL: 
+        // REGLA DE JERARQUÍA: 
         // 1. Internares no cobran comisiones.
         // 2. El nivel del upline debe ser mayor o igual al nivel del usuario que genera la comisión.
-        if (upline.nivel_codigo === 'internar' || upline.nivel_orden < userLevel.orden) {
+        if (upline.nivel_codigo === 'internar' || Number(upline.nivel_orden) < Number(userLevel.orden)) {
           currentUplineId = upline.invitado_por;
           return;
         }
 
         const commission = Number((taskAmount * config.percent).toFixed(2));
         if (commission > 0) {
-          const oldBalance = upline.saldo_comisiones;
-          const newBalance = Number(oldBalance) + commission;
+          const oldBalance = Number(upline.saldo_comisiones);
+          const newBalance = oldBalance + commission;
 
           await conn.query(`UPDATE usuarios SET saldo_comisiones = ? WHERE id = ?`, [newBalance, upline.id]);
           
           await conn.query(`INSERT INTO movimientos_saldo (id, usuario_id, tipo_billetera, tipo_movimiento, monto, saldo_anterior, saldo_nuevo, referencia_id, descripcion) 
             VALUES (?, ?, 'comisiones', 'comision_tarea', ?, ?, ?, ?, ?)`, 
-            [uuidv4(), upline.id, commission, oldBalance, newBalance, user.id, `Comisión Tarea Nivel ${config.key} de ${user.nombre_usuario}`]);
+            [uuidv4(), upline.id, commission, oldBalance, newBalance, user.id, `Comisión Tarea Publicitaria Nivel ${config.key} de ${user.nombre_usuario}`]);
         }
         currentUplineId = upline.invitado_por;
       });
@@ -772,66 +841,71 @@ export async function distributeTaskCommissions(userId, taskAmount) {
   }
 }
 
-export async function getUserTeamReport(userId) {
-  // 1. Obtener todos los descendientes en 3 niveles
-  const team = {
-    resumen: {
-      total_miembros: 0,
-      ingresos_totales: 0,
-      miembros_activos: 0
-    },
-    niveles: [
-      { nivel: 'A', total_miembros: 0, monto_recarga: 0, porcentaje: 10 },
-      { nivel: 'B', total_miembros: 0, monto_recarga: 0, porcentaje: 3 },
-      { nivel: 'C', total_miembros: 0, monto_recarga: 0, porcentaje: 1 }
-    ]
-  };
-
+export async function getTeamReport(userId) {
   try {
-    // Miembros Nivel A (Directos)
-    const levelA = await query(`SELECT id, nivel_id, saldo_comisiones FROM usuarios WHERE invitado_por = ?`, [userId]);
-    team.niveles[0].total_miembros = levelA.length;
-    
-    const idsA = levelA.map(u => u.id);
-    if (idsA.length > 0) {
-      // Miembros Nivel B
-      const levelB = await query(`SELECT id, nivel_id FROM usuarios WHERE invitado_por IN (?)`, [idsA]);
-      team.niveles[1].total_miembros = levelB.length;
-      
-      const idsB = levelB.map(u => u.id);
-      if (idsB.length > 0) {
-        // Miembros Nivel C
-        const levelC = await query(`SELECT id, nivel_id FROM usuarios WHERE invitado_por IN (?)`, [idsB]);
-        team.niveles[2].total_miembros = levelC.length;
+    // Nivel 1 (Directos)
+    const level1 = await query(`
+      SELECT u.id, u.nombre_usuario, u.telefono, u.created_at, n.nombre as nivel_nombre
+      FROM usuarios u 
+      LEFT JOIN niveles n ON u.nivel_id = n.id
+      WHERE u.invitado_por = ?`, [userId]);
+
+    // Nivel 2
+    const level2 = level1.length > 0 ? await query(`
+      SELECT u.id, u.nombre_usuario, u.telefono, u.created_at, n.nombre as nivel_nombre
+      FROM usuarios u 
+      LEFT JOIN niveles n ON u.nivel_id = n.id
+      WHERE u.invitado_por IN (?)`, [level1.map(u => u.id)]) : [];
+
+    // Nivel 3
+    const level3 = level2.length > 0 ? await query(`
+      SELECT u.id, u.nombre_usuario, u.telefono, u.created_at, n.nombre as nivel_nombre
+      FROM usuarios u 
+      LEFT JOIN niveles n ON u.nivel_id = n.id
+      WHERE u.invitado_por IN (?)`, [level2.map(u => u.id)]) : [];
+
+    // Obtener comisiones acumuladas por nivel de red
+    const commissions = await query(`
+      SELECT 
+        CASE 
+          WHEN descripcion LIKE '%Nivel A%' THEN 'A'
+          WHEN descripcion LIKE '%Nivel B%' THEN 'B'
+          WHEN descripcion LIKE '%Nivel C%' THEN 'C'
+          ELSE 'Otros'
+        END as nivel_red,
+        SUM(monto) as total
+      FROM movimientos_saldo 
+      WHERE usuario_id = ? AND tipo_movimiento IN ('comision_tarea', 'comision_inversion')
+      GROUP BY nivel_red
+    `, [userId]);
+
+    const commMap = commissions.reduce((acc, curr) => {
+      acc[curr.nivel_red] = Number(curr.total || 0);
+      return acc;
+    }, {});
+
+    const totalCommissions = Object.values(commMap).reduce((a, b) => a + b, 0);
+
+    return {
+      resumen: {
+        total_miembros: level1.length + level2.length + level3.length,
+        ingresos_totales: totalCommissions,
+        comisiones_hoy: 0 // Podría calcularse si fuera necesario
+      },
+      niveles: [
+        { nivel: 'A', porcentaje: 10, total_miembros: level1.length, monto_recarga: commMap['A'] || 0 },
+        { nivel: 'B', porcentaje: 3, total_miembros: level2.length, monto_recarga: commMap['B'] || 0 },
+        { nivel: 'C', porcentaje: 1, total_miembros: level3.length, monto_recarga: commMap['C'] || 0 }
+      ],
+      detalles: {
+        level1: level1.map(u => ({ ...u, join_date: u.created_at })),
+        level2: level2.map(u => ({ ...u, join_date: u.created_at })),
+        level3: level3.map(u => ({ ...u, join_date: u.created_at }))
       }
-    }
-
-    team.resumen.total_miembros = team.niveles[0].total_miembros + team.niveles[1].total_miembros + team.niveles[2].total_miembros;
-
-    // Ingresos totales por comisiones desde movimientos_saldo
-    const totalEarnings = await queryOne(`
-      SELECT SUM(monto) as total FROM movimientos_saldo 
-      WHERE usuario_id = ? AND tipo_billetera = 'comisiones' AND tipo_movimiento IN ('comision_inversion', 'comision_tarea')
-    `, [userId]);
-    team.resumen.ingresos_totales = Number(totalEarnings?.total || 0);
-
-    // Comisiones específicas por nivel (aproximación basada en movimientos)
-    // Para ser exactos, necesitaríamos que movimientos_saldo tenga el nivel del referente, pero podemos agrupar por referencia_id
-    // Por simplicidad para este reporte, mostramos los totales acumulados por el usuario
-    const commissionsByLevel = await query(`
-      SELECT tipo_movimiento, SUM(monto) as total FROM movimientos_saldo 
-      WHERE usuario_id = ? AND tipo_billetera = 'comisiones'
-      GROUP BY tipo_movimiento
-    `, [userId]);
-
-    // Asignamos montos a los niveles de forma ilustrativa si no hay desglose exacto en BD
-    // (En un sistema real, guardaríamos el nivel de profundidad en movimientos_saldo)
-    team.niveles[0].monto_recarga = Number(commissionsByLevel.find(c => c.tipo_movimiento === 'comision_inversion')?.total || 0);
-    
-    return team;
+    };
   } catch (err) {
     logger.error(`[Team Report Error]: ${err.message}`);
-    return team;
+    return { resumen: { total_miembros: 0, ingresos_totales: 0 }, niveles: [] };
   }
 }
 
@@ -852,9 +926,13 @@ export async function isUserPunished(userId) {
 
 export async function resetDailyEarnings() {
   try {
-    // No reseteamos nada de cuestionarios ni sanciones aquí, solo estadísticas de tareas si fuera necesario
-    // Aunque el sistema actual usa fecha_dia en actividad_tareas, no requiere un truncate diario.
-    logger.audit('[CRON] Verificación diaria completada.');
+    // 1. Limpiar actividad de tareas antigua (opcional, p.ej. más de 30 días)
+    // await query(`DELETE FROM actividad_tareas WHERE created_at < DATE_SUB(NOW(), INTERVAL 30 DAY)`);
+    
+    // 2. Resetear contador de tareas si se usara un campo denormalizado en usuarios
+    // Pero como lo calculamos dinámicamente con COUNT(*), no es necesario.
+    
+    logger.audit('[CRON] Verificación diaria de integridad completada (Hora Bolivia).');
     return true;
   } catch (err) {
     logger.error(`[Reset Error]: ${err.message}`);

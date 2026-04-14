@@ -161,6 +161,103 @@ router.post('/usuarios/:id/ajuste', async (req, res) => {
 });
 
 // ========================
+// GESTIÓN DE NIVELES
+// ========================
+
+router.get('/niveles', async (req, res) => {
+  try {
+    const levels = await getLevels();
+    res.json(levels);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/niveles/:id', async (req, res) => {
+  try {
+    const { 
+      nombre, deposito, ganancia_tarea, num_tareas_diarias, orden, activo,
+      retiro_horario_habilitado, retiro_dia_inicio, retiro_dia_fin, 
+      retiro_hora_inicio, retiro_hora_fin 
+    } = req.body;
+
+    await query(`
+      UPDATE niveles SET 
+        nombre = ?, deposito = ?, ganancia_tarea = ?, num_tareas_diarias = ?, orden = ?, activo = ?,
+        retiro_horario_habilitado = ?, retiro_dia_inicio = ?, retiro_dia_fin = ?, 
+        retiro_hora_inicio = ?, retiro_hora_fin = ?
+      WHERE id = ?
+    `, [
+      nombre, deposito, ganancia_tarea, num_tareas_diarias, orden, activo,
+      retiro_horario_habilitado, retiro_dia_inicio, retiro_dia_fin, 
+      retiro_hora_inicio, retiro_hora_fin, 
+      req.params.id
+    ]);
+
+    invalidateLevelsCache();
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ========================
+// GESTIÓN DE TAREAS (CONTENIDO GLOBAL)
+// ========================
+
+router.get('/tareas', async (req, res) => {
+  try {
+    const tareas = await query(`SELECT * FROM tareas ORDER BY created_at DESC`);
+    res.json(tareas.map(t => ({
+      ...t,
+      opciones: typeof t.opciones === 'string' ? JSON.parse(t.opciones) : t.opciones
+    })));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/tareas', async (req, res) => {
+  try {
+    const { nombre, video_url, pregunta, opciones, respuesta_correcta } = req.body;
+    const id = uuidv4();
+    
+    await query(`
+      INSERT INTO tareas (id, nombre, video_url, pregunta, opciones, respuesta_correcta, activa, orden) 
+      VALUES (?, ?, ?, ?, ?, ?, 1, 0)
+    `, [id, nombre, video_url, pregunta, JSON.stringify(opciones), respuesta_correcta]);
+
+    res.json({ id, nombre, video_url, pregunta, opciones, respuesta_correcta });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.put('/tareas/:id', async (req, res) => {
+  try {
+    const { nombre, video_url, pregunta, opciones, respuesta_correcta } = req.body;
+    await query(`
+      UPDATE tareas SET 
+        nombre = ?, video_url = ?, pregunta = ?, opciones = ?, respuesta_correcta = ?
+      WHERE id = ?
+    `, [nombre, video_url, pregunta, JSON.stringify(opciones), respuesta_correcta, req.params.id]);
+
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.delete('/tareas/:id', async (req, res) => {
+  try {
+    await query(`DELETE FROM tareas WHERE id = ?`, [req.params.id]);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ========================
 // CALENDARIO OPERATIVO
 // ========================
 

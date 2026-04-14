@@ -21,48 +21,16 @@ export default function AdminUsuarios() {
 
   const fetchData = useCallback(async () => {
     try {
-      const [u, n, c] = await Promise.all([
+      const [u, n] = await Promise.all([
         api.admin.usuarios(), 
-        api.levels.list(),
-        api.publicContent()
+        api.levels.list()
       ]);
       setUsers(Array.isArray(u) ? u : []);
       setNiveles(Array.isArray(n) ? n : []);
-      setPublicConfig(c || {});
     } catch (err) {
       console.error(err);
     }
   }, []);
-
-  const [publicConfig, setPublicConfig] = useState({});
-
-  const handleToggleTaskDay = async (day) => {
-    const currentDays = publicConfig.task_allowed_days || '1,2,3,4,5';
-    const daysArray = currentDays.split(',').filter(d => d);
-    let newDays;
-    if (daysArray.includes(day.toString())) {
-      newDays = daysArray.filter(d => d !== day.toString()).join(',');
-    } else {
-      newDays = [...daysArray, day.toString()].sort().join(',');
-    }
-    
-    try {
-      await api.admin.updatePublicContent({ task_allowed_days: newDays });
-      setPublicConfig({ ...publicConfig, task_allowed_days: newDays });
-    } catch (err) {
-      alert(err.message);
-    }
-  };
-
-  const handleToggleWeekendUser = async (user) => {
-    try {
-      const newValue = !user.allow_weekend_tasks;
-      await api.admin.updateUsuario(user.id, { allow_weekend_tasks: newValue });
-      setUsers(users.map(u => u.id === user.id ? { ...u, allow_weekend_tasks: newValue } : u));
-    } catch (err) {
-      alert(err.message);
-    }
-  };
 
   const handleChangeTipoLider = async (userId, nuevoTipo) => {
     try {
@@ -72,16 +40,6 @@ export default function AdminUsuarios() {
       alert(err.message);
     }
   };
-
-  const days = [
-    { id: 1, label: 'L' },
-    { id: 2, label: 'M' },
-    { id: 3, label: 'X' },
-    { id: 4, label: 'J' },
-    { id: 5, label: 'V' },
-    { id: 6, label: 'S', weekend: true },
-    { id: 0, label: 'D', weekend: true },
-  ];
 
   useEffect(() => {
     fetchData();

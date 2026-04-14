@@ -27,7 +27,19 @@ export default function AdminNiveles() {
 
   const handleUpdate = async () => {
     try {
-      await api.admin.updateNivel(editing.id, editing);
+      // Sincronizamos campos numéricos y booleanos para el backend
+      const payload = {
+        ...editing,
+        deposito: Number(editing.deposito || editing.costo || 0),
+        ganancia_tarea: Number(editing.ganancia_tarea || 0),
+        num_tareas_diarias: Number(editing.num_tareas_diarias || editing.tareas_diarias || 0),
+        activo: editing.activo !== false ? 1 : 0,
+        retiro_horario_habilitado: editing.retiro_horario_habilitado ? 1 : 0,
+        retiro_dia_inicio: Number(editing.retiro_dia_inicio ?? 1),
+        retiro_dia_fin: Number(editing.retiro_dia_fin ?? 5)
+      };
+
+      await api.admin.updateNivel(editing.id, payload);
       setNiveles(prev => prev.map(n => n.id === editing.id ? editing : n));
       setEditing(null);
       alert('Nivel actualizado correctamente');
@@ -83,8 +95,8 @@ export default function AdminNiveles() {
                     <input
                       type="number"
                       className="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-100 text-sm font-black text-gray-800"
-                      value={editing.tareas_diarias}
-                      onChange={e => setEditing({...editing, tareas_diarias: parseInt(e.target.value)})}
+                      value={editing.num_tareas_diarias || editing.tareas_diarias || 0}
+                      onChange={e => setEditing({...editing, num_tareas_diarias: parseInt(e.target.value), tareas_diarias: parseInt(e.target.value)})}
                     />
                   </div>
                   <div className="space-y-1">
@@ -204,7 +216,7 @@ export default function AdminNiveles() {
                     </div>
                     <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1">
                       <p className="text-[10px] font-bold text-sav-primary uppercase tracking-wide">Costo: {(nivel.deposito || nivel.costo || 0).toFixed(2)} BOB</p>
-                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">{nivel.tareas_diarias} Tareas / día</p>
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">{nivel.num_tareas_diarias || nivel.tareas_diarias} Tareas / día</p>
                       <p className="text-[10px] font-bold text-green-600 uppercase tracking-wide">Ganancia: {(nivel.ganancia_tarea || 0).toFixed(2)} / tarea</p>
                       {nivel.retiro_horario_habilitado && (
                         <p className="text-[10px] font-bold text-amber-600 uppercase tracking-wide flex items-center gap-1">

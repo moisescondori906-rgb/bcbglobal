@@ -61,7 +61,7 @@ export default function AboutUs() {
         { icon: Wallet, text: "GLOBAL 2: Miércoles" },
         { icon: Wallet, text: "GLOBAL 3: Jueves" },
         { icon: Wallet, text: "GLOBAL 4: Viernes" },
-        { icon: Wallet, text: "GLOBAL 5+: Sábado" },
+        { icon: Wallet, text: "GLOBAL 5 a 9: Sábado" },
         { icon: ShieldCheck, text: "Firma Digital requerida para procesar el pago." }
       ]
     }

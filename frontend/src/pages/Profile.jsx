@@ -209,7 +209,7 @@ export default function Profile() {
             </div>
             <div className="space-y-1 text-right">
               <p className="text-[8px] font-black text-sav-muted uppercase tracking-widest">Total Acumulado</p>
-              <p className="text-lg font-black text-white">{stats?.ingresos_totales?.toLocaleString() || '0.00'}</p>
+              <p className="text-lg font-black text-white">{stats?.total_acumulado?.toLocaleString() || '0.00'}</p>
             </div>
           </div>
         </Card>

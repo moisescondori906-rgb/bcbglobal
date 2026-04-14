@@ -56,7 +56,6 @@ export default function Withdrawal() {
   const [niveles, setNiveles] = useState([]);
   const [isOptimizing, setIsOptimizing] = useState(false);
   const [hasWithdrawalToday, setHasWithdrawalToday] = useState(false);
-  const [isPunished, setIsPunished] = useState(false);
   const [hasSignature, setHasSignature] = useState(false);
 
   useEffect(() => {
@@ -68,18 +67,15 @@ export default function Withdrawal() {
 
     const checkStatus = async () => {
       try {
-        const [withdrawalsRes, statusRes] = await Promise.all([
-          api.withdrawals.list(),
-          api.get('/users/status-castigo').catch(() => ({ castigado: false }))
-        ]);
+        const withdrawalsRes = await api.withdrawals.list();
         
         if (!isMounted) return;
         
+        // Verificación básica en frontend (El backend valida rigurosamente)
         const now = new Date();
         const todayStr = new Date(now.toLocaleString('en-US', { timeZone: 'America/La_Paz' })).toISOString().split('T')[0];
         const alreadyDone = Array.isArray(withdrawalsRes) && withdrawalsRes.some(w => w.estado !== 'rechazado' && w.created_at && w.created_at.split('T')[0] === todayStr);
         setHasWithdrawalToday(alreadyDone);
-        setIsPunished(statusRes?.castigado || false);
       } catch (err) {
         console.error('Error status check:', err);
       }
@@ -109,7 +105,7 @@ export default function Withdrawal() {
       if (!isMounted) return;
       setNiveles(list || []);
       if (user?.nivel_id && list) {
-        const found = list.find(l => l.id === user.nivel_id);
+        const found = list.find(l => String(l.id) === String(user.nivel_id));
         if (found) setUserLevel(found);
       }
     }).catch(() => {});
@@ -240,22 +236,6 @@ export default function Withdrawal() {
           )}
         </AnimatePresence>
         
-        {isPunished && (
-          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}>
-            <Card variant="premium" className="p-8 border-none bg-sav-error/10 flex flex-col items-center gap-4 text-center shadow-2xl">
-              <div className="w-16 h-16 rounded-2xl bg-sav-error/20 flex items-center justify-center text-sav-error shadow-inner">
-                <AlertCircleIcon size={32} />
-              </div>
-              <div className="space-y-1">
-                <h3 className="text-sm font-black text-white uppercase tracking-widest">Retiros Bloqueados</h3>
-                <p className="text-[10px] font-bold text-sav-error uppercase tracking-widest leading-relaxed">
-                  Sanción activa por cuestionario pendiente.<br/>No puedes retirar hoy.
-                </p>
-              </div>
-            </Card>
-          </motion.div>
-        )}
-
         {hasWithdrawalToday && (
           <Card className="p-6 border-amber-500/20 bg-amber-500/5 flex items-center gap-4">
             <ClockIcon size={24} className="text-amber-500 shrink-0" />
