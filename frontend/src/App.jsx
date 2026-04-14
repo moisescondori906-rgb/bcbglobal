@@ -12,7 +12,6 @@ import { useAndroidBackHandler } from './hooks/useAndroidBackHandler.js';
 import GlobalLoader from './components/ui/GlobalLoader';
 
 function NavigationGuard({ children }) {
-  // Activar el manejador de botón físico de Android
   useAndroidBackHandler();
   return children;
 }

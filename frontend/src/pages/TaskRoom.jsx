@@ -274,6 +274,18 @@ export default function TaskRoom() {
   const totalDiarias = Number(data?.num_tareas_diarias || currentLevel?.num_tareas_diarias || (tareasCompletadas + tareasRestantes));
   const progress = totalDiarias > 0 ? (tareasCompletadas / totalDiarias) * 100 : 0;
 
+  if (!data && !loading) {
+    return (
+      <Layout>
+        <div className="p-10 flex flex-col items-center justify-center min-h-[70vh] text-center space-y-4">
+          <AlertCircle size={48} className="text-sav-muted" />
+          <p className="text-[10px] font-black uppercase tracking-widest text-sav-muted">No se pudo cargar la información de tareas</p>
+          <Button onClick={fetchTasks} variant="outline" size="sm">Reintentar</Button>
+        </div>
+      </Layout>
+    );
+  }
+
   return (
     <Layout>
       <header className="px-6 py-8 space-y-6">

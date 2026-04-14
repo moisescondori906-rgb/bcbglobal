@@ -68,7 +68,7 @@ export default function AdminTareas() {
     <div className="p-4 md:p-8 space-y-6">
       <div className="mb-6">
         <h1 className="text-2xl font-black text-gray-900 uppercase tracking-tighter">Gestión de Contenido (Tareas)</h1>
-        <p className="text-gray-500 font-medium uppercase tracking-widest text-[10px] mt-1">Administra los videos publicitarios globales. El pago se define por el nivel del usuario.</p>
+        <p className="text-gray-500 font-medium uppercase tracking-widest text-[10px] mt-1">Administra los videos publicitarios globales. <span className="text-sav-primary">Este contenido pagará según el nivel VIP del usuario que lo visualice.</span></p>
       </div>
 
       {/* Formulario Crear */}

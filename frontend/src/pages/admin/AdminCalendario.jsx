@@ -325,29 +325,29 @@ export default function AdminCalendario() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {[
-                  { key: 'es_feriado', label: 'Es Feriado', icon: AlertCircle },
-                  { key: 'tareas_habilitadas', label: 'Tareas ON', icon: Play },
-                  { key: 'retiros_habilitados', label: 'Retiros ON', icon: Wallet },
-                  { key: 'recargas_habilitadas', label: 'Recargas ON', icon: CreditCard }
-                ].map(item => (
-                  <button
-                    key={item.key}
-                    type="button"
-                    onClick={() => setFormData({...formData, [item.key]: !formData[item.key]})}
-                    className={cn(
-                      "flex flex-col items-center gap-3 p-4 rounded-2xl border transition-all",
-                      formData[item.key] 
-                        ? "bg-indigo-50 border-indigo-200 text-indigo-600 shadow-sm" 
-                        : "bg-gray-50 border-gray-100 text-gray-400 grayscale"
-                    )}
-                  >
-                    <item.icon size={20} />
-                    <span className="text-[9px] font-black uppercase tracking-widest">{item.label}</span>
-                  </button>
-                ))}
-              </div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {[
+                      { key: 'es_feriado', label: 'Es Feriado', icon: AlertCircle },
+                      { key: 'tareas_habilitadas', label: 'Tareas ON', icon: Play },
+                      { key: 'retiros_habilitados', label: 'Retiros ON', icon: Wallet },
+                      { key: 'recargas_habilitadas', label: 'Recargas ON', icon: ShieldCheck }
+                    ].map(item => (
+                      <button
+                        key={item.key}
+                        type="button"
+                        onClick={() => setFormData({...formData, [item.key]: !formData[item.key]})}
+                        className={cn(
+                          "flex flex-col items-center gap-3 p-4 rounded-2xl border transition-all",
+                          formData[item.key] 
+                            ? "bg-indigo-50 border-indigo-200 text-indigo-600 shadow-sm" 
+                            : "bg-gray-50 border-gray-100 text-gray-400 grayscale"
+                        )}
+                      >
+                        <item.icon size={20} />
+                        <span className="text-[9px] font-black uppercase tracking-widest">{item.label}</span>
+                      </button>
+                    ))}
+                  </div>
 
               {/* Reglas por Nivel */}
               <div className="space-y-4">
