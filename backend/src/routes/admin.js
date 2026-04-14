@@ -207,4 +207,28 @@ router.delete('/calendario/:fecha', async (req, res) => {
   }
 });
 
+// ========================
+// CUESTIONARIO Y ENCUESTAS (PASIVO)
+// ========================
+
+router.get('/cuestionario/respuestas', async (req, res) => {
+  try {
+    const list = await query(`
+      SELECT r.*, u.nombre_usuario, u.telefono 
+      FROM respuestas_cuestionario r
+      JOIN usuarios u ON r.usuario_id = u.id
+      ORDER BY r.created_at DESC 
+      LIMIT 100
+    `);
+    res.json(list);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/cuestionario/castigar', (req, res) => {
+  // Endpoint obsoleto, ahora las encuestas son pasivas
+  res.json({ ok: true, message: 'La función de castigo ha sido desactivada. Las encuestas son ahora opcionales.', punished: 0 });
+});
+
 export default router;

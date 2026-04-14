@@ -22,41 +22,20 @@ export default function AdminCuestionario() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [punishing, setPunishing] = useState(false);
-  const [punishedUsers, setPunishedUsers] = useState([]);
+  const [respuestas, setRespuestas] = useState([]);
 
   useEffect(() => {
     fetchConfig();
-    fetchPunished();
+    fetchRespuestas();
   }, []);
 
-  const fetchPunished = async () => {
+  const fetchRespuestas = async () => {
     try {
-      const res = await api.get('/admin/cuestionario/castigados');
-      setPunishedUsers(Array.isArray(res) ? res : []);
+      const res = await api.get('/admin/cuestionario/respuestas');
+      setRespuestas(Array.isArray(res) ? res : []);
     } catch (err) {
       console.error(err);
-      setPunishedUsers([]);
-    }
-  };
-
-  const handleUnpunish = async (id) => {
-    if (!confirm('¿Desbloquear a este usuario?')) return;
-    try {
-      await api.post(`/admin/cuestionario/desbloquear/${id}`);
-      fetchPunished();
-    } catch (err) {
-      alert(err.message);
-    }
-  };
-
-  const handleUnpunishAll = async () => {
-    if (!confirm('¿Estás seguro de liberar a TODOS los usuarios castigados? Esta acción no se puede deshacer.')) return;
-    try {
-      await api.post('/admin/cuestionario/desbloquear-todos');
-      alert('Todos los usuarios han sido liberados correctamente.');
-      fetchPunished();
-    } catch (err) {
-      alert('Error: ' + err.message);
+      setRespuestas([]);
     }
   };
 
@@ -150,13 +129,6 @@ export default function AdminCuestionario() {
         </div>
         <div className="flex gap-2">
           <button 
-            onClick={handleCastigar}
-            disabled={punishing || !config.cuestionario_activo}
-            className="bg-rose-600 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 shadow-lg shadow-rose-600/20 active:scale-95 disabled:opacity-50"
-          >
-            <Users size={16}/> Aplicar Castigos
-          </button>
-          <button 
             onClick={handleSave}
             disabled={saving}
             className="bg-[#1a1f36] text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 shadow-lg active:scale-95 disabled:opacity-50"
@@ -166,15 +138,14 @@ export default function AdminCuestionario() {
         </div>
       </div>
 
-      <div className="bg-amber-50 border border-amber-100 p-6 rounded-[2rem] flex items-start gap-4">
-        <div className="w-10 h-10 rounded-2xl bg-amber-100 flex items-center justify-center text-amber-600 shrink-0">
-          <AlertTriangle size={24} />
+      <div className="bg-indigo-50 border border-indigo-100 p-6 rounded-[2rem] flex items-start gap-4">
+        <div className="w-10 h-10 rounded-2xl bg-indigo-100 flex items-center justify-center text-indigo-600 shrink-0">
+          <Info size={24} />
         </div>
         <div className="space-y-1">
-          <p className="text-xs text-amber-800 font-black uppercase tracking-widest">Información Importante</p>
-          <p className="text-[10px] text-amber-700 font-bold uppercase leading-relaxed">
-            Si activas el cuestionario, aparecerá un botón flotante para todos los usuarios solo en la página de Inicio. Tienen hasta las 11:59 PM para responder. 
-            Al final del día, debes pulsar "Aplicar Castigos" para bloquear a quienes no respondieron.
+          <p className="text-xs text-indigo-800 font-black uppercase tracking-widest">Encuestas de Opinión</p>
+          <p className="text-[10px] text-indigo-700 font-bold uppercase leading-relaxed">
+            Las encuestas ahora son 100% informativas y opcionales. No generan sanciones ni bloqueos. Los usuarios pueden participar voluntariamente desde el botón flotante en el inicio.
           </p>
         </div>
       </div>
@@ -183,7 +154,7 @@ export default function AdminCuestionario() {
         <div className="lg:col-span-2 space-y-6">
           <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-gray-100 space-y-6">
             <div className="flex items-center justify-between border-b border-gray-100 pb-4">
-              <h2 className="text-xs font-black text-gray-400 uppercase tracking-widest">Estado del Cuestionario</h2>
+              <h2 className="text-xs font-black text-gray-400 uppercase tracking-widest">Configuración de la Encuesta</h2>
               <label className="flex items-center gap-3 cursor-pointer group">
                 <span className={`text-[10px] font-black uppercase tracking-widest transition-colors ${config.cuestionario_activo ? 'text-emerald-600' : 'text-gray-400'}`}>
                   {config.cuestionario_activo ? 'Activo (Visible)' : 'Inactivo (Oculto)'}
@@ -319,34 +290,20 @@ export default function AdminCuestionario() {
         <div className="space-y-6">
           <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-gray-100">
             <div className="flex items-center justify-between border-b border-gray-100 pb-4 mb-4">
-              <h2 className="text-xs font-black text-gray-400 uppercase tracking-widest">Usuarios Castigados ({punishedUsers?.length || 0})</h2>
-              {punishedUsers.length > 0 && (
-                <button 
-                  onClick={handleUnpunishAll}
-                  className="text-[8px] font-black text-rose-600 uppercase tracking-widest hover:underline"
-                >
-                  Liberar Todos
-                </button>
-              )}
+              <h2 className="text-xs font-black text-gray-400 uppercase tracking-widest">Participación Reciente ({respuestas?.length || 0})</h2>
             </div>
             <div className="space-y-3 max-h-[600px] overflow-y-auto no-scrollbar">
-              {Array.isArray(punishedUsers) && punishedUsers.map(u => (
-                <div key={u.id} className="p-4 rounded-2xl bg-rose-50 border border-rose-100 flex items-center justify-between group">
+              {Array.isArray(respuestas) && respuestas.map(r => (
+                <div key={r.id} className="p-4 rounded-2xl bg-gray-50 border border-gray-100 flex items-center justify-between group">
                   <div>
-                    <p className="text-xs font-black text-rose-900 uppercase tracking-tight">{u.nombre_usuario}</p>
-                    <p className="text-[9px] text-rose-600 font-bold">{u.telefono}</p>
+                    <p className="text-xs font-black text-gray-900 uppercase tracking-tight">{r.nombre_usuario}</p>
+                    <p className="text-[9px] text-gray-400 font-bold">{r.telefono}</p>
+                    <p className="text-[8px] text-emerald-600 font-black mt-1 uppercase tracking-widest">Participó el {r.fecha_dia}</p>
                   </div>
-                  <button 
-                    onClick={() => handleUnpunish(u.id)}
-                    className="p-2 rounded-xl bg-white text-rose-600 shadow-sm opacity-0 group-hover:opacity-100 transition-all active:scale-90"
-                    title="Desbloquear usuario"
-                  >
-                    <CheckCircle2 size={16} />
-                  </button>
                 </div>
               ))}
-              {punishedUsers.length === 0 && (
-                <p className="text-[10px] text-gray-400 text-center font-bold py-10 uppercase tracking-widest">No hay usuarios castigados</p>
+              {respuestas.length === 0 && (
+                <p className="text-[10px] text-gray-400 text-center font-bold py-10 uppercase tracking-widest">No hay participaciones registradas</p>
               )}
             </div>
           </div>

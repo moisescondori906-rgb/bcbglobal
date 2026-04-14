@@ -66,9 +66,24 @@ export default function Withdrawal() {
       return;
     }
 
-    api.get('/users/status-castigo').then(res => {
-      if (isMounted) setIsPunished(res.castigado);
-    }).catch(() => {});
+    const checkStatus = async () => {
+      try {
+        const [withdrawalsRes, statusRes] = await Promise.all([
+          api.withdrawals.list(),
+          api.get('/users/status-castigo').catch(() => ({ castigado: false }))
+        ]);
+        
+        if (!isMounted) return;
+        
+        const now = new Date();
+        const todayStr = new Date(now.toLocaleString('en-US', { timeZone: 'America/La_Paz' })).toISOString().split('T')[0];
+        const alreadyDone = Array.isArray(withdrawalsRes) && withdrawalsRes.some(w => w.estado !== 'rechazado' && w.created_at && w.created_at.split('T')[0] === todayStr);
+        setHasWithdrawalToday(alreadyDone);
+        setIsPunished(statusRes?.castigado || false);
+      } catch (err) {
+        console.error('Error status check:', err);
+      }
+    };
 
     api.withdrawals.montos().then(data => {
       if (isMounted) setMontos(data || [25, 100, 500, 1500, 5000, 10000]);
@@ -99,17 +114,7 @@ export default function Withdrawal() {
       }
     }).catch(() => {});
 
-    const checkLimit = async () => {
-      try {
-        const retiros = await api.withdrawals.list();
-        if (!isMounted) return;
-        const now = new Date();
-        const todayStr = new Date(now.toLocaleString('en-US', { timeZone: 'America/La_Paz' })).toISOString().split('T')[0];
-        const exists = retiros.some(r => r.estado !== 'rechazado' && r.created_at && r.created_at.split('T')[0] === todayStr);
-        setHasWithdrawalToday(exists);
-      } catch (err) {}
-    };
-    checkLimit();
+    checkStatus();
 
     return () => { isMounted = false; };
   }, [user?.id, navigate]);

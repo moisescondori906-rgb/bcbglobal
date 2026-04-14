@@ -162,4 +162,50 @@ router.get('/mensajes', async (req, res) => {
   }
 });
 
+// ========================
+// CUESTIONARIO (PASIVO)
+// ========================
+
+router.get('/cuestionario', async (req, res) => {
+  try {
+    const config = await queryOne(`SELECT valor FROM configuraciones WHERE clave = 'cuestionario'`);
+    if (!config) return res.json({ activo: false });
+    
+    const datos = JSON.parse(config.valor);
+    if (!datos.activo) return res.json({ activo: false });
+
+    // Verificar si el usuario ya respondió hoy
+    const today = boliviaTime.todayStr();
+    const yaRespondio = await queryOne(`SELECT id FROM respuestas_cuestionario WHERE usuario_id = ? AND fecha_dia = ?`, [req.user.id, today]);
+
+    res.json({
+      activo: true,
+      ya_respondio: !!yaRespondio,
+      datos: {
+        id: datos.id,
+        titulo: datos.titulo,
+        preguntas: datos.preguntas
+      }
+    });
+  } catch (err) {
+    res.json({ activo: false });
+  }
+});
+
+router.post('/cuestionario/responder', async (req, res) => {
+  try {
+    const { respuestas } = req.body;
+    const today = boliviaTime.todayStr();
+    
+    // Guardar respuestas de forma pasiva
+    await query(`INSERT INTO respuestas_cuestionario (id, usuario_id, fecha_dia, respuestas) VALUES (?, ?, ?, ?) 
+      ON DUPLICATE KEY UPDATE respuestas = VALUES(respuestas)`, 
+      [uuidv4(), req.user.id, today, JSON.stringify(respuestas)]);
+
+    res.json({ ok: true, message: 'Gracias por participar en nuestra encuesta diaria.' });
+  } catch (err) {
+    res.status(500).json({ error: 'Error al guardar respuesta' });
+  }
+});
+
 export default router;

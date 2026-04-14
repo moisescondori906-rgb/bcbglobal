@@ -38,15 +38,6 @@ router.get('/', async (req, res) => {
       return res.status(403).json({ error: opStatus.message });
     }
 
-    // 2. VERIFICAR CASTIGO
-    const castigado = await isUserPunished(user.id).catch(() => false);
-    if (castigado) {
-      return res.status(403).json({ 
-        error: 'Tu acceso a tareas ha sido bloqueado por hoy como castigo.',
-        castigado: true
-      });
-    }
-
     const levels = await getLevels();
     const level = levels.find(l => String(l.id) === String(user.nivel_id));
     if (!level) return res.status(400).json({ error: 'Nivel inválido' });

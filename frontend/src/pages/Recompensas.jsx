@@ -39,15 +39,13 @@ export default function Recompensas() {
         api.sorteo.premios().catch(() => []),
         api.sorteo.historial().catch(() => []),
         api.sorteo.config().catch(() => null),
-        api.users.team().catch(() => null),
-        api.get('/users/status-castigo').catch(() => ({ castigado: false }))
-      ]).then(([p, h, c, t, statusRes]) => {
+        api.users.team().catch(() => null)
+      ]).then(([p, h, c, t]) => {
         if (isMounted) {
           setPremios(p || []);
           setHistorial(h || []);
           setConfig(c);
           setTeamStats(t);
-          setPunished(statusRes?.castigado || false);
           setLoading(false);
         }
       }).catch(err => {

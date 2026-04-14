@@ -63,7 +63,7 @@ export default function FloatingQuestionnaire() {
     try {
       // Enviar respuestas como objeto { id_pregunta: indice_opcion }
       await api.post('/users/cuestionario/responder', { respuestas });
-      alert('¡Cuestionario enviado con éxito! Has evitado la sanción de mañana.');
+      alert('¡Gracias por tu participación! Tu opinión es valiosa para nosotros.');
       setShowModal(false);
       setCuestionario(null);
     } catch (err) {
@@ -109,8 +109,8 @@ export default function FloatingQuestionnaire() {
               <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center mb-4">
                 <HelpCircle size={32} />
               </div>
-              <h2 className="text-2xl font-black uppercase tracking-tight">Cuestionario</h2>
-              <p className="text-[10px] font-bold text-white/70 uppercase tracking-widest mt-1">Obligatorio para mañana</p>
+              <h2 className="text-2xl font-black uppercase tracking-tight">Encuesta Institucional</h2>
+              <p className="text-[10px] font-bold text-white/70 uppercase tracking-widest mt-1">Tu participación es opcional</p>
             </div>
 
             <div className="p-8 flex-1 overflow-y-auto no-scrollbar space-y-8">

@@ -35,18 +35,72 @@ export default function Ganancias() {
   const fetchData = async () => {
     try {
       if (!data) setLoading(true);
-      const [res, statusRes] = await Promise.all([
+      const [res] = await Promise.all([
         api.users.earnings().catch(err => {
           console.error('Error earnings:', err);
           return { history: [], summary: { total: 0, hoy: 0 } };
-        }),
-        api.get('/users/status-castigo').catch(err => {
-          console.error('Error status-castigo:', err);
-          return { castigado: false };
         })
       ]);
       setData(res);
-      setPunished(statusRes?.castigado || false);
+    } catch (err) {
+      console.error('Error general fetchData Ganancias:', err);
+      setError('No se pudo sincronizar el historial.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') fetchData();
+    }, 15000);
+    
+    return () => {
+      clearInterval(interval);
+    };
+  }, [user?.id]);
+
+  const historyList = Array.isArray(data?.history) ? data.history.filter(item => {
+    if (tab === 'todo') return true;
+    const tipo = item.tipo_movimiento?.toLowerCase() || '';
+    const filters = {
+      tareas: ['ganancia_tarea', 'tarea_completada'],
+      comisiones: ['comision_subordinado', 'comision_red'],
+      invitaciones: ['recompensa_invitacion', 'bono_invitado'],
+      recargas: ['recarga', 'deposito'],
+      retiros: ['retiro', 'extraccion'],
+      otros: ['ajuste_admin', 'bono_manual', 'premio_ruleta']
+    };
+    return filters[tab]?.some(f => tipo.includes(f));
+  }) : [];
+
+  if (loading && !data) {
+    return (
+      <Layout>
+        <div className="p-10 flex flex-col items-center justify-center min-h-[70vh] space-y-6">
+          <div className="w-16 h-16 border-4 border-sav-primary/10 border-t-sav-primary rounded-full animate-spin" />
+          <p className="text-[10px] font-black uppercase tracking-[0.4em] text-sav-muted animate-pulse">Sincronizando Billetera</p>
+        </div>
+      </Layout>
+    );
+  }
+
+  return (
+    <Layout>
+      <header className="px-6 py-8 space-y-6">
+```
+
+old_str:
+```
+  const fetchData = async () => {
+    try {
+      if (!data) setLoading(true);
+      const res = await api.users.earnings().catch(err => {
+        console.error('Error earnings:', err);
+        return { history: [], summary: { total: 0, hoy: 0 } };
+      });
+      setData(res);
     } catch (err) {
       console.error('Error general fetchData Ganancias:', err);
       setError('No se pudo sincronizar el historial.');
@@ -114,6 +168,7 @@ export default function Ganancias() {
   return (
     <Layout>
       <header className="px-6 py-8 space-y-6">
+```
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-black text-white uppercase tracking-tighter leading-none">Billetera</h1>
           <Badge variant="info">FINTECH</Badge>

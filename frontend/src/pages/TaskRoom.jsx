@@ -136,9 +136,9 @@ export default function TaskRoom() {
           <Card variant="premium" className="w-full flex flex-col items-center p-10 space-y-6">
             <div className={cn(
               "w-20 h-20 rounded-3xl flex items-center justify-center shadow-2xl",
-              isSunday ? "bg-amber-500/10 text-amber-500" : "bg-sav-error/10 text-sav-error"
+              (isSunday || isHoliday) ? "bg-amber-500/10 text-amber-500" : "bg-sav-error/10 text-sav-error"
             )}>
-              {isSunday ? <Clock size={48} /> : <ShieldCheck size={48} />}
+              {(isSunday || isHoliday) ? <Clock size={48} /> : <ShieldCheck size={48} />}
             </div>
             <div className="space-y-2">
               <h2 className="text-2xl font-black uppercase tracking-tight text-white leading-none">
@@ -151,7 +151,7 @@ export default function TaskRoom() {
             <Button onClick={() => navigate('/')} variant="outline" className="border-white/10 text-[10px] h-12 uppercase tracking-widest">Volver al Inicio</Button>
           </Card>
           
-          {(data?.bloqueado || !isSunday) && (
+          {(data?.bloqueado || (!isSunday && !isHoliday)) && (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="w-full">
               <Link to="/vip" className="w-full">
                 <Button variant="primary" className="shadow-sav-glow text-[10px] h-14 uppercase tracking-widest">Mejorar a GLOBAL ahora</Button>

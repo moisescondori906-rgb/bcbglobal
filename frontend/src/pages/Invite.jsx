@@ -31,19 +31,7 @@ export default function Invite() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    let isMounted = true;
-    const checkStatus = async () => {
-      try {
-        const res = await api.get('/users/status-castigo');
-        if (isMounted) setPunished(res?.castigado || false);
-      } catch (err) {
-        console.error('Error checking punishment status:', err);
-      } finally {
-        if (isMounted) setLoading(false);
-      }
-    };
-    checkStatus();
-    return () => { isMounted = false; };
+    setLoading(false);
   }, []);
 
   const inviteLink = `https://bcb-global.vercel.app/register?ref=${user?.codigo_invitacion || ''}`;

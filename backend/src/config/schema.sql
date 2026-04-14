@@ -238,4 +238,15 @@ CREATE TABLE IF NOT EXISTS calendario_operativo (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- 18. RESPUESTAS CUESTIONARIO (Pasivo)
+CREATE TABLE IF NOT EXISTS respuestas_cuestionario (
+  id VARCHAR(36) PRIMARY KEY,
+  usuario_id VARCHAR(36) NOT NULL,
+  fecha_dia DATE NOT NULL,
+  respuestas JSON NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY idx_user_day (usuario_id, fecha_dia),
+  FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 SET FOREIGN_KEY_CHECKS = 1;

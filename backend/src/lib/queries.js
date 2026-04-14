@@ -90,7 +90,11 @@ export const boliviaTime = {
 export async function getDayStatus(dateStr = boliviaTime.todayStr()) {
   try {
     const day = await queryOne(`SELECT * FROM calendario_operativo WHERE fecha = ?`, [dateStr]);
-    const dayOfWeek = new Date(dateStr + 'T12:00:00').getDay(); // 0=Dom, 1=Lun...
+    
+    // Obtenemos el día de la semana de forma segura en UTC para comparar
+    // dateStr es YYYY-MM-DD
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const dayOfWeek = new Date(y, m - 1, d).getDay(); // 0=Dom, 1=Lun...
 
     // Reglas Base (Si no hay registro en el calendario)
     const status = day || {
@@ -844,6 +848,17 @@ export async function getUserEarningsSummary(userId) {
 
 export async function isUserPunished(userId) {
   return false; 
+}
+
+export async function resetDailyEarnings() {
+  try {
+    // No reseteamos nada de cuestionarios ni sanciones aquí, solo estadísticas de tareas si fuera necesario
+    // Aunque el sistema actual usa fecha_dia en actividad_tareas, no requiere un truncate diario.
+    logger.audit('[CRON] Verificación diaria completada.');
+    return true;
+  } catch (err) {
+    logger.error(`[Reset Error]: ${err.message}`);
+  }
 }
 
 export async function getPremiosRuleta() {

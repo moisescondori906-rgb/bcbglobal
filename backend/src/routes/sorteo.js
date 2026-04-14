@@ -39,14 +39,6 @@ router.post('/girar', authenticate, attachRequestUser, async (req, res) => {
     const user = req.requestUser;
     if (!user?.id) return res.status(404).json({ error: 'Usuario no encontrado' });
 
-    // VERIFICAR CASTIGO POR CUESTIONARIO
-    const castigado = await isUserPunished(user.id);
-    if (castigado) {
-      return res.status(403).json({ 
-        error: 'Tu acceso a la ruleta de premios ha sido bloqueado por hoy como castigo por no responder el cuestionario obligatorio de ayer.' 
-      });
-    }
-
     // La ruleta consume 1 TICKET
     if ((Number(user.tickets_ruleta) || 0) < 1) {
       return res.status(400).json({ error: 'No tienes tickets para girar. Invita amigos para obtener tickets en su primer ascenso.' });
