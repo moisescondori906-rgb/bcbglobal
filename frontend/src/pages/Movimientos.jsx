@@ -21,35 +21,57 @@ export default function Movimientos() {
   const [loading, setLoading] = useState(true);
 
   const fetchMovs = useCallback(async (isInitial = false) => {
+    if (!user?.id) {
+      setLoading(false);
+      return;
+    }
     if (isInitial) setLoading(true);
     
+    // Timeout de seguridad por si algo en la cadena de promesas falla silenciosamente
+    const safetyTimeout = setTimeout(() => {
+      setLoading(false);
+    }, 15000);
+
     try {
-      const [recargas, retiros] = await Promise.all([
-        api.recharges.list().catch(() => []),
-        api.withdrawals.list().catch(() => [])
-      ]);
+      console.log('[Movimientos] Fetching list...');
+      const recargas = await api.recharges.list().catch((err) => {
+        console.error('[Movimientos] Error in recharges:', err);
+        return [];
+      });
+      const retiros = await api.withdrawals.list().catch((err) => {
+        console.error('[Movimientos] Error in withdrawals:', err);
+        return [];
+      });
+
+      console.log('[Movimientos] Received:', { recargas, retiros });
 
       setData({ 
         recargas: Array.isArray(recargas) ? recargas : [], 
         retiros: Array.isArray(retiros) ? retiros : [] 
       });
     } catch (err) {
-      console.error('Error fetching movements:', err);
+      console.error('[Movimientos] Fetch fatal error:', err);
     } finally {
+      clearTimeout(safetyTimeout);
+      console.log('[Movimientos] Loading complete.');
       setLoading(false);
     }
-  }, []);
+  }, [user?.id]);
 
   useEffect(() => {
     fetchMovs(true);
     const interval = setInterval(() => fetchMovs(false), 30000);
     return () => clearInterval(interval);
-  }, [fetchMovs, user?.id]);
+  }, [fetchMovs]);
 
   const combinedItems = [
-    ...(data.recargas || []).map(r => ({ ...r, tipo_visual: 'recarga' })),
-    ...(data.retiros || []).map(r => ({ ...r, tipo_visual: 'retiro' }))
-  ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    ...(Array.isArray(data.recargas) ? data.recargas : []).map(r => ({ ...r, tipo_visual: 'recarga' })),
+    ...(Array.isArray(data.retiros) ? data.retiros : []).map(r => ({ ...r, tipo_visual: 'retiro' }))
+  ].sort((a, b) => {
+    const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+    const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+    return dateB - dateA;
+  });
 
   const filteredItems = tab === 'todo' 
     ? combinedItems 
