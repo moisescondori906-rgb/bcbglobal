@@ -193,6 +193,7 @@ export default function Withdrawal() {
     if (!hasSignature) { setError('Debes aceptar la firma digital para continuar.'); return; }
     
     setLoading(true);
+    setError('');
     try {
       await api.withdrawals.create({ 
         monto, 
@@ -204,7 +205,8 @@ export default function Withdrawal() {
       });
       navigate('/ganancias');
     } catch (err) {
-      setError(err.message || 'Error al solicitar retiro');
+      // Capturar mensaje del backend (incluyendo calendario/feriados)
+      setError(err.response?.data?.error || err.message || 'Error al solicitar retiro');
     } finally {
       setLoading(false);
     }

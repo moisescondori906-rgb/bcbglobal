@@ -20,7 +20,8 @@ import {
   ShieldCheck,
   AlertTriangle,
   HelpCircle,
-  Trophy
+  Trophy,
+  Calendar
 } from 'lucide-react';
 import Logo from '../../components/Logo.jsx';
 import { APP_DISPLAY_NAME } from '../../theme/branding.js';
@@ -89,6 +90,7 @@ export default function AdminLayout() {
     { to: '/admin/metodos-qr', icon: QrCode, label: 'Imágenes Recarga' },
     { to: '/admin/recompensas', icon: Gift, label: 'Premios y Recompensas' },
     { to: '/admin/admins', icon: ShieldCheck, label: 'Gestión Admins y Turnos' },
+    { to: '/admin/calendario', icon: Calendar, label: 'Calendario Operativo' },
     { to: '/admin/banners', icon: Image, label: 'Banners' },
     { to: '/admin/contenido-home', icon: Bell, label: 'Contenido y horarios' },
   ];

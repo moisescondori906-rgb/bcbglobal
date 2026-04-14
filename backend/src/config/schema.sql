@@ -224,4 +224,18 @@ CREATE TABLE IF NOT EXISTS notificaciones (
   INDEX idx_notif_usuario_leida (usuario_id, leida)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- 17. CALENDARIO OPERATIVO (Centralizado)
+CREATE TABLE IF NOT EXISTS calendario_operativo (
+  fecha DATE PRIMARY KEY,
+  tipo_dia ENUM('laboral', 'feriado', 'mantenimiento', 'especial') DEFAULT 'laboral',
+  es_feriado TINYINT(1) DEFAULT 0,
+  tareas_habilitadas TINYINT(1) DEFAULT 1,
+  retiros_habilitados TINYINT(1) DEFAULT 1,
+  recargas_habilitadas TINYINT(1) DEFAULT 1,
+  motivo VARCHAR(255),
+  reglas_niveles JSON, -- { "global1": { "retiro": false }, "global5": { "extra_tasks": 5 } }
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 SET FOREIGN_KEY_CHECKS = 1;

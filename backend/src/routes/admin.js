@@ -160,4 +160,51 @@ router.post('/usuarios/:id/ajuste', async (req, res) => {
   }
 });
 
+// ========================
+// CALENDARIO OPERATIVO
+// ========================
+
+router.get('/calendario', async (req, res) => {
+  try {
+    const list = await query(`SELECT * FROM calendario_operativo ORDER BY fecha ASC`);
+    res.json(list);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/calendario', async (req, res) => {
+  try {
+    const { fecha, tipo_dia, es_feriado, tareas_habilitadas, retiros_habilitados, recargas_habilitadas, motivo, reglas_niveles } = req.body;
+    if (!fecha) return res.status(400).json({ error: 'Fecha requerida' });
+
+    await query(`
+      INSERT INTO calendario_operativo 
+      (fecha, tipo_dia, es_feriado, tareas_habilitadas, retiros_habilitados, recargas_habilitadas, motivo, reglas_niveles) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      ON DUPLICATE KEY UPDATE 
+        tipo_dia = VALUES(tipo_dia),
+        es_feriado = VALUES(es_feriado),
+        tareas_habilitadas = VALUES(tareas_habilitadas),
+        retiros_habilitados = VALUES(retiros_habilitados),
+        recargas_habilitadas = VALUES(recargas_habilitadas),
+        motivo = VALUES(motivo),
+        reglas_niveles = VALUES(reglas_niveles)
+    `, [fecha, tipo_dia, es_feriado, tareas_habilitadas, retiros_habilitados, recargas_habilitadas, motivo, JSON.stringify(reglas_niveles || {})]);
+
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.delete('/calendario/:fecha', async (req, res) => {
+  try {
+    await query(`DELETE FROM calendario_operativo WHERE fecha = ?`, [req.params.fecha]);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;

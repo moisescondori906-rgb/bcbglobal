@@ -2,7 +2,8 @@ import { Router } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import bcrypt from 'bcryptjs';
 import { 
-  getPublicContent, getLevels, boliviaTime, findUserWithAuthSecrets
+  getPublicContent, getLevels, boliviaTime, findUserWithAuthSecrets,
+  canWithdraw 
 } from '../lib/queries.js';
 import { query, queryOne, transaction } from '../config/db.js';
 import { authenticate } from '../middleware/auth.js';
@@ -46,40 +47,10 @@ router.post('/', async (req, res) => {
     const passOk = await bcrypt.compare(password_fondo, userAuth.password_fondo_hash);
     if (!passOk) return res.status(401).json({ error: 'Contraseña de fondo incorrecta.' });
 
-    // 3. Reglas de Negocio (Días de retiro por nivel)
-    const levels = await getLevels();
-    const userLevel = levels.find(l => String(l.id) === String(user.nivel_id));
-    const day = boliviaTime.getDay(); // 0=Dom, 1=Lun, 2=Mar... 6=Sab
-    
-    // Regla: G1=Mar(2), G2=Mie(3), G3=Jue(4), G4=Vie(5), G5+=Sab(6)
-    const rules = {
-      'global1': 2,
-      'global2': 3,
-      'global3': 4,
-      'global4': 5
-    };
-
-    let allowedDay = rules[userLevel?.codigo];
-    let dayName = '';
-
-    if (allowedDay === undefined) {
-      // Si es global 5 o superior (orden >= 5)
-      if (userLevel && userLevel.orden >= 5) {
-        allowedDay = 6; // Sábado
-      }
-    }
-
-    const DAY_NAMES = { 2: 'Martes', 3: 'Miércoles', 4: 'Jueves', 5: 'Viernes', 6: 'Sábado' };
-    dayName = DAY_NAMES[allowedDay] || 'su día asignado';
-
-    if (allowedDay !== undefined && day !== allowedDay) {
-      return res.status(403).json({ 
-        error: `Tu nivel (${userLevel?.nombre}) solo permite retirar los días ${dayName}. Hoy es ${['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'][day]}.` 
-      });
-    }
-
-    if (allowedDay === undefined && userLevel?.codigo === 'internar') {
-      return res.status(403).json({ error: 'El nivel Internar no tiene permitido realizar retiros. Sube a GLOBAL 1 o superior.' });
+    // 3. VALIDACIÓN CENTRALIZADA (CALENDARIO, DÍAS POR NIVEL & FERIADOS)
+    const opStatus = await canWithdraw(user.id);
+    if (!opStatus.ok) {
+      return res.status(403).json({ error: opStatus.message });
     }
 
     // 4. Ejecución Transaccional del Retiro

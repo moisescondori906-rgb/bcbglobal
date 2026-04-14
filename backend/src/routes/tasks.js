@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { 
   getLevels, getTasks, getTaskById, completeTask,
-  boliviaTime, isUserPunished, getPublicContent 
+  boliviaTime, isUserPunished, getPublicContent, canPerformTasks 
 } from '../lib/queries.js';
 import { authenticate } from '../middleware/auth.js';
 import { attachRequestUser, DEMO_USER_ID } from '../middleware/requestContext.js';
@@ -32,24 +32,19 @@ router.get('/', async (req, res) => {
       });
     }
 
-    // VERIFICAR CASTIGO
+    // 1. VALIDACIÓN CENTRALIZADA (CALENDARIO & FERIADOS)
+    const opStatus = await canPerformTasks(user.id);
+    if (!opStatus.ok) {
+      return res.status(403).json({ error: opStatus.message });
+    }
+
+    // 2. VERIFICAR CASTIGO
     const castigado = await isUserPunished(user.id).catch(() => false);
     if (castigado) {
       return res.status(403).json({ 
         error: 'Tu acceso a tareas ha sido bloqueado por hoy como castigo.',
         castigado: true
       });
-    }
-
-    const config = await getPublicContent();
-    const allowedDays = (config.task_allowed_days || '1,2,3,4,5').split(',').map(Number);
-    const day = boliviaTime.getDay();
-    const isWeekend = day === 0 || day === 6;
-    const isDayAllowed = allowedDays.includes(day);
-    const hasUserException = user.allow_weekend_tasks === true;
-
-    if (!isDayAllowed && !(isWeekend && hasUserException)) {
-      return res.status(403).json({ error: 'Tareas no disponibles hoy.' });
     }
 
     const levels = await getLevels();
@@ -95,6 +90,12 @@ router.post('/:id/responder', async (req, res) => {
     const { respuesta } = req.body;
     const user = req.requestUser;
     if (!user?.id) return res.status(404).json({ error: 'Usuario no encontrado' });
+
+    // 1. VALIDACIÓN CENTRALIZADA (CALENDARIO & FERIADOS)
+    const opStatus = await canPerformTasks(user.id);
+    if (!opStatus.ok) {
+      return res.status(403).json({ error: opStatus.message });
+    }
 
     const task = await getTaskById(req.params.id);
     if (!task) return res.status(404).json({ error: 'Tarea no encontrada' });

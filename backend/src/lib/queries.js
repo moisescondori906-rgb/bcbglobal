@@ -38,32 +38,174 @@ const DEFAULT_LEVELS = [
  */
 export const boliviaTime = {
   now: () => {
+    // Obtenemos la fecha UTC y la desplazamos a GMT-4 (Bolivia)
     const now = new Date();
-    return new Date(now.toLocaleString('en-US', { timeZone: 'America/La_Paz' }));
+    const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+    return new Date(utc + (3600000 * -4));
   },
   todayStr: () => {
-    return new Date().toLocaleDateString('en-CA', { timeZone: 'America/La_Paz' });
+    const d = boliviaTime.now();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   },
   yesterdayStr: () => {
-    const d = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/La_Paz' }));
+    const d = boliviaTime.now();
     d.setDate(d.getDate() - 1);
-    return d.toLocaleDateString('en-CA');
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   },
   getDateString: (date) => {
     if (!date) return '';
-    return new Date(date).toLocaleDateString('en-CA', { timeZone: 'America/La_Paz' });
+    const d = new Date(date);
+    const utc = d.getTime() + (d.getTimezoneOffset() * 60000);
+    const bol = new Date(utc + (3600000 * -4));
+    return bol.toISOString().split('T')[0];
   },
   getTimeString: (date = new Date()) => {
-    return new Date(date).toLocaleTimeString('en-GB', { timeZone: 'America/La_Paz', hour: '2-digit', minute: '2-digit' });
+    const d = new Date(date);
+    const utc = d.getTime() + (d.getTimezoneOffset() * 60000);
+    const bol = new Date(utc + (3600000 * -4));
+    return bol.toTimeString().substring(0, 5);
   },
   getDay: () => {
-    return new Date(new Date().toLocaleString('en-US', { timeZone: 'America/La_Paz' })).getDay();
+    return boliviaTime.now().getDay();
   },
   isTimeInWindow: (timeStr, start = '00:00', end = '23:59') => {
     if (start <= end) return timeStr >= start && timeStr <= end;
     return timeStr >= start || timeStr <= end;
   }
 };
+
+// ========================
+// 0. CALENDARIO OPERATIVO (Validaciones Centralizadas)
+// ========================
+
+/**
+ * Obtiene el estado operativo para una fecha específica
+ */
+export async function getDayStatus(dateStr = boliviaTime.todayStr()) {
+  try {
+    const day = await queryOne(`SELECT * FROM calendario_operativo WHERE fecha = ?`, [dateStr]);
+    const dayOfWeek = new Date(dateStr + 'T12:00:00').getDay(); // 0=Dom, 1=Lun...
+
+    // Reglas Base (Si no hay registro en el calendario)
+    const status = day || {
+      fecha: dateStr,
+      tipo_dia: dayOfWeek === 0 ? 'mantenimiento' : 'laboral',
+      es_feriado: 0,
+      tareas_habilitadas: dayOfWeek === 0 ? 0 : 1, // Domingos bloqueados por defecto
+      retiros_habilitados: 1,
+      recargas_habilitadas: 1,
+      motivo: dayOfWeek === 0 ? 'Mantenimiento Dominical' : null,
+      reglas_niveles: {}
+    };
+
+    return status;
+  } catch (e) {
+    logger.error(`[Calendar] Error getting status for ${dateStr}: ${e.message}`);
+    return null;
+  }
+}
+
+/**
+ * Validación Centralizada: ¿Puede realizar tareas hoy?
+ */
+export async function canPerformTasks(userId, dateStr = boliviaTime.todayStr()) {
+  const status = await getDayStatus(dateStr);
+  if (!status) return { ok: true }; // Fallback permisivo si falla la DB
+
+  if (!status.tareas_habilitadas) {
+    return { ok: false, message: status.motivo || 'Las tareas están suspendidas por hoy.' };
+  }
+
+  // Verificar reglas por nivel si existen
+  const user = await findUserById(userId);
+  const levels = await getLevels();
+  const userLevel = levels.find(l => String(l.id) === String(user.nivel_id));
+
+  if (status.reglas_niveles) {
+    const levelRules = typeof status.reglas_niveles === 'string' 
+      ? JSON.parse(status.reglas_niveles) 
+      : status.reglas_niveles;
+
+    if (levelRules[userLevel?.codigo]?.tareas === false) {
+      return { ok: false, message: `Las tareas no están habilitadas para el nivel ${userLevel?.nombre} hoy.` };
+    }
+  }
+
+  return { ok: true };
+}
+
+/**
+ * Validación Centralizada: ¿Puede retirar hoy?
+ */
+export async function canWithdraw(userId, dateStr = boliviaTime.todayStr()) {
+  const status = await getDayStatus(dateStr);
+  if (!status) return { ok: true };
+
+  if (!status.retiros_habilitados) {
+    return { ok: false, message: status.motivo || 'Los retiros están suspendidos temporalmente.' };
+  }
+
+  const user = await findUserById(userId);
+  const levels = await getLevels();
+  const userLevel = levels.find(l => String(l.id) === String(user.nivel_id));
+  
+  if (userLevel?.codigo === 'internar') {
+    return { ok: false, message: 'El nivel Internar no tiene permitido realizar retiros.' };
+  }
+
+  // Regla: G1=Mar(2), G2=Mie(3), G3=Jue(4), G4=Vie(5), G5+=Sab(6)
+  const dayOfWeek = boliviaTime.getDay();
+  const rules = {
+    'global1': 2,
+    'global2': 3,
+    'global3': 4,
+    'global4': 5
+  };
+
+  let allowedDay = rules[userLevel?.codigo];
+  if (allowedDay === undefined && userLevel && userLevel.orden >= 5) {
+    allowedDay = 6; // Sábado
+  }
+
+  // Solo validar día si no hay una regla específica de calendario para este día
+  const levelRules = typeof status.reglas_niveles === 'string' 
+    ? JSON.parse(status.reglas_niveles) 
+    : status.reglas_niveles;
+
+  const hasSpecificRule = levelRules && levelRules[userLevel?.codigo]?.retiro !== undefined;
+
+  if (hasSpecificRule) {
+    if (levelRules[userLevel?.codigo]?.retiro === false) {
+      return { ok: false, message: `Los retiros no están habilitados para el nivel ${userLevel?.nombre} hoy según calendario.` };
+    }
+  } else {
+    // Si no hay regla específica en el calendario, aplicamos el cronograma semanal institucional
+    if (allowedDay !== undefined && dayOfWeek !== allowedDay) {
+      const DAY_NAMES = { 2: 'Martes', 3: 'Miércoles', 4: 'Jueves', 5: 'Viernes', 6: 'Sábado' };
+      const dayName = DAY_NAMES[allowedDay] || 'su día asignado';
+      return { ok: false, message: `Tu nivel (${userLevel?.nombre}) solo permite retirar los días ${dayName}.` };
+    }
+  }
+
+  // Regla de Horario (si existe en el nivel o config)
+  const time = boliviaTime.getTimeString();
+  const config = await getPublicContent();
+  const schedule = userLevel?.retiro_horario_habilitado 
+    ? { enabled: true, hora_inicio: userLevel.retiro_hora_inicio, hora_fin: userLevel.retiro_hora_fin }
+    : config.horario_retiro;
+
+  if (schedule?.enabled && !boliviaTime.isTimeInWindow(time, schedule.hora_inicio, schedule.hora_fin)) {
+    return { ok: false, message: `El horario de retiros es de ${schedule.hora_inicio} a ${schedule.hora_fin} (Bolivia).` };
+  }
+
+  return { ok: true };
+}
 
 // ========================
 // 1. USUARIOS & AUTH

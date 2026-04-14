@@ -127,27 +127,36 @@ export default function TaskRoom() {
   }
 
   if ((error || data?.bloqueado) && !activeTask) {
+    const isSunday = new Date().getDay() === 0;
+    const isHoliday = error?.includes('feriado') || error?.includes('suspendidas');
+
     return (
       <Layout>
         <div className="p-6 flex flex-col items-center justify-center min-h-[70vh] text-center space-y-8">
           <Card variant="premium" className="w-full flex flex-col items-center p-10 space-y-6">
-            <div className="w-20 h-20 bg-sav-error/10 text-sav-error rounded-3xl flex items-center justify-center">
-              <ShieldCheck size={48} />
+            <div className={cn(
+              "w-20 h-20 rounded-3xl flex items-center justify-center shadow-2xl",
+              isSunday ? "bg-amber-500/10 text-amber-500" : "bg-sav-error/10 text-sav-error"
+            )}>
+              {isSunday ? <Clock size={48} /> : <ShieldCheck size={48} />}
             </div>
             <div className="space-y-2">
-              <h2 className="text-2xl font-black uppercase tracking-tight text-white">
-                {data?.bloqueado ? 'Periodo Finalizado' : 'Acceso Restringido'}
+              <h2 className="text-2xl font-black uppercase tracking-tight text-white leading-none">
+                {isSunday ? 'Descanso Dominical' : (isHoliday ? 'Día No Laboral' : 'Acceso Restringido')}
               </h2>
-              <p className="text-[10px] font-bold text-sav-muted uppercase tracking-widest leading-relaxed">
-                {error || data?.mensaje}
+              <p className="text-[10px] font-bold text-sav-muted uppercase tracking-widest leading-relaxed max-w-[250px]">
+                {error || data?.mensaje || 'Las tareas no están disponibles en este momento.'}
               </p>
             </div>
-            <Button onClick={() => navigate('/')} className="max-w-[200px]">Volver al Inicio</Button>
+            <Button onClick={() => navigate('/')} variant="outline" className="border-white/10 text-[10px] h-12 uppercase tracking-widest">Volver al Inicio</Button>
           </Card>
-          {data?.bloqueado && (
-            <Link to="/vip" className="w-full">
-              <Button variant="secondary" className="border-sav-primary/20 text-sav-primary">Mejorar a VIP ahora</Button>
-            </Link>
+          
+          {(data?.bloqueado || !isSunday) && (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="w-full">
+              <Link to="/vip" className="w-full">
+                <Button variant="primary" className="shadow-sav-glow text-[10px] h-14 uppercase tracking-widest">Mejorar a GLOBAL ahora</Button>
+              </Link>
+            </motion.div>
           )}
         </div>
       </Layout>
