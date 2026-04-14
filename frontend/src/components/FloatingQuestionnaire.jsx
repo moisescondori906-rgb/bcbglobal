@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { HelpCircle, X, CheckCircle2, AlertTriangle, Send } from 'lucide-react';
 import { api } from '../lib/api';
 

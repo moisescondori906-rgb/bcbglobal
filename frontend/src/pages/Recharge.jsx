@@ -151,9 +151,12 @@ export default function Recharge() {
   if (!user && isMounted) {
     return (
       <Layout>
-        <div className="min-h-screen flex flex-col items-center justify-center bg-sav-dark p-10">
-          <Loader2 className="animate-spin text-sav-primary mb-4" size={40} />
-          <p className="text-[10px] font-black text-sav-muted uppercase tracking-[0.3em]">Cargando perfil...</p>
+        <div className="min-h-[80vh] flex flex-col items-center justify-center bg-sav-dark p-10">
+          <div className="relative">
+            <Loader2 className="animate-spin text-sav-primary mb-4" size={40} />
+            <div className="absolute inset-0 bg-sav-primary/20 blur-xl animate-pulse" />
+          </div>
+          <p className="text-[10px] font-black text-sav-muted uppercase tracking-[0.3em] animate-pulse">Sincronizando Perfil...</p>
         </div>
       </Layout>
     );

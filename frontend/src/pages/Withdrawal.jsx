@@ -57,6 +57,7 @@ export default function Withdrawal() {
   const [isOptimizing, setIsOptimizing] = useState(false);
   const [hasWithdrawalToday, setHasWithdrawalToday] = useState(false);
   const [isPunished, setIsPunished] = useState(false);
+  const [hasSignature, setHasSignature] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -144,6 +145,26 @@ export default function Withdrawal() {
   const fueraHorario = horarioRet?.enabled && !schedRet.ok;
   const msgHorario = !schedRet.ok ? schedRet.message : '';
 
+  // --- VALIDACIÓN DE DÍAS SEGÚN NIVEL ---
+  const today = new Date().getDay(); // 0=Dom, 1=Lun, 2=Mar... 6=Sab
+  const levelRules = {
+    'global1': 2, // Martes
+    'global2': 3, // Miércoles
+    'global3': 4, // Jueves
+    'global4': 5  // Viernes
+  };
+
+  let assignedDay = levelRules[userLevel?.codigo];
+  if (assignedDay === undefined && userLevel && userLevel.orden >= 5) {
+    assignedDay = 6; // Sábado
+  }
+
+  const DAY_NAMES = { 2: 'Martes', 3: 'Miércoles', 4: 'Jueves', 5: 'Viernes', 6: 'Sábado' };
+  const assignedDayName = DAY_NAMES[assignedDay] || 'No asignado';
+  const isCorrectDay = assignedDay !== undefined && today === assignedDay;
+  const isInternar = userLevel?.codigo === 'internar';
+  const canWithdrawToday = isCorrectDay && !isInternar;
+
   const handleFile = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -169,9 +190,18 @@ export default function Withdrawal() {
     e.preventDefault();
     if (!password) { setError('Ingresa tu contraseña de fondo.'); return; }
     if (!qrImage) { setError('Sube tu código QR.'); return; }
+    if (!hasSignature) { setError('Debes aceptar la firma digital para continuar.'); return; }
+    
     setLoading(true);
     try {
-      await api.withdrawals.create({ monto, tipo_billetera: tipoBilletera, password_fondo: password, qr_retiro: qrImage, tarjeta_id: tarjetaId || undefined });
+      await api.withdrawals.create({ 
+        monto, 
+        tipo_billetera: tipoBilletera, 
+        password_fondo: password, 
+        qr_retiro: qrImage, 
+        firma_digital: true,
+        tarjeta_id: tarjetaId || undefined 
+      });
       navigate('/ganancias');
     } catch (err) {
       setError(err.message || 'Error al solicitar retiro');
@@ -226,6 +256,40 @@ export default function Withdrawal() {
               Ya has realizado un retiro hoy. Intenta de nuevo mañana.
             </p>
           </Card>
+        )}
+
+        {/* Alerta de Día de Retiro */}
+        {!isCorrectDay && !isInternar && userLevel && (
+          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
+            <Card variant="flat" className="p-6 border-amber-500/20 bg-amber-500/10 flex flex-col gap-3">
+              <div className="flex items-center gap-3 text-amber-500">
+                <ClockIcon size={20} />
+                <h3 className="text-xs font-black uppercase tracking-widest">Día no asignado</h3>
+              </div>
+              <p className="text-[10px] text-sav-muted font-bold uppercase tracking-widest leading-relaxed">
+                Tu nivel <span className="text-white">{userLevel.nombre}</span> tiene asignado el día <span className="text-amber-500">{assignedDayName}</span> para retiros.
+                <br/>Por favor, regresa el {assignedDayName.toLowerCase()} para procesar tu solicitud.
+              </p>
+            </Card>
+          </motion.div>
+        )}
+
+        {isInternar && (
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}>
+            <Card variant="premium" className="p-8 border-sav-primary/20 bg-sav-primary/5 flex flex-col items-center gap-4 text-center">
+              <div className="w-16 h-16 rounded-2xl bg-sav-primary/10 flex items-center justify-center text-sav-primary shadow-inner">
+                <LockIcon size={32} />
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-sm font-black text-white uppercase tracking-widest">Nivel Insuficiente</h3>
+                <p className="text-[10px] font-bold text-sav-muted uppercase tracking-widest leading-relaxed">
+                  Los usuarios <span className="text-white">Internares</span> no pueden realizar retiros.<br/>
+                  Sube a <span className="text-sav-primary">GLOBAL 1</span> para desbloquear esta función.
+                </p>
+              </div>
+              <Button onClick={() => navigate('/vip')} variant="primary" className="mt-2 text-[10px] py-3">Ver Niveles VIP</Button>
+            </Card>
+          </motion.div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-10">
@@ -407,25 +471,41 @@ export default function Withdrawal() {
               </div>
               <h2 className="text-[11px] font-black text-white uppercase tracking-[0.3em]">4. Confirmación Segura</h2>
             </div>
-            <Input
-              type="password"
-              placeholder="Contraseña de retiro"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              showPasswordToggle
-              icon={ShieldCheckIcon}
-              className="h-16 rounded-2xl bg-white/[0.02] border-white/5"
-            />
+            
+            <div className="space-y-4">
+              <Input
+                type="password"
+                placeholder="Contraseña de retiro"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                showPasswordToggle
+                icon={ShieldCheckIcon}
+                className="h-16 rounded-2xl bg-white/[0.02] border-white/5"
+              />
+
+              <div className="px-1 flex items-start gap-3 group cursor-pointer" onClick={() => setHasSignature(!hasSignature)}>
+                <div className={cn(
+                  "w-5 h-5 rounded border-2 flex items-center justify-center transition-all mt-0.5 shrink-0",
+                  hasSignature ? "bg-sav-primary border-sav-primary text-white" : "border-white/10"
+                )}>
+                  {hasSignature && <CheckIcon size={12} strokeWidth={4} />}
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[10px] font-black text-white uppercase tracking-widest group-hover:text-sav-primary transition-colors">Acepto la Firma Digital de Retiro</p>
+                  <p className="text-[8px] text-sav-muted font-medium uppercase tracking-widest leading-relaxed">Confirmo que los datos son correctos y autorizo el procesamiento de este retiro institucional.</p>
+                </div>
+              </div>
+            </div>
           </section>
 
           <div className="pt-4">
             <Button 
               type="submit" 
               loading={loading} 
-              disabled={fueraHorario || hasWithdrawalToday || isPunished || !qrImage || !password}
+              disabled={!canWithdrawToday || fueraHorario || hasWithdrawalToday || isPunished || !qrImage || !password || !hasSignature}
               className="h-20 w-full rounded-[2rem] text-sm tracking-[0.3em] shadow-[0_25px_50px_-12px_rgba(220,38,38,0.4)] active:scale-95 transition-all uppercase"
             >
-              SOLICITAR RETIRO
+              {!canWithdrawToday ? `ESPERAR AL ${assignedDayName.toUpperCase()}` : 'SOLICITAR RETIRO'}
             </Button>
           </div>
 

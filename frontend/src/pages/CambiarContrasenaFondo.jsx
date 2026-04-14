@@ -1,9 +1,13 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import Layout from '../components/Layout';
 import Header from '../components/Header';
 import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
+import { Lock, ShieldCheck, Zap, KeyRound, Save, AlertCircle } from 'lucide-react';
+import { Card } from '../components/ui/Card.jsx';
+import { Button } from '../components/ui/Button.jsx';
 
 export default function CambiarContrasenaFondo() {
   const navigate = useNavigate();
@@ -43,85 +47,106 @@ export default function CambiarContrasenaFondo() {
 
   return (
     <Layout>
-      <Header title={tieneFondo ? "Cambiar Contraseña de Fondo" : "Crear Contraseña de Fondo"} />
-      <div className="p-4 space-y-6 bg-white min-h-screen">
-        <div className="bg-[#1a1f36]/5 p-6 rounded-[2rem] border border-[#1a1f36]/10 shadow-inner">
-          <div className="flex items-center gap-4 mb-4">
-            <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center text-[#1a1f36] shadow-sm">
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      <Header title={tieneFondo ? "Clave de Transacción" : "Seguridad de Fondos"} />
+      <main className="p-5 space-y-6 animate-fade">
+        
+        {/* Banner de Advertencia/Información */}
+        <Card variant="flat" className="p-6 bg-amber-500/5 border-amber-500/10 rounded-[2rem]">
+          <div className="flex items-center gap-4 mb-3">
+            <div className="w-12 h-12 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500">
+              <Zap size={24} />
             </div>
             <div>
-              <h3 className="font-black text-[#1a1f36] text-xs uppercase tracking-widest">Seguridad de Fondos</h3>
-              <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tight">Es necesaria para tus retiros</p>
+              <h3 className="text-xs font-black text-white uppercase tracking-widest leading-none mb-1">Firma Digital</h3>
+              <p className="text-[10px] text-sav-muted font-bold uppercase tracking-tight">Autorización de Retiros</p>
             </div>
           </div>
-          <p className="text-xs text-gray-500 font-medium leading-relaxed">
+          <p className="text-[11px] text-sav-muted font-medium leading-relaxed">
             {tieneFondo
-              ? 'Para tu seguridad, debes ingresar tu contraseña actual antes de establecer una nueva.'
-              : 'Esta contraseña es diferente a la de inicio de sesión. Asegúrate de recordarla para poder retirar tus ganancias.'}
+              ? 'Por seguridad, ingresa tu clave de fondo actual antes de realizar el cambio. Esta clave es obligatoria para procesar cualquier retiro.'
+              : 'Configura una clave de 6 dígitos para autorizar tus movimientos financieros. Es diferente a tu clave de acceso.'}
           </p>
-        </div>
+        </Card>
 
-        <form onSubmit={submit} className="space-y-4 animate-fade-in">
+        <form onSubmit={submit} className="space-y-6">
           {error && (
-            <div className="p-4 rounded-2xl bg-rose-50 border border-rose-100 text-rose-500 text-xs font-bold text-center animate-shake">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="p-4 rounded-2xl bg-sav-error/10 border border-sav-error/20 text-sav-error text-[10px] font-black uppercase tracking-widest text-center"
+            >
               {error}
-            </div>
+            </motion.div>
           )}
           
-          <div className="bg-white rounded-[2rem] p-6 shadow-xl border border-gray-100 space-y-5">
+          <Card variant="outline" className="p-6 space-y-5 bg-white/[0.02] border-white/5 rounded-[2.5rem]">
             {tieneFondo && (
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Contraseña Actual</label>
-                <input
-                  type="password"
-                  value={actual}
-                  onChange={(e) => setActual(e.target.value)}
-                  className="w-full bg-gray-50 px-5 py-4 rounded-2xl border border-gray-100 focus:border-[#1a1f36]/50 focus:outline-none transition-all text-sm font-black text-[#1a1f36] placeholder:text-gray-300"
-                  required
-                  placeholder="Tu contraseña actual"
-                  autoComplete="current-password"
-                />
+                <label className="text-[9px] font-black text-sav-muted uppercase tracking-[0.2em] ml-2">Clave Actual del Fondo</label>
+                <div className="relative">
+                  <input
+                    type="password"
+                    value={actual}
+                    onChange={(e) => setActual(e.target.value)}
+                    className="w-full bg-sav-surface/50 px-6 py-4 rounded-2xl border border-sav-border focus:border-amber-500/50 focus:outline-none transition-all text-sm font-black text-white placeholder:text-sav-muted/30"
+                    required
+                    placeholder="Contraseña actual"
+                    autoComplete="current-password"
+                  />
+                  <KeyRound className="absolute right-5 top-1/2 -translate-y-1/2 text-sav-muted/30" size={18} />
+                </div>
               </div>
             )}
             
             <div className="space-y-2">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Nueva Contraseña</label>
-              <input
-                type="password"
-                value={nueva}
-                onChange={(e) => setNueva(e.target.value)}
-                className="w-full bg-gray-50 px-5 py-4 rounded-2xl border border-gray-100 focus:border-[#1a1f36]/50 focus:outline-none transition-all text-sm font-black text-[#1a1f36] placeholder:text-gray-300"
-                required
-                minLength={6}
-                placeholder="Mínimo 6 caracteres"
-                autoComplete="new-password"
-              />
+              <label className="text-[9px] font-black text-sav-muted uppercase tracking-[0.2em] ml-2">Nueva Clave de Fondo</label>
+              <div className="relative">
+                <input
+                  type="password"
+                  value={nueva}
+                  onChange={(e) => setNueva(e.target.value)}
+                  className="w-full bg-sav-surface/50 px-6 py-4 rounded-2xl border border-sav-border focus:border-amber-500/50 focus:outline-none transition-all text-sm font-black text-white placeholder:text-sav-muted/30"
+                  required
+                  minLength={6}
+                  placeholder="6 caracteres numéricos"
+                  autoComplete="new-password"
+                />
+                <ShieldCheck className="absolute right-5 top-1/2 -translate-y-1/2 text-sav-muted/30" size={18} />
+              </div>
             </div>
 
             <div className="space-y-2">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Confirmar Nueva Contraseña</label>
-              <input
-                type="password"
-                value={nueva2}
-                onChange={(e) => setNueva2(e.target.value)}
-                className="w-full bg-gray-50 px-5 py-4 rounded-2xl border border-gray-100 focus:border-[#1a1f36]/50 focus:outline-none transition-all text-sm font-black text-[#1a1f36] placeholder:text-gray-300"
-                required
-                minLength={6}
-                placeholder="Repite la contraseña"
-              />
+              <label className="text-[9px] font-black text-sav-muted uppercase tracking-[0.2em] ml-2">Repetir Nueva Clave</label>
+              <div className="relative">
+                <input
+                  type="password"
+                  value={nueva2}
+                  onChange={(e) => setNueva2(e.target.value)}
+                  className="w-full bg-sav-surface/50 px-6 py-4 rounded-2xl border border-sav-border focus:border-amber-500/50 focus:outline-none transition-all text-sm font-black text-white placeholder:text-sav-muted/30"
+                  required
+                  minLength={6}
+                  placeholder="Confirmar clave"
+                />
+                <ShieldCheck className="absolute right-5 top-1/2 -translate-y-1/2 text-sav-muted/30" size={18} />
+              </div>
             </div>
-          </div>
+          </Card>
 
-          <button 
+          <Button 
             type="submit" 
             disabled={loading} 
-            className="w-full py-5 rounded-2xl bg-[#1a1f36] text-white font-black uppercase tracking-widest text-xs shadow-lg shadow-[#1a1f36]/20 active:scale-[0.98] transition-all disabled:opacity-50 mt-4"
+            icon={Save}
+            className="py-5 rounded-[1.8rem] bg-amber-600 hover:bg-amber-700 shadow-2xl shadow-amber-600/20"
           >
-            {loading ? 'Procesando...' : (tieneFondo ? 'Actualizar Contraseña' : 'Crear Contraseña de Fondo')}
-          </button>
+            {loading ? 'Validando...' : (tieneFondo ? 'Sincronizar Cambios' : 'Activar Firma Digital')}
+          </Button>
         </form>
-      </div>
+
+        <div className="flex flex-col items-center gap-2 pt-4 opacity-30">
+          <Zap size={24} className="text-sav-muted" />
+          <p className="text-[8px] font-black text-sav-muted uppercase tracking-[0.4em]">Protección de Activos BCB</p>
+        </div>
+      </main>
     </Layout>
   );
 }

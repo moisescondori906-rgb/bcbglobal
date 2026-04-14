@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Layout from '../components/Layout';
 import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
-import { supabase } from '../lib/supabase';
 import { 
   Wallet, TrendingUp, History, Target, 
   ArrowUpCircle, ArrowDownCircle, AlertCircle,
@@ -35,14 +34,21 @@ export default function Ganancias() {
 
   const fetchData = async () => {
     try {
-      setLoading(true);
+      if (!data) setLoading(true);
       const [res, statusRes] = await Promise.all([
-        api.users.earnings(),
-        api.get('/users/status-castigo')
+        api.users.earnings().catch(err => {
+          console.error('Error earnings:', err);
+          return { history: [], summary: { total: 0, hoy: 0 } };
+        }),
+        api.get('/users/status-castigo').catch(err => {
+          console.error('Error status-castigo:', err);
+          return { castigado: false };
+        })
       ]);
       setData(res);
-      setPunished(statusRes.castigado);
+      setPunished(statusRes?.castigado || false);
     } catch (err) {
+      console.error('Error general fetchData Ganancias:', err);
       setError('No se pudo sincronizar el historial.');
     } finally {
       setLoading(false);
@@ -55,17 +61,8 @@ export default function Ganancias() {
       if (document.visibilityState === 'visible') fetchData();
     }, 15000);
     
-    const userSub = supabase.channel(`earnings_${user?.id}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'usuarios', filter: `id=eq.${user?.id}` }, fetchData)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'movimientos_saldo', filter: `usuario_id=eq.${user?.id}` }, () => {
-        fetchData();
-        refreshUser();
-      })
-      .subscribe();
-
     return () => {
       clearInterval(interval);
-      supabase.removeChannel(userSub);
     };
   }, [user?.id]);
 

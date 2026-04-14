@@ -1,9 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Layout from '../components/Layout';
 import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
-import { supabase } from '../lib/supabase';
 import { 
   History, ArrowUpCircle, ArrowDownCircle, 
   FileText, Clock, Filter, CheckCircle2, 
@@ -21,44 +20,46 @@ export default function Movimientos() {
   const [data, setData] = useState({ recargas: [], retiros: [] });
   const [loading, setLoading] = useState(true);
 
-  const fetchData = async () => {
+  const fetchMovs = useCallback(async (isInitial = false) => {
+    if (isInitial) setLoading(true);
+    
     try {
-      setLoading(true);
       const [recargas, retiros] = await Promise.all([
-        api.recharges.list(),
-        api.withdrawals.list()
+        api.recharges.list().catch(() => []),
+        api.withdrawals.list().catch(() => [])
       ]);
+
       setData({ 
         recargas: Array.isArray(recargas) ? recargas : [], 
         retiros: Array.isArray(retiros) ? retiros : [] 
       });
     } catch (err) {
-      console.error(err);
+      console.error('Error fetching movements:', err);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    fetchData();
-    if (user?.id) {
-      const channel = supabase.channel(`movs_${user.id}`)
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'recargas', filter: `usuario_id=eq.${user.id}` }, fetchData)
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'retiros', filter: `usuario_id=eq.${user.id}` }, fetchData)
-        .subscribe();
-      return () => supabase.removeChannel(channel);
-    }
-  }, [user?.id]);
+    fetchMovs(true);
+    const interval = setInterval(() => fetchMovs(false), 30000);
+    return () => clearInterval(interval);
+  }, [fetchMovs, user?.id]);
 
   const combinedItems = [
     ...(data.recargas || []).map(r => ({ ...r, tipo_visual: 'recarga' })),
     ...(data.retiros || []).map(r => ({ ...r, tipo_visual: 'retiro' }))
   ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
-  const filteredItems = tab === 'todo' ? combinedItems : (tab === 'recargas' ? combinedItems.filter(i => i.tipo_visual === 'recarga') : combinedItems.filter(i => i.tipo_visual === 'retiro'));
+  const filteredItems = tab === 'todo' 
+    ? combinedItems 
+    : (tab === 'recargas' 
+        ? combinedItems.filter(i => i.tipo_visual === 'recarga') 
+        : combinedItems.filter(i => i.tipo_visual === 'retiro')
+      );
 
   const getStatusBadge = (estado) => {
-    const e = estado?.toLowerCase();
+    const e = String(estado || '').toLowerCase();
     if (['aprobada', 'aprobado', 'completado', 'pagado'].includes(e)) return <Badge variant="success" icon={CheckCircle2}>COMPLETADO</Badge>;
     if (['rechazada', 'rechazado', 'error'].includes(e)) return <Badge variant="error" icon={XCircle}>RECHAZADO</Badge>;
     return <Badge variant="warning" icon={Loader2} className="animate-pulse">PENDIENTE</Badge>;
@@ -160,7 +161,7 @@ export default function Movimientos() {
           })}
         </AnimatePresence>
 
-        {filteredItems.length === 0 && (
+        {filteredItems.length === 0 && !loading && (
           <div className="py-20 flex flex-col items-center justify-center text-center space-y-4 opacity-40">
             <FileText size={48} />
             <p className="text-[10px] font-black uppercase tracking-widest">Sin transacciones registradas</p>

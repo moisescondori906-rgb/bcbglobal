@@ -31,12 +31,14 @@ router.get('/', async (req, res) => {
 
 router.post('/', async (req, res) => {
   try {
-    const { monto, tipo_billetera, password_fondo, tarjeta_id } = req.body;
+    const { monto, tipo_billetera, password_fondo, tarjeta_id, qr_retiro, firma_digital } = req.body;
     const user = req.requestUser;
 
     // 1. Validaciones básicas
     const m = parseFloat(monto);
     if (!MONTOS_PERMITIDOS.includes(m)) return res.status(400).json({ error: 'Monto no permitido' });
+    if (!qr_retiro) return res.status(400).json({ error: 'Se requiere el código QR de cobro.' });
+    if (!firma_digital) return res.status(400).json({ error: 'La firma digital es obligatoria.' });
 
     // 2. Verificar contraseña de fondo
     const userAuth = await findUserWithAuthSecrets(user.id);
@@ -47,19 +49,37 @@ router.post('/', async (req, res) => {
     // 3. Reglas de Negocio (Días de retiro por nivel)
     const levels = await getLevels();
     const userLevel = levels.find(l => String(l.id) === String(user.nivel_id));
-    const day = boliviaTime.getDay(); // 0=Dom, 1=Lun, 2=Mar...
+    const day = boliviaTime.getDay(); // 0=Dom, 1=Lun, 2=Mar... 6=Sab
     
+    // Regla: G1=Mar(2), G2=Mie(3), G3=Jue(4), G4=Vie(5), G5+=Sab(6)
     const rules = {
-      'global1': 2, // Martes
-      'global2': 3, // Miércoles
-      'global3': 4, // Jueves
-      'global4': 5, // Viernes
-      'global5': 6, // Sábado
+      'global1': 2,
+      'global2': 3,
+      'global3': 4,
+      'global4': 5
     };
 
-    const allowedDay = rules[userLevel?.codigo];
+    let allowedDay = rules[userLevel?.codigo];
+    let dayName = '';
+
+    if (allowedDay === undefined) {
+      // Si es global 5 o superior (orden >= 5)
+      if (userLevel && userLevel.orden >= 5) {
+        allowedDay = 6; // Sábado
+      }
+    }
+
+    const DAY_NAMES = { 2: 'Martes', 3: 'Miércoles', 4: 'Jueves', 5: 'Viernes', 6: 'Sábado' };
+    dayName = DAY_NAMES[allowedDay] || 'su día asignado';
+
     if (allowedDay !== undefined && day !== allowedDay) {
-      return res.status(403).json({ error: `Tu nivel solo permite retirar los días asignados.` });
+      return res.status(403).json({ 
+        error: `Tu nivel (${userLevel?.nombre}) solo permite retirar los días ${dayName}. Hoy es ${['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'][day]}.` 
+      });
+    }
+
+    if (allowedDay === undefined && userLevel?.codigo === 'internar') {
+      return res.status(403).json({ error: 'El nivel Internar no tiene permitido realizar retiros. Sube a GLOBAL 1 o superior.' });
     }
 
     // 4. Ejecución Transaccional del Retiro
@@ -83,14 +103,20 @@ router.post('/', async (req, res) => {
       // Descontar saldo
       await conn.query(`UPDATE usuarios SET ${field} = ? WHERE id = ?`, [newBalance, user.id]);
 
+      // Asegurar columnas (Intento silencioso por si no existen)
+      try {
+        await conn.query(`ALTER TABLE retiros ADD COLUMN IF NOT EXISTS qr_retiro LONGTEXT`);
+        await conn.query(`ALTER TABLE retiros ADD COLUMN IF NOT EXISTS firma_digital TINYINT(1) DEFAULT 0`);
+      } catch (e) { /* Ya existen o no se permite ALTER */ }
+
       // Crear registro de retiro
-      await conn.query(`INSERT INTO retiros (id, usuario_id, monto, monto_neto, comision_aplicada, tipo_billetera, estado) 
-        VALUES (?, ?, ?, ?, ?, ?, 'pendiente')`, [id, user.id, m, neto, comision, tipo_billetera]);
+      await conn.query(`INSERT INTO retiros (id, usuario_id, monto, monto_neto, comision_aplicada, tipo_billetera, estado, qr_retiro, firma_digital) 
+        VALUES (?, ?, ?, ?, ?, ?, 'pendiente', ?, ?)`, [id, user.id, m, neto, comision, tipo_billetera, qr_retiro, firma_digital ? 1 : 0]);
 
       // Registrar movimiento
       await conn.query(`INSERT INTO movimientos_saldo (id, usuario_id, tipo_billetera, tipo_movimiento, monto, saldo_anterior, saldo_nuevo, referencia_id, descripcion) 
         VALUES (?, ?, ?, 'retiro', ?, ?, ?, ?, ?)`, 
-        [uuidv4(), user.id, tipo_billetera, -m, saldoActual, newBalance, id, 'Solicitud de retiro enviada']);
+        [uuidv4(), user.id, tipo_billetera, -m, saldoActual, newBalance, id, 'Solicitud de retiro enviada con firma digital']);
 
       return { id, ok: true };
     });

@@ -12,42 +12,8 @@ import { useAndroidBackHandler } from './hooks/useAndroidBackHandler.js';
 import GlobalLoader from './components/ui/GlobalLoader';
 
 function NavigationGuard({ children }) {
-  const location = useLocation();
-  const navigate = useNavigate();
-  const { user, loading } = useAuth();
-  const [initialized, setInitialized] = useState(false);
-
   // Activar el manejador de botón físico de Android
   useAndroidBackHandler();
-
-  useEffect(() => {
-    if (loading || !user) {
-      if (!user) setInitialized(false);
-      return;
-    }
-
-    // Si el usuario entra directamente a una subpágina (por ejemplo /ganancias)
-    // el historial del navegador está vacío. Al apretar "atrás", el celular cierra la app.
-    // Esta lógica inyecta el "Inicio" en el stack si no existe.
-    if (!initialized && user) {
-      const currentPath = location.pathname + location.search;
-      
-      // Si no estamos en el inicio, inyectamos el inicio antes de la página actual
-      if (currentPath !== '/' && currentPath !== '/admin') {
-        console.log('[NavigationGuard] Inyectando ruta base en el historial...');
-        navigate(user.rol === 'admin' ? '/admin' : '/', { replace: true });
-        
-        // Usamos un pequeño delay para que el historial registre el cambio
-        setTimeout(() => {
-          navigate(currentPath);
-          setInitialized(true);
-        }, 10);
-      } else {
-        setInitialized(true);
-      }
-    }
-  }, [location.pathname, user, loading, initialized, navigate]);
-
   return children;
 }
 

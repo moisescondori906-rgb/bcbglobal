@@ -18,7 +18,7 @@ export const useAndroidBackHandler = (activeTask, onCloseTask) => {
     const backButtonListener = App.addListener('backButton', ({ canGoBack }) => {
       const path = location.pathname;
 
-      console.log(`[AndroidBack] Botón presionado en ruta: ${path}`);
+      console.log(`[AndroidBack] Botón presionado en ruta: ${path}, canGoBack: ${canGoBack}`);
 
       // 1. Prioridad: Cerrar tarea activa si existe
       if (activeTask && onCloseTask) {
@@ -27,48 +27,26 @@ export const useAndroidBackHandler = (activeTask, onCloseTask) => {
         return;
       }
 
-      // 2. Mapeo de rutas internas (Subpantallas -> Pantalla lógica anterior)
-      const internalMapping = {
-        '/invitar': '/equipo',
-        '/seguridad': '/usuario',
-        '/vincular-tarjeta': '/usuario',
-        '/cambiar-contrasena': '/seguridad',
-        '/cambiar-contrasena-fondo': '/seguridad',
-        '/registro-facturacion': '/usuario',
-        '/retiro': '/usuario',
-        '/recargar': '/usuario',
-        '/tareas': '/', // Si existe una sala de tareas independiente
-      };
-
-      if (internalMapping[path]) {
-        console.log(`[AndroidBack] Redirigiendo de ${path} a ${internalMapping[path]}`);
-        navigate(internalMapping[path]);
-        return;
-      }
-
-      // 3. Pestañas principales del menú inferior (Cualquiera -> Inicio)
-      const mainTabs = ['/equipo', '/vip', '/ganancias', '/usuario'];
-      if (mainTabs.includes(path)) {
-        console.log(`[AndroidBack] Pestaña principal detectada. Volviendo a Inicio.`);
-        navigate('/', { replace: true });
-        return;
-      }
-
-      // 4. Pantalla de Inicio (Inicio -> Salir de la App)
+      // 2. Pantalla de Inicio (Inicio -> Salir de la App)
+      // Si estamos en el Dashboard de usuario o admin, salimos.
       if (path === '/' || path === '/admin') {
         console.log('[AndroidBack] En Inicio. Saliendo de la aplicación...');
         App.exitApp();
         return;
       }
 
-      // 5. Comportamiento por defecto: Intentar volver atrás en el historial
+      // 3. Comportamiento por defecto: Intentar volver atrás en el historial
+      // Si canGoBack es true (Capacitor detecta historial), usamos back()
       if (canGoBack) {
         console.log('[AndroidBack] Usando historial de navegación...');
         window.history.back();
       } else {
-        // Fallback final: si no hay historial, volver al inicio
-        console.log('[AndroidBack] Sin historial. Forzando Inicio.');
-        navigate('/', { replace: true });
+        // 4. Fallback inteligente: si no hay historial, volver al inicio en lugar de cerrar la app
+        // Esto previene que entrar directo a una subruta y dar atrás cierre la app.
+        console.log('[AndroidBack] Sin historial. Forzando navegación a Inicio.');
+        // Verificamos si es admin para enviarlo a su inicio correcto
+        const isAdmin = path.startsWith('/admin');
+        navigate(isAdmin ? '/admin' : '/', { replace: true });
       }
     });
 

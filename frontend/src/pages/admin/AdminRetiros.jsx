@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { api } from '../../lib/api.js';
 import { Wallet, CheckCircle2, XCircle, Clock, ExternalLink, User, ShieldCheck } from 'lucide-react';
+import { Badge } from '../../components/ui/Badge.jsx';
 
 export default function AdminRetiros() {
   const [list, setList] = useState([]);
@@ -59,8 +60,21 @@ export default function AdminRetiros() {
             {Array.isArray(list) && list.map((r) => (
               <tr key={r.id} className="hover:bg-gray-50/50 transition-colors">
                 <td className="p-6">
-                  <p className="font-bold text-gray-800 text-sm uppercase tracking-tighter">{r.usuario?.nombre_usuario || 'Usuario'}</p>
-                  <p className="text-[10px] text-gray-400 font-medium">ID: {r.id?.slice(0, 8)}</p>
+                  <div className="flex items-center gap-3">
+                    <div>
+                      <p className="font-bold text-gray-800 text-sm uppercase tracking-tighter">{r.usuario?.nombre_usuario || 'Usuario'}</p>
+                      <p className="text-[10px] text-gray-400 font-medium">ID: {r.id?.slice(0, 8)}</p>
+                    </div>
+                    {r.firma_digital ? (
+                      <Badge variant="success" className="bg-blue-100 text-blue-700 border-blue-200">
+                        <ShieldCheck size={10} className="mr-1" /> FIRMA OK
+                      </Badge>
+                    ) : (
+                      <Badge variant="error" className="bg-red-100 text-red-700 border-red-200">
+                        SIN FIRMA
+                      </Badge>
+                    )}
+                  </div>
                 </td>
                 <td className="p-6">
                   <span className="text-lg font-black text-sav-primary">{r.monto?.toFixed(2)} BOB</span>

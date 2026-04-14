@@ -23,9 +23,29 @@ export default function Team() {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    api.users.teamReport()
-      .then(setData)
-      .finally(() => setLoading(false));
+    let isMounted = true;
+    const fetchTeam = () => {
+      if (!data) setLoading(true);
+      api.users.teamReport()
+        .then(res => {
+          if (isMounted) setData(res);
+        })
+        .catch(err => {
+          console.error('Error fetching team:', err);
+          if (isMounted) setData({ resumen: {}, niveles: [] });
+        })
+        .finally(() => {
+          if (isMounted) setLoading(false);
+        });
+    };
+
+    fetchTeam();
+    const interval = setInterval(fetchTeam, 30000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
   }, []);
 
   const handleCopy = () => {
