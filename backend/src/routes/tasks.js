@@ -114,7 +114,9 @@ router.post('/:id/responder', async (req, res) => {
 
     // Acreditación Transaccional e Idempotente
     if (user.id === DEMO_USER_ID) {
-      return res.json({ success: true, monto: 1.80 }); // Monto fijo para demo
+      const levels = await getLevels();
+      const level = levels.find(l => String(l.codigo) === 'global1') || levels[1] || { ganancia_tarea: 1.80 };
+      return res.json({ success: true, monto: Number(level.ganancia_tarea) });
     }
     const result = await completeTask(user.id, task.id);
     

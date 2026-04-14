@@ -126,7 +126,8 @@ export default function TaskRoom() {
     );
   }
 
-  if ((error || data?.bloqueado) && !activeTask) {
+  if ((error || data?.bloqueado || (data && !data.tareas_restantes && data.num_tareas_diarias === 0)) && !activeTask) {
+    const isLevelBlocked = data && !data.tareas_restantes && data.num_tareas_diarias === 0;
     return (
       <Layout>
         <div className="p-6 flex flex-col items-center justify-center min-h-[70vh] text-center space-y-8">
@@ -138,16 +139,16 @@ export default function TaskRoom() {
             </div>
             <div className="space-y-2">
               <h2 className="text-2xl font-black uppercase tracking-tight text-white leading-none">
-                Acceso Restringido
+                {isLevelBlocked ? 'Sube de Nivel' : 'Acceso Restringido'}
               </h2>
               <p className="text-[10px] font-bold text-sav-muted uppercase tracking-widest leading-relaxed max-w-[250px]">
-                {error || data?.mensaje || 'Las tareas no están disponibles en este momento.'}
+                {error || data?.mensaje || (isLevelBlocked ? 'Tu nivel actual no tiene tareas disponibles. Adquiere un nivel GLOBAL para comenzar.' : 'Las tareas no están disponibles en este momento.')}
               </p>
             </div>
             <Button onClick={() => navigate('/')} variant="outline" className="border-white/10 text-[10px] h-12 uppercase tracking-widest">Volver al Inicio</Button>
           </Card>
           
-          {data?.bloqueado && (
+          {(data?.bloqueado || isLevelBlocked) && (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="w-full">
               <Link to="/vip" className="w-full">
                 <Button variant="primary" className="shadow-sav-glow text-[10px] h-14 uppercase tracking-widest">Mejorar a VIP ahora</Button>

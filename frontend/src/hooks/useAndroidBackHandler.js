@@ -8,8 +8,8 @@ export function useAndroidBackHandler(isModalOpen, onModalClose) {
   const location = useLocation();
 
   useEffect(() => {
-    const rootPages = ['/', '/dashboard', '/login', '/register', '/admin'];
-    const isRoot = rootPages.includes(location.pathname) || location.pathname === '/admin/';
+    const rootPages = ['/', '/dashboard', '/login', '/register', '/admin', '/admin/'];
+    const isRoot = rootPages.includes(location.pathname);
 
     const handleBack = () => {
       // Si hay un modal o vista activa (como una tarea abierta), la cerramos primero
@@ -24,7 +24,9 @@ export function useAndroidBackHandler(isModalOpen, onModalClose) {
       if (window.history.length > 1) {
         window.history.back();
       } else {
-        navigate('/', { replace: true });
+        // Fallback seguro al inicio según el rol
+        const isAppAdmin = location.pathname.startsWith('/admin');
+        navigate(isAppAdmin ? '/admin' : '/', { replace: true });
       }
     };
 
