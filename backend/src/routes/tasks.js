@@ -21,13 +21,19 @@ router.get('/', async (req, res) => {
 
     // MODO DEMO: Bypass si el ID es el de demo
     if (user.id === DEMO_USER_ID) {
+      const levels = await getLevels();
+      const level = levels.find(l => String(l.id) === String(user.nivel_id)) || { nombre: 'Global 1', ganancia_tarea: 1.80 };
+      const reward = Number(level.ganancia_tarea);
+      
       return res.json({
-        nivel: 'Global 1',
+        nivel: level.nombre,
         tareas_restantes: 4,
         tareas_completadas: 0,
+        ingreso_diario: Number((4 * reward).toFixed(2)),
+        ganancia_tarea: reward,
         tareas: [
-          { id: 't1', nombre: 'Tarea Demo 1', recompensa: 1.80, video_url: '/video/adidas1.mp4', descripcion: 'Visualización demo', pregunta: '¿Marca?', opciones: ['A', 'B'] },
-          { id: 't2', nombre: 'Tarea Demo 2', recompensa: 1.80, video_url: '/video/nike1.mp4', descripcion: 'Visualización demo', pregunta: '¿Marca?', opciones: ['A', 'B'] }
+          { id: 't1', nombre: 'Tarea Demo 1', ganancia_tarea: reward, video_url: '/video/adidas1.mp4', descripcion: 'Visualización demo', pregunta: '¿Marca?', opciones: ['A', 'B'] },
+          { id: 't2', nombre: 'Tarea Demo 2', ganancia_tarea: reward, video_url: '/video/nike1.mp4', descripcion: 'Visualización demo', pregunta: '¿Marca?', opciones: ['A', 'B'] }
         ]
       });
     }

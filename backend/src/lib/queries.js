@@ -729,7 +729,7 @@ export async function getDashboardStats() {
   const [userCount, rechargeTotal, withdrawalTotal, activeTasks] = await Promise.all([
     queryOne(`SELECT COUNT(*) as total FROM usuarios WHERE rol = 'usuario'`),
     queryOne(`SELECT SUM(monto) as total FROM recargas WHERE estado = 'aprobada'`),
-    queryOne(`SELECT SUM(monto) as total FROM retiros WHERE estado = 'pagado'`),
+    queryOne(`SELECT SUM(monto) as total FROM retiros WHERE estado = 'completado'`),
     queryOne(`SELECT COUNT(*) as total FROM actividad_tareas WHERE fecha_dia = ?`, [boliviaTime.todayStr()])
   ]);
 
