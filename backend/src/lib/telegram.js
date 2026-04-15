@@ -1,20 +1,12 @@
-import TelegramBot from 'node-telegram-bot-api';
+import { bot } from '../services/telegramBot.js';
 import { query, queryOne, transaction } from '../config/db.js';
 import { boliviaTime } from '../lib/queries.js';
 import logger from '../lib/logger.js';
 import { CronJob } from 'cron';
 
-const token = process.env.TELEGRAM_BOT_TOKEN;
-if (!token) {
-  logger.warn('⚠️ TELEGRAM_BOT_TOKEN no configurado. El sistema de Telegram no funcionará.');
-}
-
-const bot = token ? new TelegramBot(token, { polling: true }) : null;
-
 /**
  * Lógica Central de Telegram: UN CASO = UN RESPONSABLE. BLOQUEO TOTAL.
  */
-
 if (bot) {
   // --- MIDDLEWARE DE VALIDACIÓN DE INTEGRANTE ---
   const validateMember = async (msg) => {

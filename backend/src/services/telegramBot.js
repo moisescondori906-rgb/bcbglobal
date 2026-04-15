@@ -2,40 +2,44 @@ import TelegramBot from 'node-telegram-bot-api';
 import 'dotenv/config';
 import logger from '../lib/logger.js';
 
+if (!process.env.TELEGRAM_BOT_TOKEN) {
+  console.error("ERROR: TELEGRAM_BOT_TOKEN no definido");
+}
+
 const token = process.env.TELEGRAM_BOT_TOKEN;
-let bot = null;
+export let bot = null;
 
 /**
  * Inicializa el bot de Telegram (Un solo bot para todos los grupos)
  */
 export const initTelegramBot = () => {
   if (!token) {
-    logger.error('❌ TELEGRAM_BOT_TOKEN no configurado. El sistema de Telegram no funcionará.');
     return null;
   }
 
   try {
-    bot = new TelegramBot(token, { polling: true });
-    console.log("Telegram bot iniciado correctamente");
+    if (!bot) {
+      bot = new TelegramBot(token, { polling: true });
+      console.log("Telegram bot iniciado correctamente");
+    }
     return bot;
   } catch (error) {
-    logger.error(`❌ Error al inicializar Telegram bot: ${error.message}`);
+    console.error(`❌ Error al inicializar Telegram bot: ${error.message}`);
     return null;
   }
 };
+
+// Auto-inicializar al importar
+initTelegramBot();
 
 /**
  * Función genérica para enviar mensajes HTML
  */
 export const sendMessage = async (chatId, message) => {
   if (!bot) {
-    logger.warn('⚠️ Intento de enviar mensaje de Telegram sin bot inicializado');
-    return false;
-  }
-
-  if (!chatId) {
-    logger.warn('⚠️ Intento de enviar mensaje de Telegram sin chatId');
-    return false;
+    // Intentar re-inicializar si bot es null
+    initTelegramBot();
+    if (!bot) return false;
   }
 
   try {

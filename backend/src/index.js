@@ -19,7 +19,8 @@ import adminRoutes from './routes/admin.js';
 import telegramAdminRoutes from './routes/telegram_admin.js';
 import sorteoRoutes from './routes/sorteo.js';
 import telegramWebhookRoutes from './routes/telegram_webhook.js';
-import { initTelegramBot } from './services/telegramBot.js';
+// Importar bot de telegram para inicialización automática
+import './services/telegramBot.js';
 import { preloadConfig, preloadLevels } from './lib/queries.js';
 import { query } from './config/db.js';
 import { rateLimiter } from './middleware/rateLimiter.js';
@@ -175,13 +176,6 @@ const startServer = async () => {
       preloadConfig().catch(() => {});
       preloadLevels().catch(() => {});
     }, 5 * 60 * 1000);
-    
-    // 3. Inicializar Bot de Telegram (Servicio Centralizado)
-    try {
-      initTelegramBot();
-    } catch (e) {
-      logger.error(`[TELEGRAM] Error al iniciar bot: ${e.message}`);
-    }
     
     // Importar lógica de telegram (mantenemos compatibilidad con el archivo existente si es necesario)
     try {

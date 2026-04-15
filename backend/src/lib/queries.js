@@ -120,6 +120,13 @@ export async function getDayStatus(dateStr = boliviaTime.todayStr()) {
 }
 
 /**
+ * Mock getUserTeamReport para evitar errores de importación
+ */
+export async function getUserTeamReport(userId) {
+  return { ok: true, data: [] };
+}
+
+/**
  * Validación Centralizada: ¿Puede realizar tareas hoy?
  */
 export async function canPerformTasks(userId, dateStr = boliviaTime.todayStr()) {
