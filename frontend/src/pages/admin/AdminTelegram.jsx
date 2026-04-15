@@ -23,7 +23,14 @@ import { cn } from '../../lib/utils/cn';
 export default function AdminTelegram() {
   const [equipos, setEquipos] = useState([]);
   const [integrantes, setIntegrantes] = useState([]);
-  const [horarios, setHorarios] = useState({ hora_inicio: '08:00', hora_fin: '22:00', dias_operativos: [1,2,3,4,5,6,7] });
+  const [horarios, setHorarios] = useState({ 
+    hora_inicio: '08:00', 
+    hora_fin: '22:00', 
+    dias_operativos: [1,2,3,4,5,6,7],
+    activo: true,
+    visibilidad_numero: 'parcial'
+  });
+  const [historial, setHistorial] = useState([]);
   const [loading, setLoading] = useState(true);
   
   // Modales y Edición
@@ -42,14 +49,21 @@ export default function AdminTelegram() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [e, i, h] = await Promise.all([
+      const [e, i, h, log] = await Promise.all([
         api.admin.telegram.equipos(),
         api.admin.telegram.integrantes(),
-        api.admin.telegram.horarios()
+        api.admin.telegram.horarios(),
+        api.admin.telegram.historial()
       ]);
       setEquipos(e);
       setIntegrantes(i);
-      if (h) setHorarios({ ...h, dias_operativos: typeof h.dias_operativos === 'string' ? JSON.parse(h.dias_operativos) : h.dias_operativos });
+      setHistorial(log || []);
+      if (h) setHorarios({ 
+        ...h, 
+        dias_operativos: typeof h.dias_operativos === 'string' ? JSON.parse(h.dias_operativos) : h.dias_operativos,
+        activo: !!h.activo,
+        visibilidad_numero: h.visibilidad_numero || 'parcial'
+      });
     } catch (err) {
       console.error(err);
     } finally {
@@ -262,10 +276,32 @@ export default function AdminTelegram() {
           <Card className="p-6 border-none shadow-xl bg-white space-y-6">
             <div className="flex items-center gap-3">
               <Clock className="text-indigo-600" size={20} />
-              <h3 className="text-xs font-black uppercase tracking-widest text-gray-800">Horario Operativo QR</h3>
+              <h3 className="text-xs font-black uppercase tracking-widest text-gray-800">Configuración Operativa</h3>
             </div>
             
             <div className="space-y-4">
+              <label className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 border border-gray-100 cursor-pointer">
+                <input 
+                  type="checkbox" 
+                  checked={horarios.activo} 
+                  onChange={e => setHorarios({...horarios, activo: e.target.checked})}
+                  className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500" 
+                />
+                <span className="text-[10px] font-black text-gray-700 uppercase">Sistema QR Habilitado</span>
+              </label>
+
+              <div className="space-y-2">
+                <label className="text-[9px] font-black text-gray-400 uppercase ml-2">Visibilidad Número (Secretaría)</label>
+                <select 
+                  value={horarios.visibilidad_numero}
+                  onChange={e => setHorarios({...horarios, visibilidad_numero: e.target.value})}
+                  className="w-full px-4 py-3 rounded-xl bg-gray-50 border-2 border-gray-50 text-xs font-bold outline-none focus:border-indigo-100 transition-all"
+                >
+                  <option value="completo">NÚMERO COMPLETO</option>
+                  <option value="parcial">PARCIALMENTE OCULTO (****)</option>
+                </select>
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-[9px] font-black text-gray-400 uppercase ml-2">Inicio</label>
@@ -312,6 +348,30 @@ export default function AdminTelegram() {
               <Button onClick={handleSaveHorarios} className="w-full h-11 text-[10px] uppercase font-black tracking-widest">
                 <Settings size={14} className="mr-2" /> Guardar Configuración
               </Button>
+            </div>
+          </Card>
+
+          <Card className="p-6 border-none shadow-xl bg-white overflow-hidden">
+            <div className="flex items-center gap-3 mb-6">
+              <Clock className="text-indigo-600" size={20} />
+              <h3 className="text-xs font-black uppercase tracking-widest text-gray-800">Historial Operativo</h3>
+            </div>
+            <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+              {historial.map(log => (
+                <div key={log.id} className="p-3 rounded-xl bg-gray-50 border border-gray-100 space-y-1">
+                  <div className="flex justify-between items-center">
+                    <Badge variant={log.accion === 'aceptar' ? 'success' : (log.accion === 'rechazar' ? 'error' : 'info')} className="text-[8px]">
+                      {log.accion.toUpperCase()}
+                    </Badge>
+                    <span className="text-[8px] font-bold text-gray-400">{new Date(log.fecha).toLocaleString()}</span>
+                  </div>
+                  <p className="text-[10px] font-black text-gray-700 uppercase">
+                    {log.operador_nombre}
+                  </p>
+                  <p className="text-[9px] text-gray-400 font-mono truncate">Ref: {log.referencia_id}</p>
+                </div>
+              ))}
+              {historial.length === 0 && <p className="text-[10px] text-center text-gray-400 py-4 font-bold uppercase">Sin actividad reciente</p>}
             </div>
           </Card>
         </div>

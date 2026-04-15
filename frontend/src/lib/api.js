@@ -288,5 +288,17 @@ export const api = {
     mensajes: () => request('/admin/mensajes'),
     crearMensaje: (data) => request('/admin/mensajes', { method: 'POST', body: JSON.stringify(data) }),
     eliminarMensaje: (id) => request(`/admin/mensajes/${id}`, { method: 'DELETE' }),
+    telegram: {
+      equipos: () => request('/admin/telegram/equipos'),
+      crearEquipo: (data) => request('/admin/telegram/equipos', { method: 'POST', body: JSON.stringify(data) }),
+      updateEquipo: (id, data) => request(`/admin/telegram/equipos/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+      eliminarEquipo: (id) => request(`/admin/telegram/equipos/${id}`, { method: 'DELETE' }),
+      integrantes: () => request('/admin/telegram/integrantes'),
+      crearIntegrante: (data) => request('/admin/telegram/integrantes', { method: 'POST', body: JSON.stringify(data) }),
+      updateIntegrante: (id, data) => request(`/admin/telegram/integrantes/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+      eliminarIntegrante: (id) => request(`/admin/telegram/integrantes/${id}`, { method: 'DELETE' }),
+      horarios: () => request('/admin/telegram/horarios'),
+      updateHorarios: (data) => request('/admin/telegram/horarios', { method: 'PUT', body: JSON.stringify(data) }),
+    }
   },
 };

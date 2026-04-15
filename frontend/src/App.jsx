@@ -76,6 +76,7 @@ const AdminCuestionario = lazyWithRetry(() => import('./pages/admin/AdminCuestio
 const AdminRanking = lazyWithRetry(() => import('./pages/admin/AdminRanking.jsx'));
 const AdminRecompensas = lazyWithRetry(() => import('./pages/admin/AdminRecompensas.jsx'));
 const AdminCalendario = lazyWithRetry(() => import('./pages/admin/AdminCalendario.jsx'));
+const AdminTelegram = lazyWithRetry(() => import('./pages/admin/AdminTelegram.jsx'));
 
 function PrivateRoute({ children, adminOnly }) {
   const { user, loading } = useAuth();
@@ -120,6 +121,7 @@ function AppRoutes() {
           <Route path="banners" element={<AdminBanners />} />
           <Route path="metodos-qr" element={<AdminMetodosQr />} />
           <Route path="recompensas" element={<AdminRecompensas />} />
+          <Route path="telegram" element={<AdminTelegram />} />
           <Route path="admins" element={<AdminAdmins />} />
           <Route path="calendario" element={<AdminCalendario />} />
           <Route path="cuestionarios" element={<AdminCuestionario />} />
