@@ -111,6 +111,17 @@ if (bot) {
             WHERE referencia_id = ?
           `, [telegramUserId, boliviaTime.now(), String(message.message_id), refId]);
 
+          // ACTUALIZAR TABLA OPERATIVA REAL
+          const table = caso.tipo_operacion === 'retiro' ? 'retiros' : 'recargas';
+          await conn.query(`
+            UPDATE ${table} 
+            SET estado_operativo = 'tomado', 
+                tomado_por_telegram_user_id = ?, 
+                tomado_por_nombre = ?, 
+                tomado_en = ?
+            WHERE id = ?
+          `, [telegramUserId, member.nombre_visible, boliviaTime.now(), refId]);
+
           await bot.answerCallbackQuery(callbackQuery.id, { text: '✅ Caso tomado. Eres el único responsable.' });
           await updateTelegramMessage(bot, message, 'tomado', member.nombre_visible, refId);
         }
@@ -129,8 +140,25 @@ if (bot) {
           
           // Actualizar tabla real del sistema
           await conn.query(
-            `UPDATE ${table} SET estado = ?, procesado_por_telegram = ?, procesado_at = ? WHERE id = ?`,
-            [action === 'aceptar' ? (table === 'retiros' ? 'pagado' : 'aprobada') : 'rechazada', telegramUserId, boliviaTime.now(), refId]
+            `UPDATE ${table} SET 
+              estado = ?, 
+              procesado_por_telegram = ?, 
+              procesado_at = ?,
+              estado_operativo = ?,
+              resuelto_por_telegram_user_id = ?,
+              resuelto_por_nombre = ?,
+              resuelto_en = ?
+             WHERE id = ?`,
+            [
+              action === 'aceptar' ? (table === 'retiros' ? 'pagado' : 'aprobada') : 'rechazada', 
+              telegramUserId, 
+              boliviaTime.now(),
+              action === 'aceptar' ? 'aceptado' : 'rechazado',
+              telegramUserId,
+              member.nombre_visible,
+              boliviaTime.now(),
+              refId
+            ]
           );
 
           // Marcar como resuelto en bloqueo
@@ -218,6 +246,9 @@ export async function sendTelegramAlert(tipo, data) {
   if (!bot) return;
 
   try {
+    const { refId, usuario, monto, nivel, extraInfo = '' } = data;
+    const time = boliviaTime.getTimeString();
+    
     // 1. Obtener Configuración de Visibilidad
     const config = await queryOne('SELECT visibilidad_numero FROM telegram_config_horarios WHERE id = 1');
     const visibilidad = config?.visibilidad_numero || 'parcial';

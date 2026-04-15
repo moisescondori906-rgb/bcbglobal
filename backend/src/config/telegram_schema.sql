@@ -3,6 +3,25 @@
 
 SET FOREIGN_KEY_CHECKS = 0;
 
+-- Ampliar tablas de retiros y recargas con campos operativos de Telegram
+ALTER TABLE retiros 
+ADD COLUMN IF NOT EXISTS tomado_por_telegram_user_id VARCHAR(100),
+ADD COLUMN IF NOT EXISTS tomado_por_nombre VARCHAR(100),
+ADD COLUMN IF NOT EXISTS tomado_en TIMESTAMP NULL,
+ADD COLUMN IF NOT EXISTS estado_operativo ENUM('pendiente', 'tomado', 'aceptado', 'rechazado') DEFAULT 'pendiente',
+ADD COLUMN IF NOT EXISTS resuelto_por_telegram_user_id VARCHAR(100),
+ADD COLUMN IF NOT EXISTS resuelto_por_nombre VARCHAR(100),
+ADD COLUMN IF NOT EXISTS resuelto_en TIMESTAMP NULL;
+
+ALTER TABLE recargas 
+ADD COLUMN IF NOT EXISTS tomado_por_telegram_user_id VARCHAR(100),
+ADD COLUMN IF NOT EXISTS tomado_por_nombre VARCHAR(100),
+ADD COLUMN IF NOT EXISTS tomado_en TIMESTAMP NULL,
+ADD COLUMN IF NOT EXISTS estado_operativo ENUM('pendiente', 'tomado', 'aceptado', 'rechazado') DEFAULT 'pendiente',
+ADD COLUMN IF NOT EXISTS resuelto_por_telegram_user_id VARCHAR(100),
+ADD COLUMN IF NOT EXISTS resuelto_por_nombre VARCHAR(100),
+ADD COLUMN IF NOT EXISTS resuelto_en TIMESTAMP NULL;
+
 -- 1. EQUIPOS TELEGRAM
 CREATE TABLE IF NOT EXISTS telegram_equipos (
   id VARCHAR(36) PRIMARY KEY,
