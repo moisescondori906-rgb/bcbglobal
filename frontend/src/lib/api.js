@@ -3,10 +3,22 @@ const isProd = import.meta.env.PROD;
 const VITE_API_URL = import.meta.env.VITE_API_URL;
 const VITE_BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
-// URL base del API - REQUIERE configuración en .env
+// Validación de seguridad en producción: No permitir fallbacks accidentales a localhost
+if (isProd) {
+  if (!VITE_API_URL) {
+    console.error('❌ ERROR CRÍTICO: VITE_API_URL no está configurada en el entorno de producción.');
+    throw new Error('Configuración de API faltante. Por favor, contacta al administrador.');
+  }
+  if (!VITE_BACKEND_URL) {
+    console.error('❌ ERROR CRÍTICO: VITE_BACKEND_URL no está configurada en el entorno de producción.');
+    throw new Error('Configuración de Backend faltante. Por favor, contacta al administrador.');
+  }
+}
+
+// URL base del API - En desarrollo cae a localhost
 const API = VITE_API_URL || 'http://localhost:4000/api';
 
-// Dominio base del backend para medios (videos/imágenes) - REQUIERE configuración en .env
+// Dominio base del backend para medios (videos/imágenes) - En desarrollo cae a localhost
 const BACKEND_URL = VITE_BACKEND_URL || 'http://localhost:4000';
 
 function getToken() {
@@ -211,7 +223,7 @@ export const api = {
     crearTarea: (data) => request('/admin/tareas', { method: 'POST', body: JSON.stringify(data) }),
     actualizarTarea: (id, data) => request(`/admin/tareas/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
     eliminarTarea: (id) => request(`/admin/tareas/${id}`, { method: 'DELETE' }),
-    subirVideoTarea: async (file, onProgress) => {
+    subirVideoTarea: async (file) => {
       const formData = new FormData();
       formData.append('video', file);
       const token = getToken();

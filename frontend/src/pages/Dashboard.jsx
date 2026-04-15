@@ -37,6 +37,12 @@ import FloatingQuestionnaire from '../components/FloatingQuestionnaire';
 import GlobalLoader from '../components/ui/GlobalLoader';
 import DownloadButton from '../components/DownloadButton';
 
+// Helper para obtener la fecha actual en zona horaria Bolivia
+const getBoliviaDate = (date = new Date()) => {
+  const boliviaTime = date.toLocaleString('en-US', { timeZone: 'America/La_Paz' });
+  return new Date(boliviaTime);
+};
+
 export default function Dashboard() {
   const { user } = useAuth();
   const [stats, setStats] = useState({ ingresos_hoy: 0, total_acumulado: 0 });

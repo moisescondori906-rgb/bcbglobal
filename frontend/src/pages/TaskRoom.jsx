@@ -18,6 +18,12 @@ import { Card } from '../components/ui/Card.jsx';
 import { Button } from '../components/ui/Button.jsx';
 import { Badge } from '../components/ui/Badge.jsx';
 
+// Helper para obtener la fecha actual en zona horaria Bolivia
+const getBoliviaDate = (date = new Date()) => {
+  const boliviaTime = date.toLocaleString('en-US', { timeZone: 'America/La_Paz' });
+  return new Date(boliviaTime);
+};
+
 export default function TaskRoom() {
   const navigate = useNavigate();
   const { user, refreshUser } = useAuth();
@@ -58,8 +64,9 @@ export default function TaskRoom() {
   useEffect(() => {
     fetchTasks();
     const interval = setInterval(() => {
+      // Usar getBoliviaDate para asegurar consistencia si se llegara a usar para lógica de tiempo local
       if (document.visibilityState === 'visible' && !activeTask) fetchTasks();
-    }, 20000);
+    }, 60000); // Polling cada 60s en lugar de 20s para reducir carga de red
     return () => clearInterval(interval);
   }, [activeTask]);
 
