@@ -60,6 +60,8 @@ CREATE TABLE IF NOT EXISTS telegram_config_horarios (
   hora_inicio TIME DEFAULT '08:00:00',
   hora_fin TIME DEFAULT '22:00:00',
   dias_operativos JSON, -- [1,2,3,4,5,6,7] donde 1=Lunes, 7=Domingo
+  activo TINYINT(1) DEFAULT 1,
+  visibilidad_numero ENUM('completo', 'parcial') DEFAULT 'parcial', -- Configuración para Secretaría
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

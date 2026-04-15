@@ -120,7 +120,7 @@ router.get('/horarios', async (req, res) => {
   try {
     let config = await queryOne('SELECT * FROM telegram_config_horarios WHERE id = 1');
     if (!config) {
-      await query('INSERT INTO telegram_config_horarios (id, hora_inicio, hora_fin, dias_operativos) VALUES (1, "08:00:00", "22:00:00", "[1,2,3,4,5,6,7]")');
+      await query('INSERT INTO telegram_config_horarios (id, hora_inicio, hora_fin, dias_operativos, activo, visibilidad_numero) VALUES (1, "08:00:00", "22:00:00", "[1,2,3,4,5,6,7]", 1, "parcial")');
       config = await queryOne('SELECT * FROM telegram_config_horarios WHERE id = 1');
     }
     res.json(config);
@@ -131,12 +131,30 @@ router.get('/horarios', async (req, res) => {
 
 router.put('/horarios', async (req, res) => {
   try {
-    const { hora_inicio, hora_fin, dias_operativos } = req.body;
+    const { hora_inicio, hora_fin, dias_operativos, activo, visibilidad_numero } = req.body;
     await query(`
-      UPDATE telegram_config_horarios SET hora_inicio = ?, hora_fin = ?, dias_operativos = ?
+      UPDATE telegram_config_horarios 
+      SET hora_inicio = ?, hora_fin = ?, dias_operativos = ?, activo = ?, visibilidad_numero = ?
       WHERE id = 1
-    `, [hora_inicio, hora_fin, JSON.stringify(dias_operativos)]);
+    `, [hora_inicio, hora_fin, JSON.stringify(dias_operativos), activo ? 1 : 0, visibilidad_numero || 'parcial']);
     res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// --- HISTORIAL OPERATIVO ---
+
+router.get('/historial', async (req, res) => {
+  try {
+    const logs = await query(`
+      SELECT l.*, i.nombre_visible as operador_nombre
+      FROM telegram_operaciones_log l
+      LEFT JOIN telegram_integrantes i ON l.telegram_user_id = i.telegram_user_id
+      ORDER BY l.fecha DESC
+      LIMIT 100
+    `);
+    res.json(logs);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
