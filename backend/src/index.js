@@ -18,6 +18,7 @@ import adminRoutes from './routes/admin.js';
 import telegramAdminRoutes from './routes/telegram_admin.js';
 import sorteoRoutes from './routes/sorteo.js';
 import telegramWebhookRoutes from './routes/telegram_webhook.js';
+import { initTelegramBot } from './services/telegramBot.js';
 import { preloadConfig, preloadLevels } from './lib/queries.js';
 import { query } from './config/db.js';
 import { rateLimiter } from './middleware/rateLimiter.js';
@@ -173,13 +174,18 @@ const startServer = async () => {
       preloadLevels().catch(() => {});
     }, 5 * 60 * 1000);
     
-    // 3. Inicializar Bot de Telegram (Polling Interno)
+    // 3. Inicializar Bot de Telegram (Servicio Centralizado)
     try {
-      await import('./lib/telegram.js');
-      logger.info('[TELEGRAM] Sistema de Operaciones iniciado.');
+      initTelegramBot();
     } catch (e) {
       logger.error(`[TELEGRAM] Error al iniciar bot: ${e.message}`);
     }
+    
+    // Importar lógica de telegram (mantenemos compatibilidad con el archivo existente si es necesario)
+    try {
+      await import('./lib/telegram.js');
+      logger.info('[TELEGRAM] Lógica de Operaciones cargada.');
+    } catch (e) {}
     
     app.listen(PORT, async () => {
       console.log(`\n[SUCCESS] ¡Servidor Global API escuchando en http://localhost:${PORT}!\n`);
