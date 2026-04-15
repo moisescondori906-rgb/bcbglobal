@@ -6,20 +6,22 @@ const VITE_BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 // Validación de seguridad en producción: No permitir fallbacks accidentales a localhost
 if (isProd) {
   if (!VITE_API_URL) {
-    console.error('❌ ERROR CRÍTICO: VITE_API_URL no está configurada en el entorno de producción.');
-    throw new Error('Configuración de API faltante. Por favor, contacta al administrador.');
+    const errorMsg = '❌ ERROR CRÍTICO: VITE_API_URL no está configurada en el entorno de producción.';
+    console.error(errorMsg);
+    throw new Error(errorMsg);
   }
   if (!VITE_BACKEND_URL) {
-    console.error('❌ ERROR CRÍTICO: VITE_BACKEND_URL no está configurada en el entorno de producción.');
-    throw new Error('Configuración de Backend faltante. Por favor, contacta al administrador.');
+    const errorMsg = '❌ ERROR CRÍTICO: VITE_BACKEND_URL no está configurada en el entorno de producción.';
+    console.error(errorMsg);
+    throw new Error(errorMsg);
   }
 }
 
-// URL base del API - En desarrollo cae a localhost
-const API = VITE_API_URL || 'http://localhost:4000/api';
+// URL base del API - SOLO permite fallback a localhost en desarrollo
+const API = isProd ? VITE_API_URL : (VITE_API_URL || 'http://localhost:4000/api');
 
-// Dominio base del backend para medios (videos/imágenes) - En desarrollo cae a localhost
-const BACKEND_URL = VITE_BACKEND_URL || 'http://localhost:4000';
+// Dominio base del backend para medios (videos/imágenes) - SOLO permite fallback a localhost en desarrollo
+const BACKEND_URL = isProd ? VITE_BACKEND_URL : (VITE_BACKEND_URL || 'http://localhost:4000');
 
 function getToken() {
   return localStorage.getItem('token');
@@ -148,11 +150,17 @@ export const api = {
   version: '1.6.3',
   // Helper para obtener la URL completa de medios (videos/imágenes)
   getMediaUrl: (path) => {
-    if (!path) return '';
-    if (path.startsWith('http')) return path;
-    const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-    // Usamos el dominio base del backend configurado
-    return BACKEND_URL + normalizedPath;
+    if (!path || typeof path !== 'string') return '';
+    // Si ya es una URL completa (http/https/cloudinary), devolverla tal cual
+    if (path.startsWith('http://') || path.startsWith('https://')) return path;
+    
+    // Normalizar la ruta eliminando el slash inicial si existe
+    const cleanPath = path.startsWith('/') ? path.slice(1) : path;
+    
+    // Asegurar que BACKEND_URL no termine en slash para evitar doble slash
+    const base = BACKEND_URL.endsWith('/') ? BACKEND_URL.slice(0, -1) : BACKEND_URL;
+    
+    return `${base}/${cleanPath}`;
   },
   get: (url, options) => request(url, options),
   post: (url, data, options) => request(url, { ...options, method: 'POST', body: JSON.stringify(data) }),
@@ -223,18 +231,44 @@ export const api = {
     crearTarea: (data) => request('/admin/tareas', { method: 'POST', body: JSON.stringify(data) }),
     actualizarTarea: (id, data) => request(`/admin/tareas/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
     eliminarTarea: (id) => request(`/admin/tareas/${id}`, { method: 'DELETE' }),
-    subirVideoTarea: async (file) => {
-      const formData = new FormData();
-      formData.append('video', file);
-      const token = getToken();
-      const res = await fetch(API + '/admin/tareas/video', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData,
+    subirVideoTarea: (file, onProgress) => {
+      return new Promise((resolve, reject) => {
+        const formData = new FormData();
+        formData.append('video', file);
+        
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', API + '/admin/tareas/video');
+        
+        const token = getToken();
+        if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+
+        if (onProgress && typeof onProgress === 'function') {
+          xhr.upload.onprogress = (e) => {
+            if (e.lengthComputable) {
+              const percent = Math.round((e.loaded * 100) / e.total);
+              onProgress(percent);
+            }
+          };
+        }
+
+        xhr.onload = () => {
+          let data = {};
+          try {
+            data = JSON.parse(xhr.responseText);
+          } catch (e) {
+            data = { error: 'Error al procesar respuesta del servidor' };
+          }
+
+          if (xhr.status >= 200 && xhr.status < 300) {
+            resolve(data);
+          } else {
+            reject(new Error(data.error || 'Error al subir video'));
+          }
+        };
+
+        xhr.onerror = () => reject(new Error('Error de conexión al subir video'));
+        xhr.send(formData);
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Error al subir video');
-      return data;
     },
     aprobarRecarga: (id) => request(`/admin/recargas/${id}/aprobar`, { method: 'POST' }),
     rechazarRecarga: (id, motivo) => request(`/admin/recargas/${id}/rechazar`, { method: 'POST', body: JSON.stringify({ motivo }) }),

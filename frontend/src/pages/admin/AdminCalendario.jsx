@@ -19,6 +19,7 @@ import { cn } from '../../lib/utils/cn';
 
 // Helper para obtener la fecha actual en zona horaria Bolivia
 const getBoliviaDate = (date = new Date()) => {
+  // Forzar comportamiento según requerimiento de producción: America/La_Paz
   const boliviaTime = date.toLocaleString('en-US', { timeZone: 'America/La_Paz' });
   return new Date(boliviaTime);
 };
@@ -128,8 +129,10 @@ export default function AdminCalendario() {
   const daysInMonth = useMemo(() => {
     const year = currentMonth.getFullYear();
     const month = currentMonth.getMonth();
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
+    
+    // Normalizar a fecha de inicio del mes en Bolivia
+    const firstDay = getBoliviaDate(new Date(year, month, 1));
+    const lastDay = getBoliviaDate(new Date(year, month + 1, 0));
     
     const calendarDays = [];
     const startPadding = firstDay.getDay();
@@ -138,7 +141,7 @@ export default function AdminCalendario() {
     }
     
     for (let i = 1; i <= lastDay.getDate(); i++) {
-      calendarDays.push(new Date(year, month, i));
+      calendarDays.push(getBoliviaDate(new Date(year, month, i)));
     }
     
     return calendarDays;
@@ -179,7 +182,7 @@ export default function AdminCalendario() {
         es_feriado: !!existing.es_feriado,
         tareas_habilitadas: !!existing.tareas_habilitadas,
         retiros_habilitados: !!existing.retiros_habilitados,
-        recargas_habilitadas: !!existing.recargas_habilitadas,
+        recargas_habilitadas: existing.recargas_habilitadas === undefined ? true : !!existing.recargas_habilitadas,
         reglas_niveles: parsedRules
       });
     } else {
@@ -212,10 +215,19 @@ export default function AdminCalendario() {
       <ToastContainer toasts={toasts} onRemove={removeToast} />
       
       {loading && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-white/20 backdrop-blur-[1px]">
-          <div className="bg-white p-4 rounded-2xl shadow-2xl border border-gray-100 flex items-center gap-3">
-            <Loader2 className="animate-spin text-indigo-600" size={24} />
-            <span className="text-sm font-black uppercase tracking-widest text-gray-700">Cargando...</span>
+        <div className="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-white/40 backdrop-blur-md transition-all duration-500">
+          <div className="relative flex flex-col items-center gap-6 p-10 rounded-[3rem] bg-white shadow-2xl border border-gray-100 animate-in zoom-in-95 duration-300">
+            <div className="relative">
+              <div className="w-16 h-16 border-4 border-indigo-50 rounded-full" />
+              <div className="absolute inset-0 w-16 h-16 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <CalendarIcon size={24} className="text-indigo-600 animate-pulse" />
+              </div>
+            </div>
+            <div className="text-center space-y-1">
+              <span className="block text-sm font-black uppercase tracking-[0.3em] text-gray-900">Actualizando</span>
+              <span className="block text-[10px] font-bold uppercase tracking-widest text-indigo-500 animate-pulse">Sincronizando Sistema</span>
+            </div>
           </div>
         </div>
       )}

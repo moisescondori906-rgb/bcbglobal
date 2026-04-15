@@ -17,6 +17,8 @@ export default function AdminTareas() {
   });
   const [selectedVideoFile, setSelectedVideoFile] = useState(null);
 
+  const [uploadProgress, setUploadProgress] = useState(0);
+
   useEffect(() => {
     Promise.all([
       api.admin.tareas()
@@ -44,15 +46,18 @@ export default function AdminTareas() {
 
     setSelectedVideoFile(file);
     setUploadingVideo(true);
+    setUploadProgress(0);
 
     try {
-      const result = await api.admin.subirVideoTarea(file);
+      const result = await api.admin.subirVideoTarea(file, (progress) => {
+        setUploadProgress(progress);
+      });
       setForm(prev => ({ ...prev, video_url: result.video_url }));
-      alert('Video subido exitosamente: ' + result.video_url);
     } catch (err) {
       alert('Error al subir video: ' + err.message);
     } finally {
       setUploadingVideo(false);
+      setUploadProgress(0);
     }
   };
 
@@ -154,8 +159,21 @@ export default function AdminTareas() {
                 <div className="flex flex-col items-center justify-center pt-5 pb-6">
                   {uploadingVideo ? (
                     <>
-                      <div className="w-10 h-10 border-4 border-sav-primary/20 border-t-sav-primary rounded-full animate-spin mb-3" />
-                      <p className="text-xs font-black uppercase tracking-widest">Subiendo video...</p>
+                      <div className="w-12 h-12 relative flex items-center justify-center mb-3">
+                        <div className="absolute inset-0 border-4 border-sav-primary/10 rounded-full" />
+                        <div 
+                          className="absolute inset-0 border-4 border-sav-primary rounded-full animate-[spin_3s_linear_infinite]" 
+                          style={{ clipPath: `polygon(50% 50%, -50% -50%, ${uploadProgress}% -50%)` }} 
+                        />
+                        <span className="text-[10px] font-black text-sav-primary">{uploadProgress}%</span>
+                      </div>
+                      <p className="text-xs font-black uppercase tracking-widest text-sav-primary">Subiendo video...</p>
+                      <div className="w-48 h-1 bg-gray-100 rounded-full mt-3 overflow-hidden">
+                        <div 
+                          className="h-full bg-sav-primary transition-all duration-300" 
+                          style={{ width: `${uploadProgress}%` }}
+                        />
+                      </div>
                     </>
                   ) : (
                     <>
