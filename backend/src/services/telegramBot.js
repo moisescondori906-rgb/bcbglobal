@@ -1,4 +1,5 @@
 import TelegramBot from 'node-telegram-bot-api';
+import 'dotenv/config';
 import logger from '../lib/logger.js';
 
 const token = process.env.TELEGRAM_BOT_TOKEN;
@@ -9,13 +10,13 @@ let bot = null;
  */
 export const initTelegramBot = () => {
   if (!token) {
-    logger.warn('⚠️ TELEGRAM_BOT_TOKEN no configurado. El sistema de Telegram no funcionará.');
+    logger.error('❌ TELEGRAM_BOT_TOKEN no configurado. El sistema de Telegram no funcionará.');
     return null;
   }
 
   try {
     bot = new TelegramBot(token, { polling: true });
-    logger.info('✅ Telegram bot iniciado correctamente (Unificado)');
+    console.log("Telegram bot iniciado correctamente");
     return bot;
   } catch (error) {
     logger.error(`❌ Error al inicializar Telegram bot: ${error.message}`);
@@ -39,7 +40,7 @@ export const sendMessage = async (chatId, message) => {
 
   try {
     await bot.sendMessage(chatId, message, { parse_mode: 'HTML' });
-    console.log("Telegram enviado:", chatId);
+    console.log("Telegram enviado correctamente:", chatId);
     return true;
   } catch (error) {
     console.error("Error Telegram:", error.message);
@@ -57,11 +58,14 @@ export const sendToSecretaria = (message) => sendMessage(process.env.TELEGRAM_CH
  */
 export const formatRetiroMessage = (data) => {
   const { telefono, nivel, monto, hora } = data;
-  return `📌 <b>NUEVO RETIRO</b>\n\n` +
-         `👤 Usuario: ${telefono}\n` +
-         `🏅 Nivel: ${nivel}\n` +
-         `💵 Monto: ${monto} Bs\n` +
-         `🕒 Hora: ${hora}`;
+  return `
+📌 <b>NUEVO RETIRO</b>
+
+👤 Usuario: ${telefono}
+🏅 Nivel: ${nivel}
+💵 Monto: ${monto} Bs
+🕒 Hora: ${hora}
+`.trim();
 };
 
 /**
@@ -69,10 +73,13 @@ export const formatRetiroMessage = (data) => {
  */
 export const formatRecargaMessage = (data) => {
   const { telefono, nivel, monto } = data;
-  return `📌 <b>NUEVA RECARGA</b>\n\n` +
-         `👤 Usuario: ${telefono}\n` +
-         `🏅 Nivel: ${nivel}\n` +
-         `💵 Monto: ${monto} Bs`;
+  return `
+📌 <b>NUEVA RECARGA</b>
+
+👤 Usuario: ${telefono}
+🏅 Nivel: ${nivel}
+💵 Monto: ${monto} Bs
+`.trim();
 };
 
 export default {
