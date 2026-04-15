@@ -19,8 +19,11 @@ import { cn } from '../../lib/utils/cn';
 
 // Helper para obtener la fecha actual en zona horaria Bolivia
 const getBoliviaDate = (date = new Date()) => {
-  // Forzar comportamiento según requerimiento: America/La_Paz
-  return new Date(new Date(date).toLocaleString('en-US', { timeZone: 'America/La_Paz' }));
+  const d = new Date(date);
+  // Usar el offset de Bolivia (-4 horas) para una normalización robusta
+  const utc = d.getTime() + (d.getTimezoneOffset() * 60000);
+  const boliviaOffset = -4;
+  return new Date(utc + (3600000 * boliviaOffset));
 };
 
 export default function AdminCalendario() {
@@ -205,7 +208,9 @@ export default function AdminCalendario() {
   const toggleLevelRule = (levelCodigo, type) => {
     const current = { ...formData.reglas_niveles };
     if (!current[levelCodigo]) current[levelCodigo] = {};
-    current[levelCodigo][type] = !current[levelCodigo][type];
+    // Alternar entre true y false explícitamente
+    const currentVal = current[levelCodigo][type] !== false;
+    current[levelCodigo][type] = !currentVal;
     setFormData({ ...formData, reglas_niveles: current });
   };
 
@@ -358,16 +363,33 @@ export default function AdminCalendario() {
           <Card className="p-6 space-y-4">
             <h3 className="text-xs font-black text-gray-900 uppercase tracking-widest">Próximos Eventos</h3>
             <div className="space-y-3">
-              {days.filter(d => formatDate(new Date(d.fecha)) >= formatDate(new Date())).slice(0, 3).map(d => (
-                <div key={d.fecha} className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 border border-gray-100">
-                  <CalendarIcon size={16} className="text-indigo-600" />
-                  <div>
-                    <p className="text-[10px] font-black text-gray-800 uppercase">{d.fecha.split('T')[0]}</p>
-                    <p className="text-[8px] font-bold text-gray-400 uppercase">{d.motivo || d.tipo_dia}</p>
+              {days
+                .filter(d => {
+                  const eventDate = getBoliviaDate(new Date(d.fecha));
+                  const today = getBoliviaDate();
+                  // Comparar el inicio del día para incluir hoy
+                  eventDate.setHours(0,0,0,0);
+                  today.setHours(0,0,0,0);
+                  return eventDate.getTime() >= today.getTime();
+                })
+                .sort((a, b) => new Date(a.fecha) - new Date(b.fecha))
+                .slice(0, 3)
+                .map(d => (
+                  <div key={d.fecha} className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 border border-gray-100">
+                    <CalendarIcon size={16} className="text-indigo-600" />
+                    <div>
+                      <p className="text-[10px] font-black text-gray-800 uppercase">{d.fecha.split('T')[0]}</p>
+                      <p className="text-[8px] font-bold text-gray-400 uppercase">{d.motivo || d.tipo_dia}</p>
+                    </div>
                   </div>
-                </div>
-              ))}
-              {days.length === 0 && <p className="text-[9px] text-gray-400 uppercase font-bold text-center py-4">Sin eventos especiales</p>}
+                ))}
+              {days.filter(d => {
+                const eventDate = getBoliviaDate(new Date(d.fecha));
+                const today = getBoliviaDate();
+                eventDate.setHours(0,0,0,0);
+                today.setHours(0,0,0,0);
+                return eventDate.getTime() >= today.getTime();
+              }).length === 0 && <p className="text-[9px] text-gray-400 uppercase font-bold text-center py-4">Sin eventos especiales</p>}
             </div>
           </Card>
         </div>
@@ -439,27 +461,39 @@ export default function AdminCalendario() {
 
               {levels.length > 0 && (
                 <div className="space-y-3">
-                  <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Reglas por Nivel (Bloqueos Específicos)</h4>
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Reglas por Nivel (Bloqueos Específicos)</h4>
+                    <span className="text-[8px] font-bold text-indigo-400 uppercase bg-indigo-50 px-2 py-0.5 rounded">Verde = Permitido</span>
+                  </div>
                   <div className="space-y-2">
                     {levels.map(level => (
                       <div key={level.id} className="flex items-center justify-between p-3 rounded-xl bg-gray-50 border border-gray-100">
                         <span className="text-xs font-black text-gray-700">{level.nombre}</span>
                         <div className="flex gap-2">
-                          {['tareas', 'retiros', 'recargas'].map(type => (
-                            <button
-                              key={type}
-                              type="button"
-                              onClick={() => toggleLevelRule(level.codigo, type)}
-                              className={cn(
-                                "px-3 py-1 rounded-lg text-[9px] font-black uppercase transition-colors",
-                                formData.reglas_niveles[level.codigo]?.[type] 
-                                  ? "bg-green-100 text-green-700 border border-green-200" 
-                                  : "bg-gray-200 text-gray-500 border border-gray-300"
-                              )}
-                            >
-                              {type}
-                            </button>
-                          ))}
+                          {['tareas', 'retiros', 'recargas'].map(type => {
+                            // Si es undefined o null, asumimos true (permitido por defecto)
+                            const isAllowed = formData.reglas_niveles[level.codigo]?.[type] !== false;
+                            
+                            return (
+                              <button
+                                key={type}
+                                type="button"
+                                onClick={() => toggleLevelRule(level.codigo, type)}
+                                className={cn(
+                                  "px-3 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all border",
+                                  isAllowed 
+                                    ? "bg-green-50 text-green-700 border-green-200 shadow-sm shadow-green-100" 
+                                    : "bg-red-50 text-red-700 border-red-200 grayscale-[0.5]"
+                                )}
+                              >
+                                {isAllowed ? (
+                                  <span className="flex items-center gap-1"><CheckCircle2 size={10} /> {type}</span>
+                                ) : (
+                                  <span className="flex items-center gap-1"><XCircle size={10} /> {type}</span>
+                                )}
+                              </button>
+                            );
+                          })}
                         </div>
                       </div>
                     ))}
