@@ -19,9 +19,8 @@ import { cn } from '../../lib/utils/cn';
 
 // Helper para obtener la fecha actual en zona horaria Bolivia
 const getBoliviaDate = (date = new Date()) => {
-  // Forzar comportamiento según requerimiento de producción: America/La_Paz
-  const boliviaTime = date.toLocaleString('en-US', { timeZone: 'America/La_Paz' });
-  return new Date(boliviaTime);
+  // Forzar comportamiento según requerimiento: America/La_Paz
+  return new Date(new Date(date).toLocaleString('en-US', { timeZone: 'America/La_Paz' }));
 };
 
 export default function AdminCalendario() {
@@ -80,7 +79,7 @@ export default function AdminCalendario() {
 
   const handlePrevMonth = () => {
     setCurrentMonth(prev => {
-      const next = new Date(prev);
+      const next = getBoliviaDate(prev);
       next.setMonth(next.getMonth() - 1);
       return next;
     });
@@ -88,7 +87,7 @@ export default function AdminCalendario() {
 
   const handleNextMonth = () => {
     setCurrentMonth(prev => {
-      const next = new Date(prev);
+      const next = getBoliviaDate(prev);
       next.setMonth(next.getMonth() + 1);
       return next;
     });
@@ -135,7 +134,8 @@ export default function AdminCalendario() {
     const lastDay = getBoliviaDate(new Date(year, month + 1, 0));
     
     const calendarDays = [];
-    const startPadding = firstDay.getDay();
+    // startPadding debe ser el día de la semana de firstDay en Bolivia
+    const startPadding = firstDay.getDay(); 
     for (let i = 0; i < startPadding; i++) {
       calendarDays.push(null);
     }
@@ -148,7 +148,7 @@ export default function AdminCalendario() {
   }, [currentMonth]);
 
   const formatDate = (date) => {
-    const d = new Date(date);
+    const d = getBoliviaDate(date);
     const year = d.getFullYear();
     const month = String(d.getMonth() + 1).padStart(2, '0');
     const day = String(d.getDate()).padStart(2, '0');
@@ -163,8 +163,9 @@ export default function AdminCalendario() {
 
   const openEdit = (date) => {
     if (loading) return;
-    const existing = getDayData(date);
-    const dateStr = formatDate(date);
+    const boliviaDate = getBoliviaDate(date);
+    const existing = getDayData(boliviaDate);
+    const dateStr = formatDate(boliviaDate);
     
     if (existing) {
       let parsedRules = {};
@@ -186,7 +187,7 @@ export default function AdminCalendario() {
         reglas_niveles: parsedRules
       });
     } else {
-      const isSunday = date.getDay() === 0;
+      const isSunday = boliviaDate.getDay() === 0;
       setFormData({
         fecha: dateStr,
         tipo_dia: isSunday ? 'mantenimiento' : 'laboral',
@@ -277,8 +278,9 @@ export default function AdminCalendario() {
               {daysInMonth.map((date, i) => {
                 if (!date) return <div key={`empty-${i}`} className="bg-gray-50/30 min-h-[120px]" />;
                 
-                const data = getDayData(date);
-                const isSunday = date.getDay() === 0;
+                const boliviaDate = getBoliviaDate(date);
+                const data = getDayData(boliviaDate);
+                const isSunday = boliviaDate.getDay() === 0;
 
                 return (
                   <div 
@@ -356,7 +358,7 @@ export default function AdminCalendario() {
           <Card className="p-6 space-y-4">
             <h3 className="text-xs font-black text-gray-900 uppercase tracking-widest">Próximos Eventos</h3>
             <div className="space-y-3">
-              {days.filter(d => getBoliviaDate(new Date(d.fecha)) >= getBoliviaDate()).slice(0, 3).map(d => (
+              {days.filter(d => formatDate(new Date(d.fecha)) >= formatDate(new Date())).slice(0, 3).map(d => (
                 <div key={d.fecha} className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 border border-gray-100">
                   <CalendarIcon size={16} className="text-indigo-600" />
                   <div>
