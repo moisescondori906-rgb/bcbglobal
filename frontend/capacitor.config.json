@@ -6,8 +6,7 @@
     "url": "https://sav-lat.vercel.app",
     "allowNavigation": [
       "sav-lat.vercel.app",
-      "sav-zhyg.onrender.com",
-      "*.supabase.co"
+      "*.vercel.app"
     ]
   },
   "plugins": {

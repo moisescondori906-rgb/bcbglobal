@@ -1,10 +1,13 @@
-// Detectar si estamos en producción (Vercel) para usar rutas relativas y aprovechar vercel.json
+// Detectar si estamos en producción para usar variables de entorno
 const isProd = import.meta.env.PROD;
-const VITE_API_URL = import.meta.env.VITE_API_URL || (isProd ? '/api' : 'http://localhost:4000/api');
-const API = VITE_API_URL;
+const VITE_API_URL = import.meta.env.VITE_API_URL;
+const VITE_BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
-// Dominio base del backend para medios (videos/imágenes)
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || (isProd ? 'https://sav-zhyg.onrender.com' : 'http://localhost:4000');
+// URL base del API - REQUIERE configuración en .env
+const API = VITE_API_URL || 'http://localhost:4000/api';
+
+// Dominio base del backend para medios (videos/imágenes) - REQUIERE configuración en .env
+const BACKEND_URL = VITE_BACKEND_URL || 'http://localhost:4000';
 
 function getToken() {
   return localStorage.getItem('token');

@@ -1,33 +1,32 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { api } from '../../lib/api';
 import { 
   Calendar as CalendarIcon, 
-  Plus, 
-  Trash2, 
   AlertCircle, 
   CheckCircle2, 
-  Clock,
-  ShieldCheck,
   XCircle,
   Info,
   ChevronLeft,
   ChevronRight,
-  Settings2,
-  Play,
-  Wallet
 } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
+import { ToastContainer } from '../../components/ui/Toast';
+import { ConfirmModal } from '../../components/ui/ConfirmModal';
 import { cn } from '../../lib/utils/cn';
 
 export default function AdminCalendario() {
   const [days, setDays] = useState([]);
   const [levels, setLevels] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [selectedDay, setSelectedDay] = useState(null);
+  const [currentMonth, setCurrentMonth] = useState(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1);
+  });
   const [showModal, setShowModal] = useState(false);
+  const [toasts, setToasts] = useState([]);
+  const [confirmDelete, setConfirmDelete] = useState(null);
   const [formData, setFormData] = useState({
     fecha: '',
     tipo_dia: 'laboral',
@@ -38,6 +37,18 @@ export default function AdminCalendario() {
     motivo: '',
     reglas_niveles: {}
   });
+
+  const addToast = useCallback((message, type = 'info') => {
+    const id = Date.now() + Math.random();
+    setToasts(prev => [...prev, { id, message, type }]);
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id));
+    }, 4000);
+  }, []);
+
+  const removeToast = useCallback((id) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
+  }, []);
 
   useEffect(() => {
     fetchData();
@@ -53,10 +64,26 @@ export default function AdminCalendario() {
       setDays(Array.isArray(calRes) ? calRes : []);
       setLevels(Array.isArray(levelsRes) ? levelsRes : []);
     } catch (err) {
-      console.error('Error fetching calendar:', err);
+      addToast('Error cargando datos del calendario', 'error');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handlePrevMonth = () => {
+    setCurrentMonth(prev => {
+      const next = new Date(prev);
+      next.setMonth(next.getMonth() - 1);
+      return next;
+    });
+  };
+
+  const handleNextMonth = () => {
+    setCurrentMonth(prev => {
+      const next = new Date(prev);
+      next.setMonth(next.getMonth() + 1);
+      return next;
+    });
   };
 
   const handleSave = async (e) => {
@@ -64,19 +91,26 @@ export default function AdminCalendario() {
     try {
       await api.post('/admin/calendario', formData);
       setShowModal(false);
+      addToast('Día guardado correctamente', 'success');
       fetchData();
     } catch (err) {
-      alert('Error guardando día: ' + err.message);
+      addToast('Error guardando: ' + (err.message || 'Intenta de nuevo'), 'error');
     }
   };
 
-  const handleDelete = async (fecha) => {
-    if (!confirm('¿Restablecer este día a la configuración por defecto?')) return;
+  const handleDeleteRequest = (fecha) => {
+    setConfirmDelete({ fecha });
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!confirmDelete) return;
     try {
-      await api.delete(`/admin/calendario/${fecha}`);
+      await api.delete(`/admin/calendario/${confirmDelete.fecha}`);
+      addToast('Día restablecido correctamente', 'success');
+      setConfirmDelete(null);
       fetchData();
     } catch (err) {
-      alert('Error: ' + err.message);
+      addToast('Error eliminando: ' + (err.message || 'Intenta de nuevo'), 'error');
     }
   };
 
@@ -87,7 +121,6 @@ export default function AdminCalendario() {
     const lastDay = new Date(year, month + 1, 0);
     
     const daysInMonth = [];
-    // Padding inicial
     const startPadding = firstDay.getDay();
     for (let i = 0; i < startPadding; i++) {
       daysInMonth.push(null);
@@ -153,8 +186,23 @@ export default function AdminCalendario() {
     setFormData({ ...formData, reglas_niveles: current });
   };
 
+  const monthYear = currentMonth.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+
   return (
     <div className="space-y-8 animate-fade">
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
+      
+      <ConfirmModal
+        isOpen={!!confirmDelete}
+        title="Restablecer Día"
+        message="¿Restablecer este día a la configuración por defecto? Esta acción no se puede deshacer."
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => setConfirmDelete(null)}
+        confirmText="Restablecer"
+        cancelText="Cancelar"
+        variant="danger"
+      />
+
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
           <h1 className="text-3xl font-black text-gray-900 uppercase tracking-tighter">Calendario Operativo</h1>
@@ -162,20 +210,19 @@ export default function AdminCalendario() {
         </div>
         
         <div className="flex items-center gap-4 bg-white p-2 rounded-2xl shadow-sm border border-gray-100">
-          <button onClick={() => setCurrentMonth(new Date(currentMonth.setMonth(currentMonth.getMonth() - 1)))} className="p-2 hover:bg-gray-50 rounded-xl transition-colors">
+          <button onClick={handlePrevMonth} className="p-2 hover:bg-gray-50 rounded-xl transition-colors">
             <ChevronLeft size={20} className="text-gray-400" />
           </button>
           <span className="text-sm font-black uppercase tracking-widest min-w-[150px] text-center">
-            {currentMonth.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}
+            {monthYear}
           </span>
-          <button onClick={() => setCurrentMonth(new Date(currentMonth.setMonth(currentMonth.getMonth() + 1)))} className="p-2 hover:bg-gray-50 rounded-xl transition-colors">
+          <button onClick={handleNextMonth} className="p-2 hover:bg-gray-50 rounded-xl transition-colors">
             <ChevronRight size={20} className="text-gray-400" />
           </button>
         </div>
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-        {/* Calendario Grid */}
         <div className="lg:col-span-3">
           <Card className="p-0 overflow-hidden border-none shadow-xl">
             <div className="grid grid-cols-7 bg-gray-50/50 border-b border-gray-100">
@@ -191,7 +238,6 @@ export default function AdminCalendario() {
                 if (!date) return <div key={`empty-${i}`} className="bg-gray-50/30 min-h-[120px]" />;
                 
                 const data = getDayData(date);
-                const isToday = formatDate(date) === formatDate(new Date());
                 const isSunday = date.getDay() === 0;
 
                 return (
@@ -200,17 +246,13 @@ export default function AdminCalendario() {
                     onClick={() => openEdit(date)}
                     className={cn(
                       "min-h-[120px] p-3 transition-all cursor-pointer hover:bg-indigo-50/30 group relative",
-                      isToday && "bg-indigo-50/50",
                       data?.tipo_dia === 'feriado' && "bg-red-50/30",
                       data?.tipo_dia === 'mantenimiento' && "bg-amber-50/30",
                       !data && isSunday && "bg-gray-50/50"
                     )}
                   >
                     <div className="flex justify-between items-start mb-2">
-                      <span className={cn(
-                        "w-7 h-7 flex items-center justify-center rounded-lg text-xs font-black",
-                        isToday ? "bg-indigo-600 text-white" : "text-gray-400"
-                      )}>
+                      <span className="w-7 h-7 flex items-center justify-center rounded-lg text-xs font-black text-gray-400">
                         {date.getDate()}
                       </span>
                       {data?.es_feriado && <Badge variant="error" className="scale-75 origin-right">FERIADO</Badge>}
@@ -247,7 +289,6 @@ export default function AdminCalendario() {
           </Card>
         </div>
 
-        {/* Sidebar Info */}
         <div className="space-y-6">
           <Card className="p-6 space-y-4 bg-indigo-600 text-white border-none shadow-indigo-200">
             <div className="flex items-center gap-3">
@@ -285,7 +326,6 @@ export default function AdminCalendario() {
         </div>
       </div>
 
-      {/* Modal Edición */}
       {showModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[100] animate-in fade-in duration-300">
           <Card className="max-w-2xl w-full max-h-[90vh] overflow-y-auto p-8 space-y-8 animate-in zoom-in-95 duration-300">
@@ -299,114 +339,100 @@ export default function AdminCalendario() {
               </button>
             </div>
 
-            <form onSubmit={handleSave} className="space-y-8">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Tipo de Día</label>
-                  <select 
-                    value={formData.tipo_dia}
-                    onChange={e => setFormData({...formData, tipo_dia: e.target.value})}
-                    className="w-full h-14 px-4 rounded-2xl bg-gray-50 border border-gray-100 font-black text-xs uppercase"
-                  >
-                    <option value="laboral">Laboral</option>
-                    <option value="feriado">Feriado Nacional</option>
-                    <option value="mantenimiento">Mantenimiento</option>
-                    <option value="especial">Evento Especial</option>
-                  </select>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Motivo / Descripción</label>
-                  <input 
-                    type="text"
-                    value={formData.motivo}
-                    onChange={e => setFormData({...formData, motivo: e.target.value})}
-                    placeholder="Ej: Año Nuevo, Mantenimiento..."
-                    className="w-full h-14 px-4 rounded-2xl bg-gray-50 border border-gray-100 font-bold text-xs"
+            <form onSubmit={handleSave} className="space-y-6">
+              <div className="grid grid-cols-3 gap-4">
+                <label className="flex items-center gap-2 p-4 rounded-xl border-2 border-gray-100 cursor-pointer hover:border-indigo-200 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={formData.es_feriado}
+                    onChange={e => setFormData({...formData, es_feriado: e.target.checked})}
+                    className="w-5 h-5 rounded bg-gray-50 border-2 border-gray-200 text-indigo-600 focus:ring-indigo-500"
                   />
-                </div>
+                  <span className="text-xs font-black text-gray-700 uppercase">Feriado</span>
+                </label>
+                <label className="flex items-center gap-2 p-4 rounded-xl border-2 border-gray-100 cursor-pointer hover:border-indigo-200 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={formData.tareas_habilitadas}
+                    onChange={e => setFormData({...formData, tareas_habilitadas: e.target.checked})}
+                    className="w-5 h-5 rounded bg-gray-50 border-2 border-gray-200 text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <span className="text-xs font-black text-gray-700 uppercase">Tareas</span>
+                </label>
+                <label className="flex items-center gap-2 p-4 rounded-xl border-2 border-gray-100 cursor-pointer hover:border-indigo-200 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={formData.retiros_habilitados}
+                    onChange={e => setFormData({...formData, retiros_habilitados: e.target.checked})}
+                    className="w-5 h-5 rounded bg-gray-50 border-2 border-gray-200 text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <span className="text-xs font-black text-gray-700 uppercase">Retiros</span>
+                </label>
               </div>
 
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {[
-                      { key: 'es_feriado', label: 'Es Feriado', icon: AlertCircle },
-                      { key: 'tareas_habilitadas', label: 'Tareas ON', icon: Play },
-                      { key: 'retiros_habilitados', label: 'Retiros ON', icon: Wallet },
-                      { key: 'recargas_habilitadas', label: 'Recargas ON', icon: ShieldCheck }
-                    ].map(item => (
-                      <button
-                        key={item.key}
-                        type="button"
-                        onClick={() => setFormData({...formData, [item.key]: !formData[item.key]})}
-                        className={cn(
-                          "flex flex-col items-center gap-3 p-4 rounded-2xl border transition-all",
-                          formData[item.key] 
-                            ? "bg-indigo-50 border-indigo-200 text-indigo-600 shadow-sm" 
-                            : "bg-gray-50 border-gray-100 text-gray-400 grayscale"
-                        )}
-                      >
-                        <item.icon size={20} />
-                        <span className="text-[9px] font-black uppercase tracking-widest">{item.label}</span>
-                      </button>
+              <div>
+                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Motivo / Descripción</label>
+                <input
+                  type="text"
+                  value={formData.motivo}
+                  onChange={e => setFormData({...formData, motivo: e.target.value})}
+                  placeholder="Ej: Feriado Nacional, Mantenimiento, etc."
+                  className="w-full px-5 py-4 rounded-2xl bg-gray-50 border-2 border-gray-100 text-gray-800 font-bold text-sm focus:border-indigo-200 transition-all outline-none"
+                />
+              </div>
+
+              {levels.length > 0 && (
+                <div className="space-y-3">
+                  <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Reglas por Nivel</h4>
+                  <div className="space-y-2">
+                    {levels.map(level => (
+                      <div key={level.id} className="flex items-center justify-between p-3 rounded-xl bg-gray-50 border border-gray-100">
+                        <span className="text-xs font-black text-gray-700">{level.nombre}</span>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => toggleLevelRule(level.codigo, 'tareas')}
+                            className={cn(
+                              "px-3 py-1 rounded-lg text-[9px] font-black uppercase transition-colors",
+                              formData.reglas_niveles[level.codigo]?.tareas 
+                                ? "bg-green-100 text-green-700" 
+                                : "bg-gray-200 text-gray-500"
+                            )}
+                          >
+                            Tareas
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => toggleLevelRule(level.codigo, 'retiros')}
+                            className={cn(
+                              "px-3 py-1 rounded-lg text-[9px] font-black uppercase transition-colors",
+                              formData.reglas_niveles[level.codigo]?.retiros 
+                                ? "bg-green-100 text-green-700" 
+                                : "bg-gray-200 text-gray-500"
+                            )}
+                          >
+                            Retiros
+                          </button>
+                        </div>
+                      </div>
                     ))}
                   </div>
-
-              {/* Reglas por Nivel */}
-              <div className="space-y-4">
-                <div className="flex items-center gap-3 border-b border-gray-100 pb-2">
-                  <Settings2 size={16} className="text-gray-400" />
-                  <h3 className="text-xs font-black text-gray-900 uppercase tracking-widest">Restricciones por Nivel</h3>
                 </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {levels.map(lvl => (
-                    <div key={lvl.id} className="p-4 rounded-2xl bg-gray-50 border border-gray-100 flex items-center justify-between">
-                      <span className="text-[10px] font-black text-gray-700 uppercase">{lvl.nombre}</span>
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() => toggleLevelRule(lvl.codigo, 'retiro')}
-                          className={cn(
-                            "px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all",
-                            formData.reglas_niveles[lvl.codigo]?.retiro === false
-                              ? "bg-red-500 text-white shadow-lg shadow-red-100"
-                              : "bg-green-100 text-green-600"
-                          )}
-                        >
-                          {formData.reglas_niveles[lvl.codigo]?.retiro === false ? 'No Retira' : 'Retiro OK'}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => toggleLevelRule(lvl.codigo, 'tareas')}
-                          className={cn(
-                            "px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all",
-                            formData.reglas_niveles[lvl.codigo]?.tareas === false
-                              ? "bg-red-500 text-white shadow-lg shadow-red-100"
-                              : "bg-green-100 text-green-600"
-                          )}
-                        >
-                          {formData.reglas_niveles[lvl.codigo]?.tareas === false ? 'No Tareas' : 'Tareas OK'}
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              )}
 
               <div className="flex gap-4 pt-4">
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={() => handleDelete(formData.fecha)}
-                  className="flex-1 h-14 rounded-2xl border-red-100 text-red-500 hover:bg-red-50"
-                >
-                  <Trash2 size={18} className="mr-2" /> RESTABLECER
-                </Button>
-                <Button 
-                  type="submit" 
-                  className="flex-[2] h-14 rounded-2xl shadow-indigo-100"
-                >
-                  <ShieldCheck size={18} className="mr-2" /> GUARDAR CONFIGURACIÓN
+                {formData.fecha && getDayData(new Date(formData.fecha)) && (
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    onClick={() => { setShowModal(false); handleDeleteRequest(formData.fecha); }}
+                    className="flex-1"
+                  >
+                    Eliminar
+                  </Button>
+                )}
+                <Button type="submit" className="flex-1">
+                  Guardar Cambios
                 </Button>
               </div>
             </form>
