@@ -1,71 +1,87 @@
 import TelegramBot from 'node-telegram-bot-api';
 import logger from '../lib/logger.js';
 
-const token = process.env.TELEGRAM_BOT_TOKEN;
-
-let bot = null;
+// Instancias de los bots
+let botAdmin = null;
+let botRetiros = null;
+let botSecretaria = null;
 
 /**
- * Inicializa el bot de Telegram
+ * Inicializa los bots de Telegram automáticamente al arrancar el backend
  */
-export const initTelegramBot = () => {
-  if (!token) {
-    logger.warn('⚠️ TELEGRAM_BOT_TOKEN no configurado en .env. El servicio de Telegram no se iniciará.');
-    return null;
+export const initTelegramBots = () => {
+  const tokenAdmin = process.env.TELEGRAM_BOT_TOKEN_ADMIN;
+  const tokenRetiros = process.env.TELEGRAM_BOT_TOKEN_RETIROS;
+  const tokenSecretaria = process.env.TELEGRAM_BOT_TOKEN_SECRETARIA;
+
+  // Inicializar Bot ADMIN
+  if (tokenAdmin) {
+    try {
+      botAdmin = new TelegramBot(tokenAdmin, { polling: true });
+      logger.info('✅ Telegram bot ADMIN iniciado correctamente');
+    } catch (error) {
+      logger.error(`❌ Error al inicializar bot ADMIN: ${error.message}`);
+    }
+  } else {
+    logger.warn('⚠️ TELEGRAM_BOT_TOKEN_ADMIN no configurado');
   }
 
-  try {
-    bot = new TelegramBot(token, { polling: true });
-    
-    bot.on('polling_error', (error) => {
-      logger.error(`[Telegram Polling Error]: ${error.message}`);
-    });
+  // Inicializar Bot RETIROS
+  if (tokenRetiros) {
+    try {
+      botRetiros = new TelegramBot(tokenRetiros, { polling: true });
+      logger.info('✅ Telegram bot RETIROS iniciado correctamente');
+    } catch (error) {
+      logger.error(`❌ Error al inicializar bot RETIROS: ${error.message}`);
+    }
+  } else {
+    logger.warn('⚠️ TELEGRAM_BOT_TOKEN_RETIROS no configurado');
+  }
 
-    logger.info('✅ Telegram bot iniciado correctamente');
-    return bot;
-  } catch (error) {
-    logger.error(`❌ Error al inicializar Telegram bot: ${error.message}`);
-    return null;
+  // Inicializar Bot SECRETARIA
+  if (tokenSecretaria) {
+    try {
+      botSecretaria = new TelegramBot(tokenSecretaria, { polling: true });
+      logger.info('✅ Telegram bot SECRETARIA iniciado correctamente');
+    } catch (error) {
+      logger.error(`❌ Error al inicializar bot SECRETARIA: ${error.message}`);
+    }
+  } else {
+    logger.warn('⚠️ TELEGRAM_BOT_TOKEN_SECRETARIA no configurado');
   }
 };
 
 /**
- * Envía un mensaje a un chatId específico
- * @param {string|number} chatId 
- * @param {string} message 
- * @returns {Promise<boolean>}
+ * Función genérica para enviar mensajes HTML
  */
-export const sendTelegramMessage = async (chatId, message) => {
+const sendMessage = async (bot, chatId, message) => {
   if (!bot) {
-    logger.warn('⚠️ Intento de enviar mensaje de Telegram sin bot inicializado');
+    logger.warn('⚠️ Intento de enviar mensaje sin bot inicializado');
     return false;
   }
-
   if (!chatId) {
-    logger.warn('⚠️ Intento de enviar mensaje de Telegram sin chatId');
+    logger.warn('⚠️ Intento de enviar mensaje sin chatId configurado');
     return false;
   }
 
   try {
-    await bot.sendMessage(chatId, message);
-    logger.info(`Mensaje enviado a Telegram: ${chatId}`);
+    await bot.sendMessage(chatId, message, { parse_mode: 'HTML' });
+    logger.info(`[Telegram] Mensaje enviado a chat ${chatId}`);
     return true;
   } catch (error) {
-    logger.error(`❌ Error al enviar mensaje a Telegram (${chatId}): ${error.message}`);
+    logger.error(`❌ [Telegram] Error al enviar a ${chatId}: ${error.message}`);
     return false;
   }
 };
 
-/**
- * Función para prueba real de conexión
- */
-export const sendTestMessage = async (testChatId) => {
-  const message = "🚀 Bot conectado correctamente al backend de BCB Global";
-  return await sendTelegramMessage(testChatId, message);
-};
+// Funciones de envío por grupo
+export const sendToAdmin = (message) => sendMessage(botAdmin, process.env.TELEGRAM_CHAT_ADMIN, message);
+export const sendToRetiros = (message) => sendMessage(botRetiros, process.env.TELEGRAM_CHAT_RETIROS, message);
+export const sendToSecretaria = (message) => sendMessage(botSecretaria, process.env.TELEGRAM_CHAT_SECRETARIA, message);
 
 export default {
-  initTelegramBot,
-  sendTelegramMessage,
-  sendTestMessage
+  initTelegramBots,
+  sendToAdmin,
+  sendToRetiros,
+  sendToSecretaria
 };

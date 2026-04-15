@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { processTelegramUpdate } from '../lib/telegram_logic.js';
-import { sendTestMessage } from '../services/telegramBot.js';
+import { sendToAdmin, sendToRetiros, sendToSecretaria } from '../services/telegramBot.js';
 
 const router = Router();
 
@@ -9,26 +9,32 @@ router.get('/', (req, res) => {
   res.send('✅ El endpoint del Webhook de Telegram está activo y listo para recibir señales.');
 });
 
-// Endpoint de prueba real de envío de mensaje
+// Endpoint de prueba real de envío de mensaje a los 3 grupos
 router.get('/test', async (req, res) => {
-  const testChatId = req.query.chatId;
-  
-  if (!testChatId) {
-    return res.status(400).json({ 
-      ok: false, 
-      error: 'Debe proporcionar un chatId en la query (ej: ?chatId=12345678)' 
-    });
-  }
-
   try {
-    const success = await sendTestMessage(testChatId);
+    const results = await Promise.all([
+      sendToRetiros("🚀 <b>Test RETIROS OK</b>"),
+      sendToAdmin("🚀 <b>Test ADMIN OK</b>"),
+      sendToSecretaria("🚀 <b>Test SECRETARIA OK</b>")
+    ]);
+
+    const success = results.every(r => r === true);
+    
     if (success) {
-      res.json({ ok: true, message: 'Mensaje de prueba enviado correctamente a Telegram' });
+      res.json({ success: true, message: 'Mensajes de prueba enviados correctamente a los 3 grupos' });
     } else {
-      res.status(500).json({ ok: false, error: 'No se pudo enviar el mensaje. Verifique los logs del servidor.' });
+      res.status(500).json({ 
+        success: false, 
+        error: 'Algunos mensajes no se pudieron enviar. Verifique los logs y la configuración de .env',
+        results: {
+          retiros: results[0],
+          admin: results[1],
+          secretaria: results[2]
+        }
+      });
     }
   } catch (err) {
-    res.status(500).json({ ok: false, error: err.message });
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 
