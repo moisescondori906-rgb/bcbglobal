@@ -131,6 +131,7 @@ app.use('/api/levels', rateLimiter(60000, 60), levelRoutes);
 app.use('/api/recharges', rechargeRoutes);
 app.use('/api/withdrawals', withdrawalRoutes);
 app.use('/api/telegram', telegramRoutes);
+app.use('/api/admin/telegram-users', telegramAdminRoutes); // Endpoint exacto solicitado
 app.use('/api/admin/telegram', telegramAdminRoutes);
 app.use('/api/admin', rateLimiter(60000, 30), adminRoutes);
 app.use('/api/sorteo', rateLimiter(60000, 30), sorteoRoutes);

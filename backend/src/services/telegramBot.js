@@ -89,26 +89,26 @@ export const sendToSecretaria = async (message, options = {}) => {
       );
 
       if (!userTelegram) {
-        console.log(`[TELEGRAM] Acceso denegado para ${userName} (${userId})`);
+        console.log(`[TELEGRAM] Acceso bloqueado: ${userName} (${userId}) no registrado o inactivo.`);
         return query.answer({ 
-          text: "❌ No tienes acceso al sistema operativo de Telegram. Contacta al Admin.", 
+          text: "❌ No autorizado. Tu ID de Telegram no está registrado como operador activo.", 
           show_alert: true 
         });
       }
 
       const rol = userTelegram.rol;
-      console.log(`[TELEGRAM] ${accion} retiro ${id} por ${userName} (Rol: ${rol})`);
+      console.log(`[TELEGRAM] Acción: ${accion} | Operador: ${userName} | Rol: ${rol}`);
 
       // REGLAS DE ROLES:
-      // - admin: todo
-      // - retiro: tomar, aprobar, rechazar
-      // - secretaria: solo visual (bloqueado aquí)
+      // - admin → todo
+      // - retiro → tomar, aprobar, rechazar
+      // - secretaria → solo ver (bloquear cualquier callback operativo)
       if (rol === 'secretaria') {
-        return query.answer({ text: "⚠️ Tu rol es solo de lectura. No puedes realizar acciones.", show_alert: true });
+        return query.answer({ text: "⚠️ Acceso Denegado: Tu rol es solo de lectura.", show_alert: true });
       }
 
       if (rol === 'retiro' && !['tomar', 'aprobar', 'rechazar'].includes(accion)) {
-        return query.answer({ text: "❌ Acción no permitida para tu rol.", show_alert: true });
+        return query.answer({ text: "❌ Error: Acción no permitida para el equipo de Retiros.", show_alert: true });
       }
       // -------------------------------------
 

@@ -161,8 +161,9 @@ router.get('/historial', async (req, res) => {
 });
 
 // --- USUARIOS TELEGRAM (ROLES DINÁMICOS) ---
+// Soportar GET /api/admin/telegram-users y POST /api/admin/telegram-users
 
-router.get('/usuarios', async (req, res) => {
+router.get(['/usuarios', '/'], async (req, res) => {
   try {
     const usuarios = await query('SELECT * FROM usuarios_telegram ORDER BY fecha_registro DESC');
     res.json(usuarios);
@@ -171,7 +172,7 @@ router.get('/usuarios', async (req, res) => {
   }
 });
 
-router.post('/usuarios', async (req, res) => {
+router.post(['/usuarios', '/'], async (req, res) => {
   try {
     const { telegram_id, nombre, rol, activo } = req.body;
     if (!telegram_id || !nombre || !rol) return res.status(400).json({ error: 'Faltan campos obligatorios' });
@@ -180,7 +181,7 @@ router.post('/usuarios', async (req, res) => {
       INSERT INTO usuarios_telegram (telegram_id, nombre, rol, activo)
       VALUES (?, ?, ?, ?)
       ON DUPLICATE KEY UPDATE nombre = VALUES(nombre), rol = VALUES(rol), activo = VALUES(activo)
-    `, [telegram_id, nombre, rol, activo !== undefined ? activo : 1]);
+    `, [telegram_id, nombre, rol, activo !== undefined ? (activo ? 1 : 0) : 1]);
 
     res.json({ success: true });
   } catch (err) {
@@ -188,7 +189,7 @@ router.post('/usuarios', async (req, res) => {
   }
 });
 
-router.put('/usuarios/:id', async (req, res) => {
+router.put(['/usuarios/:id', '/:id'], async (req, res) => {
   try {
     const { nombre, rol, activo } = req.body;
     await query(`
@@ -201,7 +202,7 @@ router.put('/usuarios/:id', async (req, res) => {
   }
 });
 
-router.delete('/usuarios/:id', async (req, res) => {
+router.delete(['/usuarios/:id', '/:id'], async (req, res) => {
   try {
     await query('DELETE FROM usuarios_telegram WHERE id = ?', [req.params.id]);
     res.json({ ok: true });
