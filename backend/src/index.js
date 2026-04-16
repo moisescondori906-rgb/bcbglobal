@@ -138,8 +138,30 @@ app.use('/api/sorteo', rateLimiter(60000, 30), sorteoRoutes);
 app.use('/api/telegram-webhook', telegramWebhookRoutes);
 console.log('[SERVER] Rutas de API configuradas.');
 
-app.get('/api/health', (req, res) => {
-  res.json({ ok: true, message: 'CV Global API is alive!' });
+app.get('/api/health', async (req, res) => {
+  try {
+    const { query } = await import('./config/db.js');
+    const { default: worker } = await import('./services/TelegramWorker.js');
+    
+    // 1. Verificar DB
+    await query('SELECT 1');
+    
+    // 2. Obtener salud del worker y bots
+    const workerHealth = worker.getHealth();
+    
+    res.json({ 
+      status: 'ok', 
+      database: 'connected',
+      worker: workerHealth,
+      timestamp: new Date().toISOString()
+    });
+  } catch (err) {
+    res.status(500).json({ 
+      status: 'error', 
+      message: err.message,
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
 app.get('/api/banners', async (req, res) => {

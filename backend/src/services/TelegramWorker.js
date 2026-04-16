@@ -1,26 +1,32 @@
 import logger from '../lib/logger.js';
 
 /**
- * TelegramWorker - Sistema de Cola y Reintentos para Notificaciones Críticas.
- * Separa la lógica de negocio del envío físico de mensajes a Telegram.
+ * TelegramWorker - Sistema de Cola de Mensajes con Retry Exponencial.
+ * Blindaje contra saturación de API y fallos de red.
  */
 class TelegramWorker {
   constructor() {
     this.queue = [];
     this.isProcessing = false;
     this.maxRetries = 3;
-    this.retryDelay = 5000; // 5 segundos entre reintentos
+    this.baseDelay = 1000; // 1s inicial
+    this.activeBots = new Set();
   }
 
   /**
-   * Añade un mensaje a la cola de envío.
-   * @param {Object} bot - Instancia del bot (Admin, Retiros o Secretaria).
-   * @param {string} chatId - ID del chat destino.
-   * @param {string} message - Contenido del mensaje.
-   * @param {Object} options - Opciones adicionales (parse_mode, reply_markup, etc).
+   * Añade un mensaje a la cola con prioridad y reintentos.
    */
   async addToQueue(bot, chatId, message, options = {}) {
-    if (!bot || !chatId) return false;
+    if (!bot || !chatId || !message) return false;
+
+    // Validar límite de caracteres de Telegram (4096)
+    if (message.length > 4000) {
+      const parts = this.splitMessage(message);
+      for (const part of parts) {
+        await this.addToQueue(bot, chatId, part, options);
+      }
+      return true;
+    }
 
     const job = {
       bot,
@@ -32,16 +38,12 @@ class TelegramWorker {
     };
 
     this.queue.push(job);
-    logger.info(`[WORKER] Nuevo mensaje en cola para ${chatId}. Total en cola: ${this.queue.length}`);
-
-    if (!this.isProcessing) {
-      this.processQueue();
-    }
+    if (!this.isProcessing) this.processQueue();
     return true;
   }
 
   /**
-   * Procesa la cola de forma secuencial.
+   * Procesa la cola de forma secuencial con control de flujo.
    */
   async processQueue() {
     if (this.queue.length === 0) {
@@ -54,39 +56,70 @@ class TelegramWorker {
 
     try {
       await job.bot.sendMessage(job.chatId, job.message, job.options);
-      logger.info(`[WORKER] Mensaje enviado con éxito a ${job.chatId}`);
+      this.activeBots.add(job.bot.token); // Marcar bot como activo
+      logger.info(`[WORKER] OK: ${job.chatId}`);
     } catch (err) {
       job.retries++;
-      logger.error(`[WORKER] Error enviando mensaje a ${job.chatId} (Intento ${job.retries}/${this.maxRetries}): ${err.message}`);
-
-      if (job.retries < this.maxRetries) {
-        // Re-encolar para reintento después de un delay
+      const delay = Math.pow(2, job.retries) * this.baseDelay; // 2s, 4s, 8s...
+      
+      if (job.retries <= this.maxRetries) {
+        logger.warn(`[WORKER] Retry ${job.retries}/${this.maxRetries} en ${delay}ms para ${job.chatId}`);
         setTimeout(() => {
           this.queue.push(job);
           if (!this.isProcessing) this.processQueue();
-        }, this.retryDelay);
+        }, delay);
       } else {
-        logger.error(`[WORKER] Fallo crítico: Mensaje descartado tras ${this.maxRetries} reintentos.`);
+        logger.error(`[WORKER] CRÍTICO: Fallo final tras ${this.maxRetries} reintentos en ${job.chatId}`);
       }
     }
 
-    // Procesar siguiente mensaje con un pequeño delay para evitar rate limits
-    setTimeout(() => this.processQueue(), 500);
+    // Delay entre mensajes para evitar Rate Limit de Telegram (30 msg/sec global)
+    setTimeout(() => this.processQueue(), 100);
   }
 
   /**
-   * Helper para generar alertas críticas formateadas.
+   * Divide mensajes largos automáticamente.
+   */
+  splitMessage(str, limit = 4000) {
+    const parts = [];
+    let current = str;
+    while (current.length > 0) {
+      if (current.length <= limit) {
+        parts.push(current);
+        break;
+      }
+      let splitIdx = current.lastIndexOf('\n', limit);
+      if (splitIdx === -1) splitIdx = limit;
+      parts.push(current.substring(0, splitIdx));
+      current = current.substring(splitIdx).trim();
+    }
+    return parts;
+  }
+
+  /**
+   * Envía una alerta crítica formateada y agrupada.
    */
   async sendCriticalAlert(bot, chatId, title, details) {
-    const alertMsg = `🚨 <b>ALERTA CRÍTICA</b>\n\n` +
+    const alertMsg = `🚨 <b>ALERTA CRÍTICA FINTECH</b>\n\n` +
       `📌 <b>Origen:</b> ${title}\n` +
       `⚠️ <b>Detalles:</b> ${details}\n` +
-      `🕒 <b>Hora:</b> ${new Date().toLocaleTimeString('es-BO')}`;
+      `🕒 <b>Hora (BO):</b> ${new Date().toLocaleString('es-BO', { timeZone: 'America/La_Paz' })}`;
     
     return this.addToQueue(bot, chatId, alertMsg);
   }
+
+  /**
+   * Verifica salud del worker y bots.
+   */
+  getHealth() {
+    return {
+      status: 'ok',
+      queueSize: this.queue.length,
+      isProcessing: this.isProcessing,
+      botsActive: this.activeBots.size
+    };
+  }
 }
 
-// Exportar instancia única (Singleton)
 const worker = new TelegramWorker();
 export default worker;

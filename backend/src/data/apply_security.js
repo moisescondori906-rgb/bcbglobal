@@ -11,7 +11,8 @@ async function runSecuritySchema() {
   const schemas = [
     '../config/security_schema.sql',
     '../config/metrics_schema.sql',
-    '../config/cron_schema.sql'
+    '../config/cron_schema.sql',
+    '../config/fintech_optimization.sql'
   ];
 
   for (const schemaFile of schemas) {
