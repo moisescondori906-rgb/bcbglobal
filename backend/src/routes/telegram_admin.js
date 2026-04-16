@@ -154,7 +154,7 @@ router.get('/historial', async (req, res) => {
       ORDER BY l.fecha DESC
       LIMIT 100
     `);
-   res.json({ ok: true });
+    res.json(logs);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
