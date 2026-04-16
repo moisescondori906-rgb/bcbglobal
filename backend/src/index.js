@@ -1,18 +1,13 @@
 import 'dotenv/config';
-// Forzar Zona Horaria de Bolivia a nivel de proceso Node.js
-process.env.TZ = 'America/La_Paz';
-import logger from './lib/logger.js';
-// Importar bot de telegram para inicialización automática
-import './services/telegramBot.js';
-
-// Forzar Zona Horaria de Bolivia a nivel de proceso Node.js
-process.env.TZ = 'America/La_Paz';
-logger.info('[TIMEZONE] Configurado a: ' + process.env.TZ + ' (Bolivia)');
-
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
+import morgan from 'morgan';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import logger from './lib/logger.js';
+import { setupWebhooks } from './services/telegramBot.js';
+
 import authRoutes from './routes/auth.js';
 import userRoutes from './routes/users.js';
 import taskRoutes from './routes/tasks.js';
@@ -29,216 +24,93 @@ import { query } from './config/db.js';
 import { rateLimiter } from './middleware/rateLimiter.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
-console.log('\n[SERVER] Proceso de servidor iniciado. BUILD_ID: ' + Date.now());
-console.log('[SERVER] Versión: 4.2.0 - Telegram Polling & Secure Recharges');
+// Forzar Zona Horaria de Bolivia
+process.env.TZ = 'America/La_Paz';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = process.env.PORT || 4000;
 
-// Logger simple para ver peticiones en Render (Solo en desarrollo o auditoría)
-app.use((req, res, next) => {
-  if (process.env.NODE_ENV !== 'production') {
-    logger.debug(`[REQUEST] ${req.method} ${req.url} - Origin: ${req.headers.origin}`);
-  }
-  next();
-});
+// 1. Seguridad & Middleware de Producción
+app.use(helmet({ contentSecurityPolicy: false }));
+app.use(morgan('combined', { stream: { write: (msg) => logger.info(msg.trim()) } }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
-// Configuración de CORS estricta para producción
-logger.info('[SERVER] Configurando CORS...');
+// Configuración de CORS estricta
 const whitelist = [
-  'https://sav-lat.vercel.app',          // Dominio principal
-  'https://sav-g9xx-cr2q3gvo5-sav3.vercel.app', // URL de despliegue Vercel
-  'http://localhost:5173',               // Entorno de desarrollo local
+  'https://sav-lat.vercel.app',
+  'http://localhost:5173',
   'http://127.0.0.1:5173'
 ];
-
-if (process.env.FRONTEND_URL) {
-  whitelist.push(process.env.FRONTEND_URL);
-}
-
 const corsOptions = {
-  origin: function (origin, callback) {
-    // Permitir todas las peticiones si no hay origin (como herramientas de prueba) o si está en la lista blanca
+  origin: (origin, callback) => {
     if (!origin || whitelist.indexOf(origin) !== -1 || process.env.NODE_ENV !== 'production') {
       callback(null, true);
     } else {
-      console.error(`[CORS] Petición bloqueada desde origen no permitido: ${origin}`);
       callback(new Error('Not allowed by CORS'));
     }
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-  maxAge: 86400
 };
 app.use(cors(corsOptions));
-console.log('[SERVER] CORS configurado.');
 
-console.log('[SERVER] Configurando parsers y archivos estáticos...');
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
-
-// Middleware para servir videos con cabeceras que eviten errores de caché
-const videoHeaderMiddleware = (req, res, next) => {
-  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-  res.setHeader('Pragma', 'no-cache');
-  res.setHeader('Expires', '0');
-  next();
-};
-
-// Servir archivos estáticos del frontend y carpetas de medios
-const publicImagPath = path.join(__dirname, '../../frontend/public/imag');
-const publicVideoPath = path.join(__dirname, '../../frontend/public/video');
-const publicApkPath = path.join(__dirname, '../../frontend/public');
-
-console.log(`[SERVER] Sirviendo imágenes desde: ${publicImagPath}`);
-console.log(`[SERVER] Sirviendo videos desde: ${publicVideoPath}`);
-console.log(`[SERVER] Sirviendo APK desde: ${publicApkPath}`);
-
-app.use('/imag', express.static(publicImagPath));
-// Unificar fuente de videos a la carpeta de medios compartida
-app.use('/video', videoHeaderMiddleware, express.static(publicVideoPath));
-app.use('/videos', videoHeaderMiddleware, express.static(publicVideoPath));
-// Permitir descarga del APK
-app.use('/', express.static(publicApkPath));
-console.log('[SERVER] Rutas estáticas configuradas.');
-
-app.get('/', (req, res) => {
-  res.json({ 
-    message: 'CV Global API is running!',
-    version: '3.0.1',
-    status: 'online',
-    timestamp: new Date().toISOString()
-  });
+// 2. Webhooks de Telegram (Endpoint dedicado antes de las rutas generales)
+setupWebhooks(app).then(() => {
+  logger.info('[SERVER] Webhooks de Telegram configurados.');
 });
 
-console.log('[SERVER] Configurando rutas de API...');
-app.get('/api', (req, res) => {
-  res.json({ 
-    ok: true, 
-    message: 'Welcome to CV Global API',
-    endpoints: ['/api/health', '/api/auth', '/api/users', '/api/tasks']
-  });
-});
-
-// Aplicar Rate Limiting selectivo para proteger recursos
-app.use('/api/auth', rateLimiter(60000, 15), authRoutes);
-app.use('/api/users/stats', rateLimiter(60000, 20)); // Limitar stats específicamente
-app.use('/api/users', userRoutes);
-app.use('/api/tasks', rateLimiter(60000, 40), taskRoutes);
-app.use('/api/levels', rateLimiter(60000, 60), levelRoutes);
-app.use('/api/recharges', rechargeRoutes);
-app.use('/api/withdrawals', withdrawalRoutes);
-app.use('/api/telegram', telegramRoutes);
-app.use('/api/admin/telegram-users', telegramAdminRoutes); // Endpoint exacto solicitado
-app.use('/api/admin/telegram', telegramAdminRoutes);
-app.use('/api/admin', rateLimiter(60000, 30), adminRoutes);
-app.use('/api/sorteo', rateLimiter(60000, 30), sorteoRoutes);
-app.use('/api/telegram-webhook', telegramWebhookRoutes);
-console.log('[SERVER] Rutas de API configuradas.');
-
+// 3. Health Check Distribuido
 app.get('/api/health', async (req, res) => {
   try {
     const { query } = await import('./config/db.js');
-    const { default: worker } = await import('./services/TelegramWorker.js');
-    
-    // 1. Verificar DB
+    const { default: redis } = await import('./services/redisService.js');
     await query('SELECT 1');
-    
-    // 2. Obtener salud del worker y bots
-    const workerHealth = worker.getHealth();
-    
+    const redisStatus = await redis.ping();
     res.json({ 
       status: 'ok', 
-      database: 'connected',
-      worker: workerHealth,
+      services: { database: 'connected', redis: redisStatus === 'PONG' ? 'connected' : 'error' },
       timestamp: new Date().toISOString()
     });
   } catch (err) {
-    res.status(500).json({ 
-      status: 'error', 
-      message: err.message,
-      timestamp: new Date().toISOString()
-    });
+    res.status(500).json({ status: 'error', message: err.message });
   }
 });
 
-app.get('/api/banners', async (req, res) => {
-  try {
-    const { getBanners } = await import('./lib/queries.js');
-    const banners = await getBanners();
-    res.json(banners);
-  } catch (err) {
-    res.json([]);
-  }
-});
+// 4. Rutas de API
+app.use('/api/auth', rateLimiter(60000, 15), authRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/tasks', rateLimiter(60000, 40), taskRoutes);
+app.use('/api/levels', levelRoutes);
+app.use('/api/recharges', rechargeRoutes);
+app.use('/api/withdrawals', withdrawalRoutes);
+app.use('/api/telegram', telegramRoutes);
+app.use('/api/admin/telegram', telegramAdminRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/sorteo', sorteoRoutes);
 
-app.get('/api/public-content', rateLimiter(60000, 60), async (req, res) => {
-  try {
-    const { getPublicContent } = await import('./lib/queries.js');
-    const config = await getPublicContent();
-    res.json(config);
-  } catch (err) {
-    res.status(500).json({ error: 'Error loading config' });
-  }
-});
+// Servir archivos estáticos
+const publicPath = path.join(__dirname, '../../frontend/public');
+app.use('/imag', express.static(path.join(publicPath, 'imag')));
+app.use('/video', express.static(path.join(publicPath, 'video')));
+app.use('/', express.static(publicPath));
 
 const startServer = async () => {
   try {
-    // 1. Probar conexión a MySQL
-    try {
-      await query('SELECT 1');
-      logger.info('[DATABASE] MySQL conectado exitosamente (Pool OK)');
-    } catch (dbErr) {
-      logger.warn('[DATABASE] No se pudo conectar a MySQL. El sistema funcionará en MODO DEMO para el usuario de prueba.');
-    }
+    await query('SELECT 1');
+    logger.info('[DATABASE] MySQL conectado.');
 
-    // 2. Precargar configuración y niveles en memoria
-    await preloadConfig().catch(() => logger.warn('[PRELOAD] No se pudo cargar configuración inicial (DB Offline)'));
-    await preloadLevels().catch(() => logger.warn('[PRELOAD] No se pudo cargar niveles iniciales (DB Offline)'));
+    await preloadConfig().catch(() => {});
+    await preloadLevels().catch(() => {});
     
-    setInterval(() => {
-      preloadConfig().catch(() => {});
-      preloadLevels().catch(() => {});
-    }, 5 * 60 * 1000);
-    
-    // Importar lógica de telegram (mantenemos compatibilidad con el archivo existente si es necesario)
-    try {
-      await import('./lib/telegram.js');
-      logger.info('[TELEGRAM] Lógica de Operaciones cargada.');
-    } catch (e) {}
-    
-    app.listen(PORT, async () => {
-      console.log(`\n[SUCCESS] ¡Servidor Global API escuchando en http://localhost:${PORT}!\n`);
-      
-      // Tarea de mantenimiento: Reset de ganancias diarias a las 00:00 Bolivia (UTC-4)
-  const setupCron = async () => {
-    const { resetDailyEarnings } = await import('./lib/queries.js');
-    
-    const checkReset = () => {
-      const now = new Date();
-      const boliviaTime = new Date(now.toLocaleString('en-US', { timeZone: 'America/La_Paz' }));
-      
-      // Si son entre las 00:00 y las 00:05 AM, ejecutar reset
-      if (boliviaTime.getHours() === 0 && boliviaTime.getMinutes() < 5) {
-        resetDailyEarnings();
-      }
-    };
-    
-    // Revisar cada 5 minutos
-    setInterval(checkReset, 5 * 60 * 1000);
-    console.log('[CRON] Sistema de reset diario iniciado.');
-  };
-  
-      setupCron().catch(err => console.error('[CRON] Error al iniciar:', err));
+    app.listen(PORT, () => {
+      logger.info(`[SUCCESS] Servidor en puerto ${PORT}`);
     });
   } catch (err) {
-    console.error('[SERVER] Failed to start:', err);
+    logger.error('[SERVER] Fallo al iniciar:', err);
   }
 };
 
-// 4. Manejo de errores global (Debe ir después de todas las rutas)
 app.use(errorHandler);
-
 startServer();

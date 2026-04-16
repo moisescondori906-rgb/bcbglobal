@@ -1,36 +1,37 @@
-const isProd = process.env.NODE_ENV === 'production';
+import winston from 'winston';
+import 'dotenv/config';
 
-/**
- * Logger centralizado para controlar el volumen de logs en producción
- * y reducir el consumo de Disk I/O en Render.
- */
-const logger = {
-  info: (msg, ...args) => {
-    if (!isProd) {
-      console.log(`[INFO] ${msg}`, ...args);
-    }
-  },
-  
-  warn: (msg, ...args) => {
-    // Solo mostramos advertencias importantes en producción
-    console.warn(`[WARN] ${msg}`, ...args);
-  },
-  
-  error: (msg, ...args) => {
-    // Siempre mostramos errores en producción para diagnóstico
-    console.error(`[ERROR] ${msg}`, ...args);
-  },
-  
-  debug: (msg, ...args) => {
-    if (!isProd) {
-      console.debug(`[DEBUG] ${msg}`, ...args);
-    }
-  },
+const { combine, timestamp, printf, colorize, json } = winston.format;
 
-  // Log de auditoría que siempre se muestra pero de forma concisa
-  audit: (msg, ...args) => {
-    console.log(`[AUDIT] ${msg}`, ...args);
+const customFormat = printf(({ level, message, timestamp, ...metadata }) => {
+  let msg = `${timestamp} [${level}] : ${message}`;
+  if (Object.keys(metadata).length > 0 && level !== 'info') {
+    msg += ` ${JSON.stringify(metadata)}`;
   }
-};
+  return msg;
+});
+
+const logger = winston.createLogger({
+  level: process.env.LOG_LEVEL || 'info',
+  format: combine(
+    timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+    json()
+  ),
+  defaultMeta: { service: 'bcb-global-fintech' },
+  transports: [
+    new winston.transports.File({ filename: 'logs/error.log', level: 'error' }),
+    new winston.transports.File({ filename: 'logs/combined.log' }),
+  ],
+});
+
+if (process.env.NODE_ENV !== 'production') {
+  logger.add(new winston.transports.Console({
+    format: combine(
+      colorize(),
+      timestamp({ format: 'HH:mm:ss' }),
+      customFormat
+    ),
+  }));
+}
 
 export default logger;
