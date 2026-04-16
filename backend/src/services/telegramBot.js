@@ -57,111 +57,156 @@ export const sendToSecretaria = async (message, options = {}) => {
 };
 
 /**
- * Escuchador global de Callbacks para control de Retiros
+ * Escuchador global de Callbacks para los 3 Bots (Admin, Retiros, Secretaria)
  */
-if (botAdmin) {
-  botAdmin.on('callback_query', async (query) => {
+[botAdmin, botRetiros, botSecretaria].forEach(bot => {
+  if (!bot) return;
+
+  bot.on('callback_query', async (query) => {
     try {
-      // 1. Parsear correctamente
+      // 1. Validaciones iniciales
+      if (!query || !query.data || !query.message) {
+        return query.answer();
+      }
+
       const { data, message, from } = query;
-      if (!data) return;
-      
       const [accion, id] = data.split('_');
+
+      if (!id || isNaN(id)) {
+        return query.answer({ text: "❌ ID inválido", show_alert: true });
+      }
+
       const userId = from.id;
       const userName = from.first_name || from.username || 'Operador';
 
-      console.log("Acción:", accion, "Usuario:", userId);
+      console.log(`[TELEGRAM] ${accion} retiro ${id} por ${userName} (${userId})`);
 
+      // 2. Importar DB dinámicamente
       const { query: dbQuery, queryOne } = await import('../config/db.js');
 
-      // 2. LÓGICA DE TOMAR
+      // 3. LÓGICA DE TOMAR RETIRO (BLOQUEO REAL)
       if (accion === 'tomar') {
         const updateRes = await dbQuery(
-          `UPDATE retiros SET estado_operativo='tomado', tomado_por=?, fecha_toma=NOW(), tomado_por_nombre=? 
+          `UPDATE retiros 
+           SET estado_operativo='tomado', tomado_por=?, tomado_por_nombre=?, fecha_toma=NOW() 
            WHERE id=? AND estado_operativo='pendiente'`,
           [userId, userName, id]
         );
 
         if (updateRes.affectedRows === 0) {
-          console.log(`⚠️ Ya fue tomado: Retiro ${id}`);
-          return query.answer({ text: "⚠️ Este retiro ya fue tomado por otro operador", show_alert: true });
+          return query.answer({ 
+            text: "⚠️ Este retiro ya fue tomado por otro operador", 
+            show_alert: true 
+          });
         }
 
-        const syncText = `${message.text}\n\n🔒 <b>Tomado por:</b> ${userName}`;
+        // 4. EDITAR MENSAJE (SEGURO)
+        const newText = `${message.text}\n\n🔒 <b>Tomado por:</b> ${userName}`;
         
-        await botAdmin.editMessageText(syncText, {
-          chat_id: message.chat.id,
-          message_id: message.message_id,
-          parse_mode: 'HTML',
-          reply_markup: {
-            inline_keyboard: [[
-              { text: '✅ Aprobar', callback_data: `aprobar_${id}` },
-              { text: '❌ Rechazar', callback_data: `rechazar_${id}` }
-            ]]
-          }
-        });
-
-        // Sincronizar otros grupos
-        const retiro = await queryOne(`SELECT msg_id_retiros, msg_id_secretaria FROM retiros WHERE id=?`, [id]);
-        if (botRetiros && retiro?.msg_id_retiros) {
-          await botRetiros.editMessageText(syncText, { chat_id: process.env.TELEGRAM_CHAT_RETIROS, message_id: retiro.msg_id_retiros, parse_mode: 'HTML' }).catch(() => {});
+        try {
+          await bot.editMessageText(newText, {
+            chat_id: message.chat.id,
+            message_id: message.message_id,
+            parse_mode: 'HTML',
+            reply_markup: {
+              inline_keyboard: [[
+                { text: '✅ Aprobar', callback_data: `aprobar_${id}` },
+                { text: '❌ Rechazar', callback_data: `rechazar_${id}` }
+              ]]
+            }
+          });
+        } catch (e) {
+          console.error("Error editando mensaje (Toma):", e.message);
         }
-        if (botSecretaria && retiro?.msg_id_secretaria) {
-          await botSecretaria.editMessageText(syncText, { chat_id: process.env.TELEGRAM_CHAT_SECRETARIA, message_id: retiro.msg_id_secretaria, parse_mode: 'HTML' }).catch(() => {});
+
+        // Sincronizar otros grupos si tienen message_ids guardados
+        const retiro = await queryOne(`SELECT msg_id_admin, msg_id_retiros, msg_id_secretaria FROM retiros WHERE id=?`, [id]);
+        
+        const syncGroups = [
+          { b: botAdmin, cid: process.env.TELEGRAM_CHAT_ADMIN, mid: retiro?.msg_id_admin },
+          { b: botRetiros, cid: process.env.TELEGRAM_CHAT_RETIROS, mid: retiro?.msg_id_retiros },
+          { b: botSecretaria, cid: process.env.TELEGRAM_CHAT_SECRETARIA, mid: retiro?.msg_id_secretaria }
+        ];
+
+        for (const g of syncGroups) {
+          // No editamos el mensaje actual (ya se editó arriba)
+          if (g.b && g.mid && g.mid !== message.message_id) {
+            await g.b.editMessageText(newText, { chat_id: g.cid, message_id: g.mid, parse_mode: 'HTML' }).catch(() => {});
+          }
         }
 
         return query.answer({ text: "✅ Has tomado el retiro" });
       }
 
-      // 3. LÓGICA DE APROBAR / RECHAZAR
+      // 5. APROBAR / RECHAZAR (SEGURIDAD TOTAL)
       if (accion === 'aprobar' || accion === 'rechazar') {
-        const retiro = await queryOne(`SELECT tomado_por, estado_operativo, msg_id_retiros, msg_id_secretaria FROM retiros WHERE id=?`, [id]);
-        
-        if (!retiro) return query.answer({ text: "❌ Retiro no encontrado", show_alert: true });
+        const retiro = await queryOne(
+          `SELECT tomado_por, estado_operativo, msg_id_admin, msg_id_retiros, msg_id_secretaria FROM retiros WHERE id=?`, 
+          [id]
+        );
 
-        // Verificar que el operador sea quien lo tomó
-        if (retiro.tomado_por != userId) {
-          return query.answer({ text: "❌ No autorizado. Solo quien tomó el retiro puede procesarlo.", show_alert: true });
+        if (!retiro) {
+          return query.answer({ text: "❌ Retiro no encontrado", show_alert: true });
         }
 
-        // Bloquear doble acción (verificar estado)
+        // Validar: Solo quien lo tomó puede procesar
+        if (retiro.tomado_por != userId) {
+          return query.answer({ text: "❌ No autorizado", show_alert: true });
+        }
+
+        // Validar estado: Debe estar en estado 'tomado'
         if (retiro.estado_operativo !== 'tomado') {
-          return query.answer({ text: "⚠️ Este retiro ya no está en estado 'tomado'", show_alert: true });
+          return query.answer({ text: "⚠️ Ya procesado", show_alert: true });
         }
 
         const nuevoEstado = accion === 'aprobar' ? 'aprobado' : 'rechazado';
-        const emoji = accion === 'aprobar' ? '✅' : '❌';
         const finalStatus = accion === 'aprobar' ? 'completado' : 'rechazado';
+        const emoji = accion === 'aprobar' ? '✅' : '❌';
 
         await dbQuery(
-          `UPDATE retiros SET estado_operativo=?, procesado_por=?, fecha_procesado=NOW(), estado=? WHERE id=?`,
+          `UPDATE retiros 
+           SET estado_operativo=?, procesado_por=?, fecha_procesado=NOW(), estado=? 
+           WHERE id=?`,
           [nuevoEstado, userId, finalStatus, id]
         );
 
-        const finalSyncText = `${message.text}\n\n${emoji} <b>${nuevoEstado.toUpperCase()} por:</b> ${userName}`;
+        // 6. MENSAJE FINAL
+        const finalText = `${message.text}\n\n${emoji} <b>${nuevoEstado.toUpperCase()} por:</b> ${userName}`;
 
-        await botAdmin.editMessageText(finalSyncText, {
-          chat_id: message.chat.id,
-          message_id: message.message_id,
-          parse_mode: 'HTML'
-        });
-
-        if (botRetiros && retiro.msg_id_retiros) {
-          await botRetiros.editMessageText(finalSyncText, { chat_id: process.env.TELEGRAM_CHAT_RETIROS, message_id: retiro.msg_id_retiros, parse_mode: 'HTML' }).catch(() => {});
-        }
-        if (botSecretaria && retiro.msg_id_secretaria) {
-          await botSecretaria.editMessageText(finalSyncText, { chat_id: process.env.TELEGRAM_CHAT_SECRETARIA, message_id: retiro.msg_id_secretaria, parse_mode: 'HTML' }).catch(() => {});
+        try {
+          await bot.editMessageText(finalText, {
+            chat_id: message.chat.id,
+            message_id: message.message_id,
+            parse_mode: 'HTML'
+          });
+        } catch (e) {
+          console.error("Error final (Edición):", e.message);
         }
 
-        return query.answer({ text: `✅ Retiro ${nuevoEstado} con éxito` });
+        // Sincronizar todos los grupos con el estado final
+        const finalSyncGroups = [
+          { b: botAdmin, cid: process.env.TELEGRAM_CHAT_ADMIN, mid: retiro.msg_id_admin },
+          { b: botRetiros, cid: process.env.TELEGRAM_CHAT_RETIROS, mid: retiro.msg_id_retiros },
+          { b: botSecretaria, cid: process.env.TELEGRAM_CHAT_SECRETARIA, mid: retiro.msg_id_secretaria }
+        ];
+
+        for (const g of finalSyncGroups) {
+          if (g.b && g.mid && g.mid !== message.message_id) {
+            await g.b.editMessageText(finalText, { chat_id: g.cid, message_id: g.mid, parse_mode: 'HTML' }).catch(() => {});
+          }
+        }
+
+        return query.answer({ text: `✅ ${nuevoEstado.toUpperCase()} correctamente` });
       }
 
     } catch (err) {
-      console.error("❌ ERROR CRÍTICO CALLBACK:", err.message);
-      try { await query.answer({ text: "❌ Error: " + err.message, show_alert: true }); } catch (e) {}
+      console.error("❌ ERROR CALLBACK:", err.message);
+      try {
+        await query.answer({ text: "❌ Error interno", show_alert: true });
+      } catch {}
     }
   });
-}
+});
 
 export const formatRetiroMessage = (data) => {
   const { telefono, nivel, monto, hora } = data;
