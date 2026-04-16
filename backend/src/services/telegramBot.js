@@ -128,6 +128,13 @@ export const sendToSecretaria = async (message, options = {}) => {
           });
         }
 
+        // --- REGISTRO EN HISTORIAL (AUDITORÍA) ---
+        await dbQuery(
+          `INSERT INTO historial_retiros (retiro_id, accion, usuario, telegram_id, detalles) 
+           VALUES (?, 'tomar', ?, ?, 'Caso tomado desde Telegram')`,
+          [id, userName, userId]
+        );
+
         // 4. EDITAR MENSAJE (SEGURO)
         const newText = `${message.text}\n\n🔒 <b>Tomado por:</b> ${userName}`;
         
@@ -196,6 +203,13 @@ export const sendToSecretaria = async (message, options = {}) => {
            SET estado_operativo=?, procesado_por=?, fecha_procesado=NOW(), estado=? 
            WHERE id=?`,
           [nuevoEstado, userId, finalStatus, id]
+        );
+
+        // --- REGISTRO EN HISTORIAL (AUDITORÍA) ---
+        await dbQuery(
+          `INSERT INTO historial_retiros (retiro_id, accion, usuario, telegram_id, detalles) 
+           VALUES (?, ?, ?, ?, ?)`,
+          [id, nuevoEstado, userName, userId, `Retiro ${nuevoEstado} vía Telegram`]
         );
 
         // 6. MENSAJE FINAL
