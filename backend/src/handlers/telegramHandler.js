@@ -3,15 +3,22 @@ import { botAdmin, botRetiros, botSecretaria } from './telegramBot.js';
 import { WithdrawalRepository, TelegramUserRepository } from '../repositories/telegramRepository.js';
 import { WithdrawalService } from '../services/withdrawalService.js';
 import { checkGlobalRateLimit, acquireLock, releaseLock, checkIdempotencyRedis } from '../services/redisService.js';
-import { query } from '../config/db.js';
+import { FeatureFlagService, FraudDetectionService } from '../services/globalControlService.js';
+import { query, queryOne } from '../config/db.js';
 import logger from '../lib/logger.js';
 
 /**
- * handleCallbackQuery - Blindado para Resiliencia Total.
+ * handleCallbackQuery - Blindado para Resiliencia Global.
  */
 export const handleCallbackQuery = async (bot, queryData) => {
   const { data, from, id: callbackId } = queryData;
   if (!data || !from) return;
+
+  // 0. Global Kill-Switch (Feature Flag)
+  const isSystemActive = await FeatureFlagService.isEnabled('telegram_withdrawals');
+  if (!isSystemActive) {
+    return bot.answerCallbackQuery(callbackId, { text: "⚠️ Sistema en mantenimiento temporal.", show_alert: true });
+  }
 
   // 1. Trazabilidad & Idempotencia Persistente
   const traceId = uuidv4();
@@ -50,11 +57,19 @@ export const handleCallbackQuery = async (bot, queryData) => {
     // 4. Lógica de Negocio (Inyectando traceId)
     if (accion === 'tomar') {
       await WithdrawalService.takeWithdrawal(retiroId, { userId: from.id, userName: from.first_name, traceId });
+      
+      // Motor de Detección de Fraude (Análisis asíncrono)
+      FraudDetectionService.analyzeOperation(from.id, traceId, { action: accion, withdrawalId: retiroId });
+
       const withdrawal = await WithdrawalRepository.findByIdWithLevel(retiroId);
       const text = formatRobustMessage(withdrawal, `🔒 Tomado por: ${from.first_name}\n🆔 Trace: <code>${traceId}</code>`);
       await syncMessageAcrossGroups(withdrawal, text, retiroId, true, traceId);
     } else if (accion === 'aprobar' || accion === 'rechazar') {
       const nuevoEstado = await WithdrawalService.processWithdrawal(retiroId, accion, { userId: from.id, userName: from.first_name, traceId });
+      
+      // Análisis de anomalías
+      FraudDetectionService.analyzeOperation(from.id, traceId, { action: accion, withdrawalId: retiroId });
+
       const withdrawal = await WithdrawalRepository.findByIdWithLevel(retiroId);
       const emoji = nuevoEstado === 'aprobado' ? '✅' : '❌';
       const text = formatRobustMessage(withdrawal, `${emoji} ${nuevoEstado.toUpperCase()} por: ${from.first_name}\n🆔 Trace: <code>${traceId}</code>`);

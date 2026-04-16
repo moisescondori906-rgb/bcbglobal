@@ -82,13 +82,21 @@ app.get('/api/health', async (req, res) => {
     // Salud de la Cola
     const queueJobCounts = await telegramQueue.getJobCounts('waiting', 'active', 'failed', 'completed');
     
+    // Métricas de SLA (Simulado para Health Check)
+    const availability = (100 - (queueJobCounts.failed / (queueJobCounts.completed + queueJobCounts.failed || 1)) * 100).toFixed(2);
+    
     res.json({ 
       status: 'ok', 
       uptime: process.uptime(),
+      region: process.env.REGION || 'LATAM-BO-1',
       latencies: {
         database: `${dbLatency}ms`,
         redis: `${redisLatency}ms`,
         total_response: `${Date.now() - start}ms`
+      },
+      sla: {
+        availability: `${availability}%`,
+        target: '99.9%'
       },
       services: {
         database: 'connected',
