@@ -5,6 +5,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { findUserByTelefono, createUser, getLevels, updateUser } from '../lib/queries.js';
 import { queryOne } from '../config/db.js';
 import { BillingService } from '../services/billingService.js';
+import { AuditService } from '../services/auditService.js';
+import redis from '../services/redisService.js';
 import { DEMO_USER_ID, DEMO_USER_DATA } from '../middleware/requestContext.js';
 import logger from '../lib/logger.js';
 

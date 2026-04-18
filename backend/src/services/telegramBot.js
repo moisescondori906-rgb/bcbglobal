@@ -1,99 +1,101 @@
 import TelegramBot from 'node-telegram-bot-api';
-import 'dotenv/config';
-import { enqueueTelegramMessage } from './BullMQService.js';
-import { handleCallbackQuery } from '../handlers/telegramHandler.js';
-import { setupJobs } from '../jobs/telegramJobs.js';
+import dotenv from 'dotenv';
 import logger from '../lib/logger.js';
 
-// Inicialización de múltiples bots con Webhook (Alta Carga)
-const initBot = (token, name) => {
-  if (!token) return null;
-  const bot = new TelegramBot(token, { polling: false }); // Desactivar polling
-  logger.info(`[TELEGRAM] Bot ${name} iniciado en MODO WEBHOOK.`);
-  return bot;
+dotenv.config();
+
+const tokens = {
+  admin: process.env.TELEGRAM_BOT_TOKEN_ADMIN,
+  retiros: process.env.TELEGRAM_BOT_TOKEN_RETIROS,
+  secretaria: process.env.TELEGRAM_BOT_TOKEN_SECRETARIA
 };
 
-export const botAdmin = initBot(process.env.TELEGRAM_BOT_TOKEN_ADMIN, 'ADMIN');
-export const botRetiros = initBot(process.env.TELEGRAM_BOT_TOKEN_RETIROS, 'RETIROS');
-export const botSecretaria = initBot(process.env.TELEGRAM_BOT_TOKEN_SECRETARIA, 'SECRETARIA');
+// Validación de tokens obligatorios para producción
+if (process.env.NODE_ENV === 'production') {
+  Object.entries(tokens).forEach(([key, token]) => {
+    if (!token) logger.error(`[TELEGRAM] Falta token para bot: ${key}`);
+  });
+}
+
+// Inicialización resiliente de bots
+const createBot = (token, name) => {
+  if (!token) return null;
+  try {
+    const bot = new TelegramBot(token, { polling: false }); // Usar Webhooks en producción
+    logger.info(`[TELEGRAM] Bot ${name} inicializado.`);
+    return bot;
+  }
+  catch (err) {
+    logger.error(`[TELEGRAM] Error al crear bot ${name}: ${err.message}`);
+    return null;
+  }
+};
+
+export const botAdmin = createBot(tokens.admin, 'ADMIN');
+export const botRetiros = createBot(tokens.retiros, 'RETIROS');
+export const botSecretaria = createBot(tokens.secretaria, 'SECRETARIA');
 
 /**
- * Migración a WEBHOOKS: 
- * Los bots ya no escuchan activamente, Express recibe el POST de Telegram.
+ * Helper para enviar mensajes con retry y log de errores
  */
-export const setupWebhooks = async (app) => {
-  const url = process.env.BACKEND_URL || 'https://tu-dominio.com';
-  const tokens = {
-    admin: process.env.TELEGRAM_BOT_TOKEN_ADMIN,
-    retiros: process.env.TELEGRAM_BOT_TOKEN_RETIROS,
-    secretaria: process.env.TELEGRAM_BOT_TOKEN_SECRETARIA
+async function safeSendMessage(bot, chatId, text, options = {}) {
+  if (!bot || !chatId) return null;
+  try {
+    return await bot.sendMessage(chatId, text, { parse_mode: 'HTML', ...options });
+  }
+  catch (err) {
+    logger.error(`[TELEGRAM] Error enviando mensaje a ${chatId}: ${err.message}`);
+    return null;
+  }
+}
+
+export const sendToAdmin = async (text, options) => await safeSendMessage(botAdmin, process.env.TELEGRAM_CHAT_ADMIN, text, options);
+export const sendToRetiros = async (text, options) => await safeSendMessage(botRetiros, process.env.TELEGRAM_CHAT_RETIROS, text, options);
+export const sendToSecretaria = async (text, options) => await safeSendMessage(botSecretaria, process.env.TELEGRAM_CHAT_SECRETARIA, text, options);
+
+/**
+ * Formateador de alertas de retiro institucional
+ */
+export const formatRetiroMessage = ({ telefono, nivel, monto, hora }) => {
+  return `
+💰 <b>SOLICITUD DE RETIRO</b>
+━━━━━━━━━━━━━━━━━━
+👤 <b>Usuario:</b> <code>${telefono}</code>
+🏆 <b>Nivel:</b> <code>${nivel}</code>
+💵 <b>Monto:</b> <code>${monto} BOB</code>
+🕒 <b>Hora:</b> <code>${hora}</code>
+━━━━━━━━━━━━━━━━━━
+<i>Acción requerida en panel administrativo.</i>
+  `.trim();
+};
+
+/**
+ * Configuración de Webhooks (Llamar al iniciar el servidor)
+ */
+export const setupWebhooks = async () => {
+  const backendUrl = process.env.BACKEND_URL;
+  if (!backendUrl) {
+    logger.warn('[TELEGRAM] BACKEND_URL no definida. No se configurarán webhooks.');
+    return;
+  }
+
+  const secret = process.env.TELEGRAM_WEBHOOK_SECRET;
+  
+  const setup = async (bot, name, path) => {
+    if (!bot) return;
+    try {
+      const url = `${backendUrl}/api/webhooks/telegram/${path}`;
+      await bot.setWebHook(url, { 
+        secret_token: secret,
+        drop_pending_updates: true
+      });
+      logger.info(`[TELEGRAM] Webhook configurado para ${name}: ${url}`);
+    } catch (err) {
+      logger.error(`[TELEGRAM] Error webhook ${name}: ${err.message}`);
+    }
   };
 
-  for (const [key, token] of Object.entries(tokens)) {
-    if (token) {
-      const webhookPath = `/api/telegram-webhook/${key}`;
-      const secretToken = process.env.TELEGRAM_WEBHOOK_SECRET || 'bcb_secret_token_2024';
-      
-      await (key === 'admin' ? botAdmin : key === 'retiros' ? botRetiros : botSecretaria)
-        .setWebHook(`${url}${webhookPath}`, {
-          secret_token: secretToken
-        });
-      
-      logger.info(`[WEBHOOK] ${key.toUpperCase()} configurado con Secret Token.`);
-    }
-  }
-
-  // Endpoints para Webhooks con Validación de Seguridad
-  app.post('/api/telegram-webhook/:botType', (req, res) => {
-    const { botType } = req.params;
-    const secretToken = req.headers['x-telegram-bot-api-secret-token'];
-    const expectedToken = process.env.TELEGRAM_WEBHOOK_SECRET || 'bcb_secret_token_2024';
-
-    if (secretToken !== expectedToken) {
-      logger.error(`[SECURITY] Intento de Webhook no autorizado para ${botType}`);
-      return res.sendStatus(403);
-    }
-
-    const bot = botType === 'admin' ? botAdmin : botType === 'retiros' ? botRetiros : botSecretaria;
-    
-    if (bot) {
-      bot.processUpdate(req.body);
-    }
-    res.sendStatus(200);
-  });
-};
-
-// Funciones de envío centralizadas (BullMQ Queue)
-export const sendToAdmin = async (message, options = {}) => 
-  enqueueTelegramMessage(process.env.TELEGRAM_BOT_TOKEN_ADMIN, process.env.TELEGRAM_CHAT_ADMIN, message, options);
-
-export const sendToRetiros = async (message, options = {}) => 
-  enqueueTelegramMessage(process.env.TELEGRAM_BOT_TOKEN_RETIROS, process.env.TELEGRAM_CHAT_RETIROS, message, options);
-
-export const sendToSecretaria = async (message, options = {}) => 
-  enqueueTelegramMessage(process.env.TELEGRAM_BOT_TOKEN_SECRETARIA, process.env.TELEGRAM_CHAT_SECRETARIA, message, options);
-
-// Registro de Handlers de Callback para los 3 bots (Recibidos vía Webhook)
-[botAdmin, botRetiros, botSecretaria].forEach(bot => {
-  if (bot) {
-    bot.on('callback_query', (query) => handleCallbackQuery(bot, query));
-  }
-});
-
-// Inicializar Tareas Programadas (Jobs)
-setupJobs();
-
-export const formatRetiroMessage = (withdrawal) => {
-  return `📌 <b>NUEVO RETIRO FINTECH</b>\n\n🆔 ID: <b>${withdrawal.id}</b>\n👤 Usuario: ${withdrawal.telefono_usuario}\n🏅 Nivel: ${withdrawal.nivel_nombre || 'N/A'}\n💵 Monto: <b>${withdrawal.monto} Bs</b>\n🕒 Hora (BO): ${new Date().toLocaleString('es-BO', { timeZone: 'America/La_Paz' })}\n\n⚡ <i>Un operador debe tomar este caso para procesarlo.</i>`;
-};
-
-export const formatRecargaMessage = (recharge) => {
-  return `📌 <b>NUEVA RECARGA FINTECH</b>\n\n👤 Usuario: ${recharge.telefono_usuario}\n🏅 Nivel: ${recharge.nivel_nombre || 'N/A'}\n💵 Monto: <b>${recharge.monto} Bs</b>\n🕒 Hora (BO): ${new Date().toLocaleString('es-BO', { timeZone: 'America/La_Paz' })}`;
-};
-
-export default { 
-  botAdmin, botRetiros, botSecretaria, 
-  sendToAdmin, sendToRetiros, sendToSecretaria, 
-  formatRetiroMessage, formatRecargaMessage,
-  setupWebhooks
+  await setup(botAdmin, 'ADMIN', 'admin');
+  await setup(botRetiros, 'RETIROS', 'retiros');
+  await setup(botSecretaria, 'SECRETARIA', 'secretaria');
 };

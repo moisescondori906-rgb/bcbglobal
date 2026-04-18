@@ -20,7 +20,8 @@ import telegramAdminRoutes from './routes/telegram_admin.js';
 import sorteoRoutes from './routes/sorteo.js';
 import saasRoutes from './routes/saas.js';
 import telegramWebhookRoutes from './routes/telegram_webhook.js';
-import { preloadConfig, preloadLevels } from './lib/queries.js';
+import { setupJobs } from './jobs/telegramJobs.js'; // Importar setupJobs
+import { preloadConfig, preloadLevels, boliviaTime } from './lib/queries.js';
 import { query } from './config/db.js';
 import { rateLimiter } from './middleware/rateLimiter.js';
 import { errorHandler } from './middleware/errorHandler.js';
@@ -43,6 +44,8 @@ app.use(express.urlencoded({ limit: '10mb', extended: true }));
 // Configuración de CORS estricta
 const whitelist = [
   'https://sav-lat.vercel.app',
+  'https://bcb-global.com',
+  'https://www.bcb-global.com',
   'http://localhost:5173',
   'http://127.0.0.1:5173'
 ];
@@ -60,59 +63,21 @@ const corsOptions = {
 app.use(cors(corsOptions));
 
 // 2. Webhooks de Telegram (Endpoint dedicado antes de las rutas generales)
-setupWebhooks(app).then(() => {
+setupWebhooks().then(() => {
   logger.info('[SERVER] Webhooks de Telegram configurados.');
 });
 
+// Inicializar Tareas Programadas (Jobs)
+setupJobs();
+
 // 3. Health Check Avanzado (Métricas de Resiliencia)
 app.get('/api/health', async (req, res) => {
-  const start = Date.now();
-  try {
-    const { query } = await import('./config/db.js');
-    const { default: redis } = await import('./services/redisService.js');
-    const { default: telegramQueue } = await import('./services/BullMQService.js');
-    
-    // Medir latencia DB
-    const dbStart = Date.now();
-    await query('SELECT 1');
-    const dbLatency = Date.now() - dbStart;
-
-    // Medir latencia Redis
-    const redisStart = Date.now();
-    const redisStatus = await redis.ping();
-    const redisLatency = Date.now() - redisStart;
-
-    // Salud de la Cola
-    const queueJobCounts = await telegramQueue.getJobCounts('waiting', 'active', 'failed', 'completed');
-    
-    // Métricas de SLA (Simulado para Health Check)
-    const availability = (100 - (queueJobCounts.failed / (queueJobCounts.completed + queueJobCounts.failed || 1)) * 100).toFixed(2);
-    
-    res.json({ 
-      status: 'ok', 
-      uptime: process.uptime(),
-      region: process.env.REGION || 'LATAM-BO-1',
-      latencies: {
-        database: `${dbLatency}ms`,
-        redis: `${redisLatency}ms`,
-        total_response: `${Date.now() - start}ms`
-      },
-      sla: {
-        availability: `${availability}%`,
-        target: '99.9%'
-      },
-      services: {
-        database: 'connected',
-        redis: redisStatus === 'PONG' ? 'connected' : 'error',
-        queue: queueJobCounts
-      },
-      timestamp: new Date().toISOString()
-    });
-  } catch (err) {
-    logger.error('[HEALTH-CHECK] Fallo:', err.message);
-    res.status(500).json({ status: 'error', message: err.message });
-  }
+  res.json({ status: 'ok', time: boliviaTime.getTimeString() });
 });
+
+// Middlewares generales
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // 4. Rutas de API
 const apiV1 = express.Router();

@@ -1,52 +1,40 @@
 import { Router } from 'express';
-import { processTelegramUpdate } from '../lib/telegram_logic.js';
-import { sendToAdmin, sendToRetiros, sendToSecretaria } from '../services/telegramBot.js';
+import logger from '../lib/logger.js';
+import { botAdmin, botRetiros, botSecretaria } from '../services/telegramBot.js';
 
 const router = Router();
 
-// Ruta GET para verificar que el webhook es accesible desde el navegador
-router.get('/', (req, res) => {
-  res.send('✅ El endpoint del Webhook de Telegram está activo y listo para recibir señales.');
-});
+// Middleware de seguridad para validar el Secret Token de Telegram
+const validateWebhookSecret = (req, res, next) => {
+  const secretToken = req.headers['x-telegram-bot-api-secret-token'];
+  const expectedToken = process.env.TELEGRAM_WEBHOOK_SECRET;
 
-// Endpoint de prueba real de envío de mensaje a los 3 grupos (v8.6.0)
-router.get('/test', async (req, res) => {
-  try {
-    const results = await Promise.all([
-      sendToRetiros("🚀 <b>Test RETIROS OK</b>"),
-      sendToAdmin("🚀 <b>Test ADMIN OK</b>"),
-      sendToSecretaria("🚀 <b>Test SECRETARIA OK</b>")
-    ]);
-
-    const success = results.every(r => r === true);
-    
-    if (success) {
-      res.json({ success: true, message: 'Mensajes de prueba enviados correctamente a los 3 grupos' });
-    } else {
-      res.status(500).json({ 
-        success: false, 
-        error: 'Algunos mensajes no se pudieron enviar. Verifique los logs y la configuración de .env',
-        results: {
-          retiros: results[0],
-          admin: results[1],
-          secretaria: results[2]
-        }
-      });
-    }
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+  if (secretToken !== expectedToken) {
+    logger.warn(`[SECURITY] Intento de Webhook no autorizado.`);
+    return res.sendStatus(403);
   }
-});
+  next();
+};
 
-// Endpoint para recibir webhooks de Telegram
-router.post('/', async (req, res) => {
+/**
+ * Endpoint unificado para recibir actualizaciones de los 3 bots
+ */
+router.post('/:botType', validateWebhookSecret, async (req, res) => {
+  const { botType } = req.params;
+  const update = req.body;
+
   try {
-    console.log('[Telegram Webhook] Received update');
-    await processTelegramUpdate(req.body);
+    const bot = botType === 'admin' ? botAdmin : botType === 'retiros' ? botRetiros : botSecretaria;
+    
+    if (bot) {
+      // Procesar la actualización (incluye callbacks de botones)
+      bot.processUpdate(update);
+    }
+    
     res.status(200).send('OK');
   } catch (err) {
-    console.error('Error in Telegram Webhook:', err);
-    res.status(200).send('OK'); // Siempre responder 200 a Telegram
+    logger.error(`[TELEGRAM] Error procesando webhook para ${botType}: ${err.message}`);
+    res.status(200).send('OK'); // Responder siempre 200 a Telegram
   }
 });
 

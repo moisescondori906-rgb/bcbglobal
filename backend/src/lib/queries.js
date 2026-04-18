@@ -37,50 +37,45 @@ const DEFAULT_LEVELS = [
  * Utilidades para fechas en zona horaria de Bolivia (America/La_Paz)
  */
 export const boliviaTime = {
-  now: () => {
-    // Obtenemos la fecha UTC y la desplazamos a GMT-4 (Bolivia)
-    const now = new Date();
-    const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
-    return new Date(utc + (3600000 * -4));
+  now: (date = new Date()) => {
+    const d = new Date(date);
+    const boliviaOffset = -4 * 60;
+    return new Date(d.getTime() + (boliviaOffset + d.getTimezoneOffset()) * 60000);
   },
   todayStr: () => {
-    const d = boliviaTime.now();
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
+    return boliviaTime.getDateString();
   },
   yesterdayStr: () => {
-    const d = boliviaTime.now();
+    const d = new Date();
     d.setDate(d.getDate() - 1);
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
+    return boliviaTime.getDateString(d);
+  },
+  getDateString: (date = new Date()) => {
+    if (!date) return '';
+    const d = boliviaTime.now(date);
+    const year = d.getUTCFullYear();
+    const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(d.getUTCDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
   },
-  getDateString: (date) => {
-    if (!date) return '';
-    const d = new Date(date);
-    const utc = d.getTime() + (d.getTimezoneOffset() * 60000);
-    const bol = new Date(utc + (3600000 * -4));
-    return bol.toISOString().split('T')[0];
-  },
   getTimeString: (date = new Date()) => {
-    const d = new Date(date);
-    const utc = d.getTime() + (d.getTimezoneOffset() * 60000);
-    const bol = new Date(utc + (3600000 * -4));
-    return bol.toTimeString().substring(0, 5);
+    const d = boliviaTime.now(date);
+    const h = String(d.getUTCHours()).padStart(2, '0');
+    const min = String(d.getUTCMinutes()).padStart(2, '0');
+    return `${h}:${min}`;
   },
-  getDay: () => {
-    return boliviaTime.now().getDay();
+  getDay: (date = new Date()) => {
+    return boliviaTime.now(date).getUTCDay();
   },
-  getDayName: () => {
+  getDayName: (date = new Date()) => {
     const days = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-    return days[boliviaTime.getDay()];
+    return days[boliviaTime.getDay(date)];
   },
   isTimeInWindow: (timeStr, start = '00:00', end = '23:59') => {
-    if (start <= end) return timeStr >= start && timeStr <= end;
-    return timeStr >= start || timeStr <= end;
+    if (start <= end) {
+      return (timeStr >= start && timeStr <= end);
+    }
+    return (timeStr >= start || timeStr <= end);
   }
 };
 
@@ -521,6 +516,8 @@ export async function completeTask(userId, taskId, idempotencyKey = null) {
       [traceId, userId, operacion, amount, oldBalance, newBalance, activityId]
     );
 
+    userCache.delete(userId);
+
     const res = { success: true, amount, traceId, message: 'Tarea acreditada con éxito' };
 
     // 6. REGISTRAR IDEMPOTENCIA
@@ -639,6 +636,8 @@ export async function requestWithdrawal(userId, { monto, tipo_billetera, tarjeta
       [traceId, userId, operacion, tipo_billetera, m, oldBalance, newBalance, retiroId]
     );
 
+    userCache.delete(userId);
+
     const res = { success: true, retiroId, traceId, message: 'Retiro procesado correctamente' };
 
     // 6. REGISTRAR IDEMPOTENCIA EN DB (Final de la transacción)
@@ -710,6 +709,8 @@ export async function approveLevelPurchase(compraId, adminId, idempotencyKey = n
       [traceId, compra.usuario_id, operacion, compra.monto, Number(user.saldo_principal), Number(user.saldo_principal), compraId, JSON.stringify({ old_level: user.nivel_id, new_level: targetLevel.id })]
     );
 
+    userCache.delete(compra.usuario_id);
+
     const res = { success: true, traceId, message: `Ascenso a ${targetLevel.nombre} completado` };
     
     if (idempotencyKey) {
@@ -776,6 +777,8 @@ export async function refundPreviousLevel(userId, idempotencyKey) {
        VALUES (?, ?, ?, 'comisiones', ?, ?, ?, ?)`,
       [traceId, userId, operacion, amount, oldBalance, newBalance, purchase.id]
     );
+
+    userCache.delete(userId);
 
     const res = { success: true, amount, traceId, message: 'Inversión devuelta a billetera de comisiones' };
     
@@ -908,6 +911,8 @@ export async function rejectRetiro(retiroId, adminId, motivo, idempotencyKey = n
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [traceId, user.id, operacion, amount, oldBalance, newBalance, retiroId]
     );
+
+    userCache.delete(user.id);
 
     const res = { success: true, traceId, message: 'Retiro rechazado y saldo reembolsado' };
 
