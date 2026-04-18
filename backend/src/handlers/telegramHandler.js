@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import { botAdmin, botRetiros, botSecretaria } from './telegramBot.js';
+import { botAdmin, botRetiros, botSecretaria } from '../services/telegramBot.js';
 import { WithdrawalRepository, TelegramUserRepository } from '../repositories/telegramRepository.js';
 import { WithdrawalService } from '../services/withdrawalService.js';
 import { checkGlobalRateLimit, acquireLock, releaseLock, checkIdempotencyRedis } from '../services/redisService.js';

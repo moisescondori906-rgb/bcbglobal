@@ -1,4 +1,4 @@
-import { botAdmin, botRetiros, botSecretaria } from './telegramBot.js';
+import { botAdmin, botRetiros, botSecretaria } from '../services/telegramBot.js';
 import { WithdrawalRepository, CronRepository } from '../repositories/telegramRepository.js';
 import { WithdrawalService } from './withdrawalService.js';
 import worker from './TelegramWorker.js';
