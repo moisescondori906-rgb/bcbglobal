@@ -70,6 +70,7 @@ CREATE TABLE IF NOT EXISTS actividad_tareas (
   FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE,
   FOREIGN KEY (tarea_id) REFERENCES tareas(id) ON DELETE CASCADE,
   INDEX idx_actividad_usuario_dia (usuario_id, fecha_dia),
+  INDEX idx_actividad_compuesta (usuario_id, tarea_id, fecha_dia),
   -- Evitar doble acreditación de la misma tarea para el mismo usuario el mismo día
   UNIQUE KEY unique_user_task_day (usuario_id, tarea_id, fecha_dia)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

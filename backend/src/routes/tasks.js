@@ -2,17 +2,48 @@ import { Router } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { 
   getLevels, getTasks, getTaskById, completeTask,
-  boliviaTime, isUserPunished, getPublicContent, canPerformTasks 
+  boliviaTime, canPerformTasks 
 } from '../lib/queries.js';
 import { authenticate } from '../middleware/auth.js';
 import { attachRequestUser, DEMO_USER_ID } from '../middleware/requestContext.js';
 import { query } from '../config/db.js';
 import logger from '../lib/logger.js';
+import redis from '../services/redisService.js';
 
 const router = Router();
 
+// Rate Limit Config: 10 acciones por minuto por usuario
+const TASK_RATE_LIMIT = 10;
+const RATE_LIMIT_WINDOW = 60; // segundos
+
 router.use(authenticate);
 router.use(attachRequestUser);
+
+/**
+ * Middleware de Rate Limit Anti-Spam (Gamificación Segura)
+ */
+const taskRateLimit = async (req, res, next) => {
+  const userId = req.requestUser?.id;
+  if (!userId || userId === DEMO_USER_ID) return next();
+
+  const key = `ratelimit:tasks:${userId}`;
+  try {
+    const current = await redis.incr(key);
+    if (current === 1) await redis.expire(key, RATE_LIMIT_WINDOW);
+    
+    if (current > TASK_RATE_LIMIT) {
+      logger.warn(`[RATE-LIMIT] Usuario ${userId} excedió límite de tareas: ${current}/${TASK_RATE_LIMIT}`);
+      return res.status(429).json({ 
+        error: 'Demasiadas peticiones. Por favor, espera un minuto.',
+        code: 'RATE_LIMIT_EXCEEDED' 
+      });
+    }
+    next();
+  } catch (err) {
+    logger.error(`[RATE-LIMIT-ERROR]: ${err.message}`);
+    next(); // Fallback: permitir si Redis falla para no bloquear el negocio
+  }
+};
 
 router.get('/', async (req, res) => {
   try {
@@ -91,7 +122,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-router.post('/:id/responder', async (req, res) => {
+router.post('/:id/responder', taskRateLimit, async (req, res) => {
   try {
     const { respuesta, idempotency_key } = req.body;
     const user = req.requestUser;
@@ -111,6 +142,11 @@ router.post('/:id/responder', async (req, res) => {
 
     const task = await getTaskById(req.params.id);
     if (!task) return res.status(404).json({ error: 'Tarea no encontrada' });
+    
+    // Validar que la tarea esté activa (Gamificación Segura)
+    if (task.activo === 0 || task.activo === false) {
+      return res.status(400).json({ error: 'Esta tarea ya no está disponible.' });
+    }
 
     // Validar respuesta (Normalización básica)
     const normalize = (s) => String(s || '').trim().toUpperCase();
