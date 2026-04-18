@@ -61,6 +61,6 @@ ADD COLUMN msg_id_secretaria VARCHAR(100);
 
 -- Insertar administrador inicial (ejemplo basado en project memory)
 INSERT IGNORE INTO usuarios_telegram (telegram_id, nombre, rol, activo) 
-VALUES ('6896414316', 'Admin Principal', 'admin');
+VALUES ('6896414316', 'Admin Principal', 'admin', 1);
 
 SET FOREIGN_KEY_CHECKS = 1;

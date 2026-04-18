@@ -60,6 +60,7 @@ async function createRequestedUsers() {
           nombre_usuario: u.nombre,
           nombre_real: u.nombre === 'santalla' ? 'Santalla' : u.nombre,
           password_hash,
+          password_fondo_hash: null,
           codigo_invitacion,
           invitado_por: null,
           nivel_id: defaultLevel.id,
