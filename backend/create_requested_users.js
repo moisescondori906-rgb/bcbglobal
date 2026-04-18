@@ -6,6 +6,11 @@ import { createUser, findUserByTelefono, updateUser, getLevels } from './src/lib
 
 async function createRequestedUsers() {
   try {
+    console.log('--- Depuración de Configuración ---');
+    console.log('DB Host:', process.env.MYSQL_HOST);
+    console.log('DB User:', process.env.MYSQL_USER);
+    console.log('DB Database:', process.env.MYSQL_DATABASE);
+    
     const levels = await getLevels();
     const defaultLevel = levels.find(l => l.codigo === 'pasante' || l.nombre === 'pasante' || l.codigo === 'internar') || levels[0];
 
