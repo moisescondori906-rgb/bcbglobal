@@ -8,8 +8,8 @@ export default function BannerCarousel({ banners = [] }) {
 
   // Fallback banners si no hay datos del API
   const fallbackBanners = [
-    { id: 'f1', titulo: 'Bienvenido a BCB Global', imagen_url: '/imag/carrusel1.jpeg' },
-    { id: 'f2', titulo: 'Gana comisiones diarias', imagen_url: '/imag/carrusel1.jpeg' }
+    { id: 'f1', titulo: 'Bienvenido a BCB Global', imagen_url: '/imag/carrusel1.png' },
+    { id: 'f2', titulo: 'Gana comisiones diarias', imagen_url: '/imag/carrusel1.png' }
   ];
 
   // Asegurar que banners sea un array válido y tenga contenido
@@ -49,8 +49,8 @@ export default function BannerCarousel({ banners = [] }) {
             alt={validBanners[slide]?.titulo || 'Promoción'}
             className="w-full h-full object-cover"
             onError={(e) => { 
-              if (e.target.src !== '/imag/carrusel1.jpeg') {
-                e.target.src = '/imag/carrusel1.jpeg'; 
+              if (e.target.src !== '/imag/carrusel1.png') {
+                e.target.src = '/imag/carrusel1.png'; 
               }
             }}
           />

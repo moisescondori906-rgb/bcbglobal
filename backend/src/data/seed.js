@@ -66,8 +66,8 @@ export async function initStore() {
   ];
 
   const banners = [
-    { id: uuidv4(), imagen_url: '/imag/carrusel1.jpeg', titulo: 'Bienvenido', orden: 0, activo: true },
-    { id: uuidv4(), imagen_url: '/imag/carrusel2.jpeg', titulo: 'Gana Diariamente', orden: 1, activo: true },
+    { id: uuidv4(), imagen_url: '/imag/carrusel1.png', titulo: 'Bienvenido', orden: 0, activo: true },
+    { id: uuidv4(), imagen_url: '/imag/carrusel2.png', titulo: 'Gana Diariamente', orden: 1, activo: true },
   ];
 
   const metodosQr = [
@@ -79,7 +79,7 @@ export async function initStore() {
       id: uuidv4(), 
       titulo: 'Bienvenida a BCB Global v7.0.0', 
       contenido: 'Estamos emocionados de lanzar nuestra nueva plataforma institucional con sede en Colorado, USA. Disfruta de una experiencia premium y segura.', 
-      imagen_url: '/imag/noticia1.jpeg',
+      imagen_url: null,
       fecha: new Date().toISOString() 
     },
     { 

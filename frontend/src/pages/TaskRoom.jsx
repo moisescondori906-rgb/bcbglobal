@@ -344,7 +344,7 @@ export default function TaskRoom() {
               delay={i * 0.05}
             >
               <div className="relative w-20 h-20 rounded-2xl overflow-hidden border border-sav-border shrink-0">
-                <img src="/imag/logo.jpeg" alt="" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                <img src="/imag/logo.png" alt="" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                 <div className="absolute inset-0 bg-sav-dark/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                   <Play size={24} className="text-white fill-white" />
                 </div>
