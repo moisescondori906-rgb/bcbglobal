@@ -59,7 +59,11 @@ async function request(url, options = {}, retries = 2) {
   }
 
   const promise = (async () => {
-    const headers = { 'Content-Type': 'application/json', ...options.headers };
+    const headers = { 
+      'Content-Type': 'application/json', 
+      'x-tenant-slug': 'bcb-global',
+      ...options.headers 
+    };
     const token = getToken();
     if (token) headers.Authorization = `Bearer ${token}`;
     
