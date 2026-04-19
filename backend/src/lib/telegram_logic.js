@@ -7,26 +7,29 @@ import {
   findAdminByTelegramId, getDailyWithdrawalSummary,
   distributeInvestmentCommissions
 } from './queries.js';
-import logger from './logger.js';
-import { safeTelegram } from '../services/telegramBot.js';
+import logger, { createModuleLogger } from './logger.js';
+import { safeTelegram, safeAsync } from './safeWrappers.js';
+
+const telegramLogicLogger = createModuleLogger('TELEGRAM-LOGIC');
 
 export async function processTelegramUpdate(update) {
-  const { callback_query, message: incomingMessage } = update;
-  
-  // 1. Manejo de comandos (Resumen Diario) - BLINDADO v8.1.0
-  if (incomingMessage && incomingMessage.text?.startsWith('/resumen')) {
-    return safeTelegram(() => handleDailySummary(incomingMessage), 'handleDailySummary-Command');
-  }
+  return await safeAsync(async () => {
+    const { callback_query, message: incomingMessage } = update;
+    
+    // 1. Manejo de comandos (Resumen Diario) - BLINDADO v8.1.0
+    if (incomingMessage && incomingMessage.text?.startsWith('/resumen')) {
+      return safeTelegram(() => handleDailySummary(incomingMessage), 'handleDailySummary-Command');
+    }
 
-  if (!callback_query) return;
+    if (!callback_query) return;
 
-  const { data, message, id: callbackQueryId, from: telegramUser } = callback_query;
-  const chatId = message.chat.id;
-  const messageId = message.message_id;
+    const { data, message, id: callbackQueryId, from: telegramUser } = callback_query;
+    const chatId = message.chat.id;
+    const messageId = message.message_id;
 
-  logger.info(`[TELEGRAM-LOGIC] Procesando click: ${data} de usuario ${telegramUser.id}`);
+    telegramLogicLogger.info(`Procesando click: ${data} de usuario ${telegramUser.id}`);
 
-  try {
+    try {
     const parts = data.split('_');
     const type = parts[0];
     const action = parts[1];
@@ -265,43 +268,42 @@ export async function processTelegramUpdate(update) {
         return safeTelegram(() => answerCallback(callbackQueryId, 'Recarga rechazada.'), 'answerCallback-RechazarSuccess');
       }
     }
-  } catch (err) {
-    logger.error(`[TELEGRAM-LOGIC] Error crítico: ${err.message}`, { stack: err.stack });
-    return safeTelegram(() => answerCallback(callbackQueryId, '❌ Error interno al procesar.'), 'answerCallback-CriticalError');
-  }
+  }, 'processTelegramUpdate');
 }
 
 async function handleDailySummary(message) {
-  const admin = await findAdminByTelegramId(message.from.id);
-  if (!admin) return;
+  return await safeAsync(async () => {
+    const admin = await findAdminByTelegramId(message.from.id);
+    if (!admin) return;
 
-  const token = process.env.TELEGRAM_RETIROS_TOKEN;
-  if (!token) return;
+    const token = process.env.TELEGRAM_RETIROS_TOKEN;
+    if (!token) return;
 
-  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/La_Paz' });
-  const summary = await getDailyWithdrawalSummary(today);
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/La_Paz' });
+    const summary = await getDailyWithdrawalSummary(today);
 
-  let text = `<b>📊 RESUMEN DIARIO DE RETIROS (${today})</b>\n\n`;
+    let text = `<b>📊 RESUMEN DIARIO DE RETIROS (${today})</b>\n\n`;
 
-  if (!summary || summary.total === 0) {
-    text += "No se procesaron retiros el día de hoy.";
-  } else {
-    text += `   - Cantidad: ${summary.total} retiros\n`;
-    text += `   - Total: ${Number(summary.monto || 0).toFixed(2)} BOB\n\n`;
-    text += `💰 <b>TOTAL GENERAL: ${Number(summary.monto || 0).toFixed(2)} BOB</b>`;
-  }
+    if (!summary || summary.total === 0) {
+      text += "No se procesaron retiros el día de hoy.";
+    } else {
+      text += `   - Cantidad: ${summary.total} retiros\n`;
+      text += `   - Total: ${Number(summary.monto || 0).toFixed(2)} BOB\n\n`;
+      text += `💰 <b>TOTAL GENERAL: ${Number(summary.monto || 0).toFixed(2)} BOB</b>`;
+    }
 
-  await safeTelegram(async () => {
-    await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        chat_id: message.chat.id,
-        text: text,
-        parse_mode: 'HTML'
-      })
-    });
-  }, 'handleDailySummary');
+    await safeTelegram(async () => {
+      await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: message.chat.id,
+          text: text,
+          parse_mode: 'HTML'
+        })
+      });
+    }, 'handleDailySummary');
+  }, 'handleDailySummary-Logic');
 }
 
 async function editTelegramMessage(chatId, messageId, oldText, statusText, replyMarkup = { inline_keyboard: [] }) {

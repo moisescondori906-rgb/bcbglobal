@@ -3,7 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import logger from './lib/logger.js';
+import logger, { createModuleLogger } from './lib/logger.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { initTelegramHandlers } from './services/telegramInitializer.js';
 import { query } from './config/db.js';
@@ -78,16 +78,37 @@ const checkSystemHealth = async () => {
 
 await checkSystemHealth();
 
-// 1.5 SISTEMA DE MONITOREO CONTINUO (HEARTBEAT 10s) v9.1.0
-setInterval(() => {
-  safeAsync(async () => {
+// 1.5 SISTEMA DE MONITOREO CONTINUO (HEARTBEAT 10s) v9.3.0 (SaaS Ready)
+const monitorLogger = createModuleLogger('MONITOR');
+
+setInterval(async () => {
+  await safeAsync(async () => {
+    const health = {
+      db: false,
+      redis: false,
+      timestamp: new Date().toISOString()
+    };
+
     try {
       await query('SELECT 1');
-      await redis.ping();
+      health.db = true;
     } catch (err) {
-      logger.error(`[HEARTBEAT-FAILURE]: ${err.message}`);
+      monitorLogger.error(`[CRÍTICO] Fallo de Base de Datos: ${err.message}`);
     }
-  }, 'HeartbeatMonitor');
+
+    try {
+      await redis.ping();
+      health.redis = true;
+    } catch (err) {
+      monitorLogger.error(`[CRÍTICO] Fallo de Redis: ${err.message}`);
+    }
+
+    if (!health.db || !health.redis) {
+      // Si algo falla, intentamos loggear el estado degradado pero no matamos el proceso
+      // para permitir que la lógica de reconexión automática de los drivers actúe.
+      monitorLogger.warn(`[HEALTH-DEGRADED] DB: ${health.db ? 'OK' : 'FAIL'}, Redis: ${health.redis ? 'OK' : 'FAIL'}`);
+    }
+  }, 'SystemHeartbeat');
 }, 10000);
 
 const __filename = fileURLToPath(import.meta.url);
@@ -148,22 +169,6 @@ app.use('/api/telegram-webhook', telegramWebhookRoutes);
 app.use('/api/sorteo', sorteoRoutes);
 app.use('/api/saas', saasRoutes);
 app.use('/api/levels', levelRoutes);
-
-// Health Check avanzado para monitoreo
-app.get('/health', async (req, res) => {
-  try {
-    await query('SELECT 1');
-    res.json({ 
-      status: 'ok', 
-      database: 'connected',
-      uptime: process.uptime(),
-      version: '7.0.5',
-      timestamp: new Date().toISOString()
-    });
-  } catch (e) {
-    res.status(503).json({ status: 'error', database: 'disconnected' });
-  }
-});
 
 // 3. MANEJO DE ERRORES GLOBAL (Fallback final)
 app.use(errorHandler);

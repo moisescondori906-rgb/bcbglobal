@@ -1,6 +1,6 @@
 import TelegramBot from 'node-telegram-bot-api';
 import logger from '../lib/logger.js';
-import { safeAsync } from '../lib/safeWrappers.js';
+import { safeAsync, safeTelegram } from '../lib/safeWrappers.js';
 import { query, queryOne } from '../config/db.js';
 
 // Instancias de bots (Singleton pattern con inicialización perezosa)
@@ -69,51 +69,6 @@ export async function setupSecretariaBot() {
     return null;
   }
 }
-
-/**
- * CIRCUIT BREAKER PARA TELEGRAM v9.0.0
- */
-const TELEGRAM_CIRCUIT_STATE = {
-  failures: 0,
-  lastFailureTime: 0,
-  isOpen: false,
-  MAX_FAILURES: 10,
-  COOLDOWN_MS: 60000 // 1 minuto de pausa si falla mucho
-};
-
-/**
- * safeTelegram - Wrapper de grado arquitecto con Circuit Breaker integrado.
- * @param {Function} call - Función asíncrona que realiza la llamada al bot.
- * @param {string} context - Contexto descriptivo para el log de error.
- * @returns {Promise<any|null>} - Resultado de la llamada o null si falla.
- */
-export async function safeTelegram(call, context = 'General') {
-  // 1. Check Circuit Breaker
-  if (TELEGRAM_CIRCUIT_STATE.isOpen) {
-    const now = Date.now();
-    if (now - TELEGRAM_CIRCUIT_STATE.lastFailureTime > TELEGRAM_CIRCUIT_STATE.COOLDOWN_MS) {
-      logger.info(`[TELEGRAM-BREAKER] Intentando cerrar circuito (Half-Open) en ${context}`);
-      TELEGRAM_CIRCUIT_STATE.isOpen = false;
-      TELEGRAM_CIRCUIT_STATE.failures = 0;
-    } else {
-      logger.warn(`[TELEGRAM-BREAKER] Circuito ABIERTO. Saltando llamada en ${context}`);
-      return null;
-    }
-  }
-
-  // Usamos safeAsync para garantizar aislamiento total
-  return await safeAsync(async () => {
-    const result = await call();
-    // Éxito: Reset parcial
-    if (TELEGRAM_CIRCUIT_STATE.failures > 0) TELEGRAM_CIRCUIT_STATE.failures--;
-    return result;
-  }, `TELEGRAM-${context}`);
-}
-
-/**
- * safeTelegramCall - Alias para compatibilidad legacy con v7
- */
-export const safeTelegramCall = safeTelegram;
 
 /**
  * @section FUNCIONES DE ENVÍO SEGURO (Aislamiento de fallos)

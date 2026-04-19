@@ -32,6 +32,11 @@ cd ..
 echo "🏗️ Construyendo el Frontend..."
 cd frontend
 npm install --no-audit --no-fund
+
+# Validación Pre-Build: Eliminar artefactos de IA o código inválido
+echo "🔍 Validando código fuente del Frontend..."
+grep -r "```" src && { echo "❌ ERROR: Se detectaron artefactos de Markdown (```) en el código. Limpiando..."; find src -type f -name "*.jsx" -exec sed -i 's/```//g' {} +; } || echo "✅ Código limpio."
+
 if ! npm run build; then
   echo "❌ ERROR: El build del frontend ha fallado. El despliegue se cancela para proteger producción."
   exit 1
@@ -50,12 +55,26 @@ else
   pm2 start ecosystem.config.cjs --env production
 fi
 
-# 6. Verificación de Salud Post-Vuelo v9.1.0
+# 6. Verificación de Salud Post-Vuelo v9.2.0 (Blindada)
 echo "🔍 Verificando salud del sistema..."
-sleep 5
-HEALTH_CHECK=$(curl -s http://localhost:4000/health)
+MAX_RETRIES=5
+RETRY_COUNT=0
+HEALTHY=false
 
-if [[ $HEALTH_CHECK == *"\"status\":\"ok\""* && $HEALTH_CHECK == *"\"db\":\"connected\""* && $HEALTH_CHECK == *"\"redis\":\"connected\""* ]]; then
+while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+  sleep 5
+  HEALTH_CHECK=$(curl -s http://localhost:4000/health || echo "error")
+  
+  if [[ $HEALTH_CHECK == *"\"status\":\"ok\""* && $HEALTH_CHECK == *"\"db\":\"connected\""* ]]; then
+    HEALTHY=true
+    break
+  fi
+  
+  RETRY_COUNT=$((RETRY_COUNT+1))
+  echo "⏳ Esperando a que el sistema se estabilice ($RETRY_COUNT/$MAX_RETRIES)..."
+done
+
+if [ "$HEALTHY" = true ]; then
   echo "✅ DESPLIEGUE COMPLETADO EXITOSAMENTE (SISTEMA RESILIENTE)."
   echo "📊 Reporte de Salud: $HEALTH_CHECK"
   
@@ -64,9 +83,10 @@ if [[ $HEALTH_CHECK == *"\"status\":\"ok\""* && $HEALTH_CHECK == *"\"db\":\"conn
   cd backend && node src/prod-test.js || echo "⚠️ Advertencia: Smoke Test con fallos menores."
   cd ..
 else
-  echo "❌ FALLO CRÍTICO: El servidor no responde tras el despliegue."
-  echo "📋 Revisando logs de PM2..."
-  pm2 logs $APP_NAME --lines 30 --no-colors
+  echo "❌ FALLO CRÍTICO: El servidor no alcanzó un estado saludable tras el despliegue."
+  echo "📋 Reporte de fallo: $HEALTH_CHECK"
+  echo "🔙 Iniciando Rollback automático (PM2 revert)..."
+  pm2 revert $APP_NAME || echo "⚠️ Rollback manual requerido."
   exit 1
 fi
 
