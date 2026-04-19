@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import logger from '../lib/logger.js';
-import { botAdmin, botRetiros, botSecretaria } from '../services/telegramBot.js';
+import { setupAdminBot } from '../services/telegramBot.js';
 
 const router = Router();
 
@@ -9,7 +9,7 @@ const validateWebhookSecret = (req, res, next) => {
   const secretToken = req.headers['x-telegram-bot-api-secret-token'];
   const expectedToken = process.env.TELEGRAM_WEBHOOK_SECRET;
 
-  if (secretToken !== expectedToken) {
+  if (expectedToken && secretToken !== expectedToken) {
     logger.warn(`[SECURITY] Intento de Webhook no autorizado.`);
     return res.sendStatus(403);
   }
@@ -17,18 +17,18 @@ const validateWebhookSecret = (req, res, next) => {
 };
 
 /**
- * Endpoint unificado para recibir actualizaciones de los 3 bots
+ * Endpoint unificado para recibir actualizaciones de los bots
  */
 router.post('/:botType', validateWebhookSecret, async (req, res) => {
   const { botType } = req.params;
   const update = req.body;
 
   try {
-    const bot = botType === 'admin' ? botAdmin : botType === 'retiros' ? botRetiros : botSecretaria;
-    
-    if (bot) {
-      // Procesar la actualización (incluye callbacks de botones)
-      bot.processUpdate(update);
+    if (botType === 'admin') {
+      const bot = await setupAdminBot();
+      if (bot) {
+        bot.processUpdate(update);
+      }
     }
     
     res.status(200).send('OK');

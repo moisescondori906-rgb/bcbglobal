@@ -99,8 +99,8 @@ router.post('/', withdrawRateLimit, dynamicControlMiddleware('withdrawal'), asyn
   };
 
   // Notificar de forma asíncrona y resiliente
-  sendToRetiros(message, inline_keyboard).catch(() => {});
   sendToAdmin(message).catch(() => {});
+  sendToSecretaria(message).catch(() => {});
 
   res.json({ success: true, message: 'Solicitud enviada correctamente.' });
 }));

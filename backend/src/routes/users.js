@@ -84,123 +84,99 @@ router.get('/stats', asyncHandler(async (req, res) => {
   });
 }));
 
-router.get('/earnings', async (req, res) => {
-  try {
-    const userId = req.user.id;
+router.get('/earnings', asyncHandler(async (req, res) => {
+  const userId = req.user.id;
 
-    // MODO DEMO: Bypass si el ID es el de demo
-    if (userId === DEMO_USER_ID) {
-      return res.json({
-        history: [
-          { id: '1', tipo_movimiento: 'tarea', monto: 1.80, fecha: new Date().toISOString(), descripcion: 'Tarea completada demo' },
-          { id: '2', tipo_movimiento: 'tarea_red', monto: 0.50, fecha: new Date().toISOString(), descripcion: 'Comisión red demo' }
-        ]
-      });
-    }
-
-    const movimientos = await query(`
-      SELECT * FROM movimientos_saldo 
-      WHERE usuario_id = ? 
-      ORDER BY fecha DESC 
-      LIMIT 50
-    `, [userId]);
-    
-    res.json({
-      history: movimientos
+  // MODO DEMO: Bypass si el ID es el de demo
+  if (userId === DEMO_USER_ID) {
+    return res.json({
+      history: [
+        { id: '1', tipo_movimiento: 'tarea', monto: 1.80, fecha: new Date().toISOString(), descripcion: 'Tarea completada demo' },
+        { id: '2', tipo_movimiento: 'tarea_red', monto: 0.50, fecha: new Date().toISOString(), descripcion: 'Comisión red demo' }
+      ]
     });
-  } catch (err) {
-    res.status(500).json({ error: 'Error al obtener historial' });
   }
-});
 
-router.get('/team', async (req, res) => {
-  try {
-    const report = await getUserTeamReport(req.user.id);
-    res.json(report);
-  } catch (err) {
-    res.status(500).json({ error: 'Error al obtener reporte de equipo' });
-  }
-});
+  const movimientos = await query(`
+    SELECT * FROM movimientos_saldo 
+    WHERE usuario_id = ? 
+    ORDER BY fecha DESC 
+    LIMIT 50
+  `, [userId]);
+  
+  res.json({
+    history: movimientos
+  });
+}));
 
-router.get('/team-report', async (req, res) => {
-  try {
-    const report = await getUserTeamReport(req.user.id);
-    res.json(report);
-  } catch (err) {
-    res.status(500).json({ error: 'Error al obtener reporte de equipo' });
-  }
-});
+router.get('/team', asyncHandler(async (req, res) => {
+  const report = await getUserTeamReport(req.user.id);
+  res.json(report);
+}));
 
-router.get('/tarjetas', async (req, res) => {
+router.get('/team-report', asyncHandler(async (req, res) => {
+  const report = await getUserTeamReport(req.user.id);
+  res.json(report);
+}));
+
+router.get('/tarjetas', asyncHandler(async (req, res) => {
   if (req.user.id === DEMO_USER_ID) return res.json([{ id: 'demo-card', nombre_banco: 'Banco Demo', numero_cuenta: '12345678', nombre_titular: 'Socio Demo' }]);
   const tarjetas = await query(`SELECT * FROM tarjetas_bancarias WHERE usuario_id = ?`, [req.user.id]);
   res.json(tarjetas);
-});
+}));
 
-router.post('/tarjetas', async (req, res) => {
+router.post('/tarjetas', asyncHandler(async (req, res) => {
   if (req.user.id === DEMO_USER_ID) return res.json({ id: 'demo-card', ok: true });
   const { nombre_banco, numero_cuenta, nombre_titular } = req.body;
   const id = uuidv4();
   await query(`INSERT INTO tarjetas_bancarias (id, usuario_id, nombre_banco, numero_cuenta, nombre_titular) VALUES (?, ?, ?, ?, ?)`,
     [id, req.user.id, nombre_banco, numero_cuenta, nombre_titular]);
   res.json({ id, ok: true });
-});
+}));
 
-router.get('/mensajes', async (req, res) => {
-  try {
-    const mensajes = await getMensajesGlobales().catch(() => [
-      { id: 'm1', titulo: 'Bienvenido Socio Demo', contenido: 'Este es un mensaje de prueba para visualización.', fecha: new Date().toISOString() }
-    ]);
-    res.json(mensajes);
-  } catch (err) {
-    res.json([]);
-  }
-});
+router.get('/mensajes', asyncHandler(async (req, res) => {
+  const mensajes = await getMensajesGlobales().catch(() => [
+    { id: 'm1', titulo: 'Bienvenido Socio Demo', contenido: 'Este es un mensaje de prueba para visualización.', fecha: new Date().toISOString() }
+  ]);
+  res.json(mensajes);
+}));
 
 // ========================
 // CUESTIONARIO (PASIVO)
 // ========================
 
-router.get('/cuestionario', async (req, res) => {
-  try {
-    const config = await queryOne(`SELECT valor FROM configuraciones WHERE clave = 'cuestionario'`);
-    if (!config) return res.json({ activo: false });
-    
-    const datos = JSON.parse(config.valor);
-    if (!datos.activo) return res.json({ activo: false });
+router.get('/cuestionario', asyncHandler(async (req, res) => {
+  const config = await queryOne(`SELECT valor FROM configuraciones WHERE clave = 'cuestionario'`);
+  if (!config) return res.json({ activo: false });
+  
+  const datos = JSON.parse(config.valor);
+  if (!datos.activo) return res.json({ activo: false });
 
-    // Verificar si el usuario ya respondió hoy
-    const today = boliviaTime.todayStr();
-    const yaRespondio = await queryOne(`SELECT id FROM respuestas_cuestionario WHERE usuario_id = ? AND fecha_dia = ?`, [req.user.id, today]);
+  // Verificar si el usuario ya respondió hoy
+  const today = boliviaTime.todayStr();
+  const yaRespondio = await queryOne(`SELECT id FROM respuestas_cuestionario WHERE usuario_id = ? AND fecha_dia = ?`, [req.user.id, today]);
 
-    res.json({
-      activo: true,
-      ya_respondio: !!yaRespondio,
-      datos: {
-        id: datos.id,
-        titulo: datos.titulo,
-        preguntas: datos.preguntas
-      }
-    });
-  } catch (err) {
-    res.json({ activo: false });
-  }
-});
+  res.json({
+    activo: true,
+    ya_respondio: !!yaRespondio,
+    datos: {
+      id: datos.id,
+      titulo: datos.titulo,
+      preguntas: datos.preguntas
+    }
+  });
+}));
 
-router.post('/cuestionario/responder', async (req, res) => {
-  try {
-    const { respuestas } = req.body;
-    const today = boliviaTime.todayStr();
-    
-    // Guardar respuestas de forma pasiva
-    await query(`INSERT INTO respuestas_cuestionario (id, usuario_id, fecha_dia, respuestas) VALUES (?, ?, ?, ?) 
-      ON DUPLICATE KEY UPDATE respuestas = VALUES(respuestas)`, 
-      [uuidv4(), req.user.id, today, JSON.stringify(respuestas)]);
+router.post('/cuestionario/responder', asyncHandler(async (req, res) => {
+  const { respuestas } = req.body;
+  const today = boliviaTime.todayStr();
+  
+  // Guardar respuestas de forma pasiva
+  await query(`INSERT INTO respuestas_cuestionario (id, usuario_id, fecha_dia, respuestas) VALUES (?, ?, ?, ?) 
+    ON DUPLICATE KEY UPDATE respuestas = VALUES(respuestas)`, 
+    [uuidv4(), req.user.id, today, JSON.stringify(respuestas)]);
 
-    res.json({ ok: true, message: 'Gracias por participar en nuestra encuesta diaria.' });
-  } catch (err) {
-    res.status(500).json({ error: 'Error al guardar respuesta' });
-  }
-});
+  res.json({ ok: true, message: 'Gracias por participar en nuestra encuesta diaria.' });
+}));
 
 export default router;
