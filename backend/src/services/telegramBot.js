@@ -42,22 +42,6 @@ export const botAdmin = createBot(tokens.admin, 'ADMIN');
 export const botRetiros = createBot(tokens.retiros, 'RETIROS');
 export const botSecretaria = createBot(tokens.secretaria, 'SECRETARIA');
 
-// Importar Handlers para registrarlos en los bots
-import { handleCallbackQuery } from '../handlers/telegramHandler.js';
-
-const registerHandlers = (bot) => {
-  if (!bot) return;
-  bot.on('callback_query', (query) => handleCallbackQuery(bot, query));
-  
-  // Manejo de errores de polling (aunque usemos webhooks, esto evita crashes)
-  bot.on('error', (err) => logger.error(`[TELEGRAM] Bot Error: ${err.message}`));
-  bot.on('polling_error', (err) => logger.debug(`[TELEGRAM] Polling Error: ${err.message}`));
-};
-
-registerHandlers(botAdmin);
-registerHandlers(botRetiros);
-registerHandlers(botSecretaria);
-
 /**
  * Helper para enviar mensajes con retry y log de errores
  */

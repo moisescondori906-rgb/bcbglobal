@@ -7,6 +7,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import logger from './lib/logger.js';
 import { setupWebhooks } from './services/telegramBot.js';
+import { initTelegramHandlers } from './services/telegramInitializer.js';
 
 import authRoutes from './routes/auth.js';
 import userRoutes from './routes/users.js';
@@ -88,6 +89,7 @@ const corsOptions = {
 app.use(cors(corsOptions));
 
 // 2. Webhooks de Telegram (Endpoint dedicado antes de las rutas generales)
+initTelegramHandlers();
 setupWebhooks().then(() => {
   logger.info('[SERVER] Webhooks de Telegram configurados.');
 }).catch(err => {
