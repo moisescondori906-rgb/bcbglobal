@@ -1,5 +1,6 @@
 import operationalControl from '../lib/operationalControl.js';
 import { v4 as uuidv4 } from 'uuid';
+import logger from '../lib/logger.js';
 
 /**
  * dynamicControlMiddleware: El portero dinámico del sistema.
@@ -75,7 +76,7 @@ export const dynamicControlMiddleware = (operationType) => {
       req.region = region;
       next();
     } catch (err) {
-      console.error(`[CONTROL-MIDDLEWARE-ERROR]: ${err.message}`);
+      logger.error(`[CONTROL-MIDDLEWARE-ERROR]: ${err.message}`, { stack: err.stack });
       next(); // Fallback: permitir para no romper el flujo si el control falla
     }
   };

@@ -7,6 +7,8 @@ import {
   findAdminByTelegramId, getDailyWithdrawalSummary,
   distributeInvestmentCommissions
 } from './queries.js';
+import logger from './logger.js';
+import { safeTelegramCall } from '../services/telegramBot.js';
 
 export async function processTelegramUpdate(update) {
   const { callback_query, message: incomingMessage } = update;
@@ -87,7 +89,7 @@ export async function processTelegramUpdate(update) {
           await editTelegramMessage(chatId, messageId, message.text || message.caption, statusMsg, buttons);
         }
         
-        console.log(`[Telegram Logic] Retiro ${id} tomado por ${adminName}`);
+        logger.info(`[Telegram Logic] Retiro ${id} tomado por ${adminName}`);
         return answerCallback(callbackQueryId, '✅ Retiro asignado. Procede con el pago.');
       }
 
@@ -116,7 +118,7 @@ export async function processTelegramUpdate(update) {
             await editTelegramMessage(chatId, messageId, message.text || message.caption, statusMsg);
           }
           
-          console.log(`[Telegram Logic] Retiro ${id} pagado por ${adminName}`);
+          logger.info(`[Telegram Logic] Retiro ${id} pagado por ${adminName}`);
         } else {
           // VALIDACIÓN DE ESTADO: Evitar reembolsos dobles
           if (retiro.estado === 'rechazado') {
@@ -161,7 +163,7 @@ export async function processTelegramUpdate(update) {
             await editTelegramMessage(chatId, messageId, message.text || message.caption, statusMsg);
           }
           
-          console.log(`[Telegram Logic] Retiro ${id} rechazado por ${adminName}`);
+          logger.info(`[Telegram Logic] Retiro ${id} rechazado por ${adminName}`);
         }
         return answerCallback(callbackQueryId, 'Operación finalizada.');
       }
@@ -169,10 +171,10 @@ export async function processTelegramUpdate(update) {
 
     // --- MÓDULO DE RECARGAS ---
     if (type === 'recarga') {
-      console.log(`[Telegram Logic] Acción de Recarga: ${action} para ID: ${id}`);
+      logger.info(`[Telegram Logic] Acción de Recarga: ${action} para ID: ${id}`);
       const recarga = await getRecargaById(id);
       if (!recarga || (recarga.estado !== 'pendiente' && recarga.estado !== 'pendiente_ascenso')) {
-        console.error(`[Telegram Logic] Recarga no encontrada o no pendiente: ${id}`);
+        logger.error(`[Telegram Logic] Recarga no encontrada o no pendiente: ${id}`);
         return answerCallback(callbackQueryId, 'Esta solicitud ya no está pendiente.');
       }
 
@@ -208,7 +210,7 @@ export async function processTelegramUpdate(update) {
           // Distribuir comisiones por ascenso (Inversión)
           await distributeInvestmentCommissions(user.id, recarga.monto);
           statusMsg = `✅ Ascenso Aprobado por ${adminName} a ${nivelDestino.nombre}`;
-          console.log(`[Telegram Logic] Recarga (VIP) ${id} aprobada por ${adminName}`);
+          logger.info(`[Telegram Logic] Recarga (VIP) ${id} aprobada por ${adminName}`);
         } else {
           await createMovimiento({
             usuario_id: user.id,
@@ -224,12 +226,12 @@ export async function processTelegramUpdate(update) {
             estado: 'aprobada', 
             procesado_por_admin_id: admin.id, 
             procesado_por_admin_name: adminName,
-            procesado_at: new Date().toISOString() 
+            processed_at: new Date().toISOString() 
           });
           // Distribuir comisiones por recarga de saldo (Inversión)
           await distributeInvestmentCommissions(user.id, recarga.monto);
           statusMsg = `✅ Recarga Aprobada por ${adminName}`;
-          console.log(`[Telegram Logic] Recarga (Saldo) ${id} aprobada por ${adminName}`);
+          logger.info(`[Telegram Logic] Recarga (Saldo) ${id} aprobada por ${adminName}`);
         }
 
         const metadata = recarga.telegram_metadata || [];
@@ -293,15 +295,17 @@ async function handleDailySummary(message) {
     text += `💰 <b>TOTAL GENERAL: ${grandTotal.toFixed(2)} BOB</b>`;
   }
 
-  await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      chat_id: message.chat.id,
-      text: text,
-      parse_mode: 'HTML'
-    })
-  });
+  await safeTelegramCall(async () => {
+    await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: message.chat.id,
+        text: text,
+        parse_mode: 'HTML'
+      })
+    });
+  }, 'handleDailySummary');
 }
 
 async function editTelegramMessage(chatId, messageId, oldText, statusText, replyMarkup = { inline_keyboard: [] }) {
@@ -310,8 +314,8 @@ async function editTelegramMessage(chatId, messageId, oldText, statusText, reply
 
   for (const token of tokens) {
     if (!token) continue;
-    const urlText = `https://api.telegram.org/bot${token}/editMessageText`;
-    try {
+    await safeTelegramCall(async () => {
+      const urlText = `https://api.telegram.org/bot${token}/editMessageText`;
       const res = await fetch(urlText, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -338,7 +342,7 @@ async function editTelegramMessage(chatId, messageId, oldText, statusText, reply
           })
         });
       }
-    } catch (e) {}
+    }, `editTelegramMessage-${token.substring(0, 5)}`);
   }
 }
 
@@ -346,7 +350,7 @@ async function answerCallback(callbackQueryId, text) {
   const tokens = [process.env.TELEGRAM_RECARGAS_TOKEN, process.env.TELEGRAM_RETIROS_TOKEN];
   for (const token of tokens) {
     if (!token) continue;
-    try {
+    const success = await safeTelegramCall(async () => {
       const res = await fetch(`https://api.telegram.org/bot${token}/answerCallbackQuery`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -356,7 +360,9 @@ async function answerCallback(callbackQueryId, text) {
           show_alert: false
         })
       });
-      if (res.ok) break; // Si tuvo éxito con un token, ya está respondido
-    } catch (e) {}
+      return res.ok;
+    }, `answerCallback-${token.substring(0, 5)}`);
+    
+    if (success) break; // Si tuvo éxito con un token, ya está respondido
   }
 }

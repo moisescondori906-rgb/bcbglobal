@@ -48,8 +48,13 @@ cd ..
 
 # 6. Reinicio Seguro con PM2 (Cluster Mode)
 echo "🔄 Reiniciando procesos PM2 en modo seguro..."
-# Usamos --update-env para recargar variables del .env
-pm2 restart ecosystem.config.cjs --update-env || pm2 start ecosystem.config.cjs --env production
+if ! pm2 restart ecosystem.config.cjs --update-env; then
+  echo "⚠️ Fallo al reiniciar con ecosystem. Intentando inicio directo..."
+  pm2 start backend/src/index.js --name $APP_NAME -i max --update-env || {
+    echo "❌ ERROR CRÍTICO: No se pudo iniciar el proceso con PM2."
+    exit 1
+  }
+fi
 
 # 7. Verificación de Salud Post-Deploy
 echo "🔍 Verificando estabilidad del sistema..."

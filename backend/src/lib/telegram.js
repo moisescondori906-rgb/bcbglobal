@@ -1,4 +1,4 @@
-import { setupAdminBot } from '../services/telegramBot.js';
+import { setupAdminBot, safeTelegramCall } from '../services/telegramBot.js';
 import { query, queryOne, transaction } from '../config/db.js';
 import { boliviaTime } from '../lib/queries.js';
 import logger from '../lib/logger.js';
@@ -37,10 +37,10 @@ export async function setupTelegramLogic() {
       `, [telegramUserId]);
 
       if (!member) {
-        return bot.answerCallbackQuery(callbackQuery.id, { 
+        return safeTelegramCall(() => bot.answerCallbackQuery(callbackQuery.id, { 
           text: '❌ No tienes permisos o tu equipo está desactivado.', 
           show_alert: true 
-        });
+        }), 'answerCallbackQuery-noMember');
       }
 
       // 2. Ejecutar Acción con Bloqueo de Fila (SELECT FOR UPDATE)
@@ -115,7 +115,7 @@ export async function setupTelegramLogic() {
             WHERE id = ?
           `, [telegramUserId, member.nombre_visible, boliviaTime.now(), refId]);
 
-          await bot.answerCallbackQuery(callbackQuery.id, { text: '✅ Caso tomado. Eres el único responsable.' });
+          await safeTelegramCall(() => bot.answerCallbackQuery(callbackQuery.id, { text: '✅ Caso tomado. Eres el único responsable.' }), 'answerCallbackQuery-tomar');
           await updateTelegramMessage(bot, message, 'tomado', member.nombre_visible, refId);
         }
 
@@ -166,17 +166,17 @@ export async function setupTelegramLogic() {
             [refId, telegramUserId, action]
           );
 
-          await bot.answerCallbackQuery(callbackQuery.id, { text: `✅ Caso ${action}do correctamente.` });
+          await safeTelegramCall(() => bot.answerCallbackQuery(callbackQuery.id, { text: `✅ Caso ${action}do correctamente.` }), 'answerCallbackQuery-resolver');
           await updateTelegramMessage(bot, message, 'resuelto', member.nombre_visible, refId, action);
         }
       });
 
     } catch (err) {
       logger.error(`[Telegram Callback Error]: ${err.message}`);
-      bot.answerCallbackQuery(callbackQuery.id, { 
+      safeTelegramCall(() => bot.answerCallbackQuery(callbackQuery.id, { 
         text: `❌ ERROR: ${err.message}`, 
         show_alert: true 
-      });
+      }), 'answerCallbackQuery-error');
     }
   });
 }
@@ -210,21 +210,21 @@ async function updateTelegramMessage(bot, message, estado, operador, refId, reso
   }
 
   try {
-    await bot.editMessageText(newText, {
+    await safeTelegramCall(() => bot.editMessageText(newText, {
       chat_id: chatId,
       message_id: messageId,
       reply_markup: { inline_keyboard: buttons }
-    });
+    }), 'editMessageText-main');
 
     // Actualizar también en Secretaría si tenemos el ID del mensaje
     const caso = await queryOne('SELECT telegram_secretaria_message_id FROM telegram_casos_bloqueo WHERE referencia_id = ?', [refId]);
     if (caso && caso.telegram_secretaria_message_id) {
       const secGroup = await queryOne("SELECT chat_id FROM telegram_equipos WHERE tipo = 'secretaria' AND activo = 1");
       if (secGroup) {
-        await bot.editMessageText(newText, {
+        await safeTelegramCall(() => bot.editMessageText(newText, {
           chat_id: secGroup.chat_id,
           message_id: caso.telegram_secretaria_message_id
-        }).catch(() => {}); // Ignorar si falla secretaría
+        }), 'editMessageText-secretaria');
       }
     }
   } catch (e) {
