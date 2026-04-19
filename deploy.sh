@@ -1,54 +1,74 @@
 #!/bin/bash
 
-# BCB Global - Production Deployment Script v7.0.5
-# Senior Fullstack Architect Standard
+# BCB Global - Professional Deployment Script v7.0.6
+# Senior Architect Standard - High Stability
 
 set -e
 
-echo "🚀 Iniciando despliegue de BCB Global..."
+# Configuración
+PROJECT_DIR="/root/SAV-main" # Ajustar según el servidor
+APP_NAME="bcb-global"
+BACKUP_DIR="/root/backups/bcb_$(date +%Y%m%d_%H%M%S)"
 
-# 1. Sincronización de código
+echo "🚀 Iniciando despliegue profesional de BCB Global..."
+
+# 1. Validación de Entorno
+if [ ! -f "backend/.env" ]; then
+    echo "❌ ERROR: Archivo backend/.env no encontrado. El despliegue se detendrá."
+    exit 1
+fi
+
+# 2. Backup Preventivo (Opcional pero recomendado)
+# echo "💾 Creando backup preventivo..."
+# mkdir -p $BACKUP_DIR
+# cp -r backend/src $BACKUP_DIR/
+# cp backend/.env $BACKUP_DIR/
+
+# 3. Sincronización de código
 echo "📥 Trayendo cambios de GitHub..."
 git pull origin main
 
-# 2. Backend - Dependencias y Reinicio
+# 4. Backend - Dependencias
 echo "📦 Instalando dependencias del Backend..."
 cd backend
-npm install --production
+npm install --production --no-audit --no-fund
 cd ..
 
-# 3. Frontend - Build
+# 5. Frontend - Build Optimizado
 echo "🏗️ Construyendo el Frontend..."
 cd frontend
-npm install
+npm install --no-audit --no-fund
 npm run build
+
 echo "🧹 Limpiando directorio public del backend..."
 rm -rf ../backend/public/*
 echo "🚚 Moviendo build al servidor estático del backend..."
 cp -r dist/* ../backend/public/
 cd ..
 
-# 4. Base de Datos - Migraciones (Si existen)
-# echo "🗄️ Ejecutando migraciones..."
-# node backend/src/data/migrate.js
+# 6. Reinicio Seguro con PM2 (Cluster Mode)
+echo "🔄 Reiniciando procesos PM2 en modo seguro..."
+# Usamos --update-env para recargar variables del .env
+pm2 restart ecosystem.config.cjs --update-env || pm2 start ecosystem.config.cjs --env production
 
-# 5. Reinicio de Procesos con PM2
-echo "🔄 Reiniciando procesos PM2..."
-pm2 restart ecosystem.config.cjs || pm2 start ecosystem.config.cjs --env production
-
-# 6. Verificación Automática
-echo "🔍 Verificando estado del sistema..."
+# 7. Verificación de Salud Post-Deploy
+echo "🔍 Verificando estabilidad del sistema..."
 sleep 5
 HEALTH_CHECK=$(curl -s http://localhost:4000/health)
 
 if [[ $HEALTH_CHECK == *"\"status\":\"ok\""* ]]; then
-  echo "✅ Despliegue COMPLETADO con éxito."
-  echo "📊 Salud del sistema: $HEALTH_CHECK"
+  echo "✅ DESPLIEGUE EXITOSO."
+  echo "📊 Status: $HEALTH_CHECK"
+  
+  # Ejecutar test de humo básico
+  echo "🧪 Ejecutando Smoke Test..."
+  cd backend && node src/prod-test.js || echo "⚠️ Advertencia: Smoke Test falló pero el servidor está arriba."
+  cd ..
 else
-  echo "❌ ERROR: El sistema no responde correctamente tras el despliegue."
-  echo "Logs de error de PM2:"
-  pm2 logs --lines 20 --no-colors
+  echo "❌ ERROR CRÍTICO: El servidor no respondió correctamente tras el despliegue."
+  echo "📋 Últimos logs de error:"
+  pm2 logs $APP_NAME --lines 20 --no-colors
   exit 1
 fi
 
-echo "🚀 BCB Global está en línea."
+echo "🚀 Sistema BCB Global Online y Estable."

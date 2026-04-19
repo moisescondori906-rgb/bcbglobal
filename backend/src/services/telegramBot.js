@@ -70,43 +70,53 @@ export async function setupSecretariaBot() {
 }
 
 /**
+ * safeTelegramCall - Wrapper universal para evitar caídas por fallos en la API de Telegram.
+ * @param {Function} call - Función asíncrona que realiza la llamada al bot.
+ * @param {string} context - Contexto para el log de error.
+ * @returns {Promise<any|null>} - Resultado de la llamada o null si falla.
+ */
+export async function safeTelegramCall(call, context = 'General') {
+  try {
+    return await call();
+  } catch (err) {
+    logger.error(`[TELEGRAM-SAFE] Fallo en ${context}: ${err.message}`);
+    // Si es un error de token o conexión, no relanzamos para no tumbar el backend
+    return null;
+  }
+}
+
+/**
  * @section FUNCIONES DE ENVÍO SEGURO (Aislamiento de fallos)
  */
 
 export async function sendToAdmin(message, options = {}) {
-  try {
+  return safeTelegramCall(async () => {
     const bot = await setupAdminBot();
     const chatId = process.env.TELEGRAM_CHAT_ADMIN;
     if (bot && chatId) {
-      await bot.sendMessage(chatId, message, { parse_mode: 'HTML', ...options });
+      return await bot.sendMessage(chatId, message, { parse_mode: 'HTML', ...options });
     }
-  } catch (err) {
-    logger.error('[TELEGRAM] Fail sendToAdmin:', err.message);
-  }
+  }, 'sendToAdmin');
 }
 
 export async function sendToRetiros(message, options = {}) {
-  try {
-    const bot = await setupRetirosBot() || await setupAdminBot(); // Fallback a Admin si Retiros falla
+  return safeTelegramCall(async () => {
+    const bot = await setupRetirosBot() || await setupAdminBot(); 
     const chatId = process.env.TELEGRAM_CHAT_RETIROS || process.env.TELEGRAM_CHAT_ADMIN;
     if (bot && chatId) {
-      await bot.sendMessage(chatId, message, { parse_mode: 'HTML', ...options });
+      return await bot.sendMessage(chatId, message, { parse_mode: 'HTML', ...options });
     }
-  } catch (err) {
-    logger.error('[TELEGRAM] Fail sendToRetiros:', err.message);
-  }
+  }, 'sendToRetiros');
 }
 
 export async function sendToSecretaria(message, options = {}) {
-  try {
+  return safeTelegramCall(async () => {
     const bot = await setupSecretariaBot() || await setupAdminBot();
     const chatId = process.env.TELEGRAM_CHAT_SECRETARIA || process.env.TELEGRAM_CHAT_ADMIN;
     if (bot && chatId) {
-      await bot.sendMessage(chatId, message, { parse_mode: 'HTML', ...options });
+      return await bot.sendMessage(chatId, message, { parse_mode: 'HTML', ...options });
     }
-  } catch (err) {
-    logger.error('[TELEGRAM] Fail sendToSecretaria:', err.message);
-  }
+  }, 'sendToSecretaria');
 }
 
 /**

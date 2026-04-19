@@ -14,13 +14,19 @@ dotenv.config();
 
 const requiredEnv = [
   'PORT', 'JWT_SECRET', 'MYSQL_HOST', 'MYSQL_USER', 'MYSQL_PASSWORD', 'MYSQL_DATABASE',
-  'TELEGRAM_BOT_TOKEN_ADMIN', 'TELEGRAM_CHAT_ADMIN'
+  'TELEGRAM_BOT_TOKEN_ADMIN', 'TELEGRAM_CHAT_ADMIN',
+  'REDIS_HOST', 'CLOUDINARY_CLOUD_NAME', 'CLOUDINARY_API_KEY', 'CLOUDINARY_API_SECRET'
 ];
 const missingEnv = requiredEnv.filter(k => !process.env[k]);
 
 if (missingEnv.length > 0) {
-  console.error(`\x1b[41m[FATAL]\x1b[0m Faltan variables de entorno críticas: ${missingEnv.join(', ')}`);
+  logger.error(`[FATAL] Faltan variables de entorno críticas: ${missingEnv.join(', ')}`);
   process.exit(1);
+}
+
+// Forzar NODE_ENV=production si no está definido para seguridad
+if (!process.env.NODE_ENV) {
+  process.env.NODE_ENV = 'production';
 }
 
 const __filename = fileURLToPath(import.meta.url);

@@ -22,7 +22,7 @@ export async function processTelegramUpdate(update) {
   const chatId = message.chat.id;
   const messageId = message.message_id;
 
-  console.log(`[Telegram Logic] Procesando click: ${data} de usuario ${telegramUser.id} (${telegramUser.username || 'sin user'})`);
+  logger.info(`[Telegram Logic] Procesando click: ${data} de usuario ${telegramUser.id} (${telegramUser.username || 'sin user'})`);
 
   try {
     const parts = data.split('_');
@@ -30,26 +30,26 @@ export async function processTelegramUpdate(update) {
     const action = parts[1];
     const id = parts.slice(2).join('_');
 
-    console.log(`[Telegram Logic] Datos parseados - Tipo: ${type}, Acción: ${action}, ID: ${id}`);
+    logger.debug(`[Telegram Logic] Datos parseados - Tipo: ${type}, Acción: ${action}, ID: ${id}`);
 
     // 2. VALIDACIÓN DE ADMINISTRADOR
-    console.log(`[Telegram Logic] Validando admin con Telegram ID: ${telegramUser.id}`);
+    logger.debug(`[Telegram Logic] Validando admin con Telegram ID: ${telegramUser.id}`);
     const admin = await findAdminByTelegramId(telegramUser.id);
     
     if (!admin) {
-      console.warn(`[Telegram Logic] ACCESO DENEGADO: El usuario ${telegramUser.id} no es un admin registrado.`);
+      logger.warn(`[Telegram Logic] ACCESO DENEGADO: El usuario ${telegramUser.id} no es un admin registrado.`);
       return answerCallback(callbackQueryId, '❌ No tienes permisos para realizar esta acción.');
     }
 
     const adminName = admin.nombre || admin.nombre_usuario || admin.nombre_real;
-    console.log(`[Telegram Logic] Admin identificado: ${adminName} (ID DB: ${admin.id})`);
+    logger.info(`[Telegram Logic] Admin identificado: ${adminName} (ID DB: ${admin.id})`);
 
     // --- MÓDULO DE RETIROS ---
     if (type === 'retiro') {
-      console.log(`[Telegram Logic] Acción de Retiro: ${action} para ID: ${id}`);
+      logger.info(`[Telegram Logic] Acción de Retiro: ${action} para ID: ${id}`);
       const retiro = await getRetiroById(id);
       if (!retiro) {
-        console.error(`[Telegram Logic] Retiro no encontrado: ${id}`);
+        logger.error(`[Telegram Logic] Retiro no encontrado: ${id}`);
         return answerCallback(callbackQueryId, 'Retiro no encontrado.');
       }
 

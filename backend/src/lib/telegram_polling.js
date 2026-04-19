@@ -1,5 +1,6 @@
 import { getPublicContent } from './queries.js';
 import { processTelegramUpdate } from './telegram_logic.js';
+import logger from './logger.js';
 
 let pollingActive = false;
 let lastUpdateIds = new Map(); // token -> lastUpdateId
@@ -15,7 +16,7 @@ async function getUpdates(token) {
     const data = await res.json();
     return data.ok ? data.result : [];
   } catch (err) {
-    console.error(`[Telegram Polling] Error fetching updates for ${token.substring(0, 10)}...:`, err.message);
+    logger.error(`[Telegram Polling] Error fetching updates for ${token.substring(0, 10)}...:`, err.message);
     return [];
   }
 }
@@ -23,7 +24,7 @@ async function getUpdates(token) {
 export async function startTelegramPolling() {
   if (pollingActive) return;
   pollingActive = true;
-  console.log('[Telegram Polling] Polling system started.');
+  logger.info('[Telegram Polling] Polling system started.');
 
   const poll = async () => {
     try {
@@ -44,20 +45,20 @@ export async function startTelegramPolling() {
       for (const token of tokens) {
         const updates = await getUpdates(token);
         if (updates.length > 0) {
-          console.log(`[Telegram Polling] Recibidas ${updates.length} actualizaciones para el bot ${token.substring(0, 10)}...`);
+          logger.debug(`[Telegram Polling] Recibidas ${updates.length} actualizaciones para el bot ${token.substring(0, 10)}...`);
         }
         for (const update of updates) {
           lastUpdateIds.set(token, update.update_id);
           
           if (update.callback_query) {
-            console.log(`[Telegram Polling] CLICK DETECTADO: ${update.callback_query.data} de ${update.callback_query.from.username || update.callback_query.from.id}`);
+            logger.info(`[Telegram Polling] CLICK DETECTADO: ${update.callback_query.data} de ${update.callback_query.from.username || update.callback_query.from.id}`);
           }
           
           await processTelegramUpdate(update);
         }
       }
     } catch (err) {
-      console.error('[Telegram Polling] Critical error in poll loop:', err);
+      logger.error('[Telegram Polling] Critical error in poll loop:', err.message);
     }
     
     // Esperar 2 segundos antes de la siguiente vuelta
@@ -71,5 +72,5 @@ export async function startTelegramPolling() {
 
 export function stopTelegramPolling() {
   pollingActive = false;
-  console.log('[Telegram Polling] Polling system stopped.');
+  logger.info('[Telegram Polling] Polling system stopped.');
 }

@@ -62,7 +62,7 @@ export async function setupTelegramLogic() {
         }
 
         if (config && caso?.tipo_operacion === 'recarga') {
-          const now = boliviaTime.nowDate();
+          const now = boliviaTime.now();
           const currentDay = now.getDay() === 0 ? 7 : now.getDay();
           const dias = JSON.parse(config.dias_operativos || '[1,2,3,4,5,6,7]');
           
