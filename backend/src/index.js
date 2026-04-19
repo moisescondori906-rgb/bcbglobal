@@ -16,6 +16,8 @@ import redis from './services/redisService.js';
 // 1. BLINDAJE GLOBAL Y VALIDACIÓN DE ENTORNO v9.0.0
 validateEnv();
 
+const app = express();
+
 // Blindaje total contra caídas por errores no capturados
 process.on('uncaughtException', (err) => {
   logger.error('[CRITICAL-FATAL] Uncaught Exception:', { 
@@ -37,25 +39,23 @@ process.on('unhandledRejection', (reason, promise) => {
 app.get('/health', async (req, res) => {
   const health = {
     status: 'ok',
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-    db: 'unknown',
-    redis: 'unknown'
+    db: 'connected',
+    redis: 'connected',
+    uptime: Math.floor(process.uptime()),
+    timestamp: new Date().toISOString()
   };
 
   try {
     await query('SELECT 1');
-    health.db = 'connected';
   } catch (err) {
-    health.db = 'error';
+    health.db = 'down';
     health.status = 'degraded';
   }
 
   try {
     await redis.ping();
-    health.redis = 'connected';
   } catch (err) {
-    health.redis = 'error';
+    health.redis = 'down';
     health.status = 'degraded';
   }
 
@@ -113,8 +113,6 @@ setInterval(async () => {
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
-const app = express();
 
 // Configuración de CORS dinámica y segura
 const allowedOrigins = [

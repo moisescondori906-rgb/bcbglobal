@@ -20,7 +20,7 @@ const logger = winston.createLogger({
   defaultMeta: { service: 'bcb-global-fintech' },
   transports: [
     new winston.transports.File({ filename: 'logs/error.log', level: 'error' }),
-    new winston.transports.File({ filename: 'logs/combined.log' }),
+    new winston.transports.File({ filename: 'logs/app.log' }),
     // Log específico para transacciones financieras
     new winston.transports.File({ filename: 'logs/finance.log', level: 'info', format: combine(
       timestamp(),
