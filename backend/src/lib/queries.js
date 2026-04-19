@@ -261,7 +261,7 @@ export async function canWithdraw(userId, dateStr = boliviaTime.todayStr()) {
 // 1. USUARIOS & AUTH
 // ========================
 
-const USER_FIELDS = `id, telefono, nombre_usuario, nombre_real, codigo_invitacion, invitado_por, nivel_id, avatar_url, saldo_principal, saldo_comisiones, rol, bloqueado, tickets_ruleta, primer_ascenso_completado, last_device_id, created_at`;
+const USER_FIELDS = `id, tenant_id, telefono, nombre_usuario, nombre_real, codigo_invitacion, invitado_por, nivel_id, avatar_url, saldo_principal, saldo_comisiones, rol, bloqueado, tickets_ruleta, primer_ascenso_completado, last_device_id, created_at`;
 
 export async function findUserById(id, tenantId = null) {
   const now = Date.now();

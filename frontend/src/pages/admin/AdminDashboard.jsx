@@ -15,8 +15,6 @@ export default function AdminDashboard() {
   }, []);
 
   const d = data || {};
-  // Update fix
-  const [updateTime, setUpdateTime] = useState(Date.now());
 
   return (
     <div className="p-8 space-y-8">

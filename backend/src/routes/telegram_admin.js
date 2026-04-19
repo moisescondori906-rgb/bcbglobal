@@ -13,6 +13,16 @@ router.use(requireAdmin);
  */
 
 // Listar todos los operadores
+router.get('/usuarios', async (req, res) => {
+  try {
+    const usuarios = await query('SELECT * FROM usuarios_telegram ORDER BY created_at DESC');
+    res.json(usuarios);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Retrocompatibilidad con /
 router.get('/', async (req, res) => {
   try {
     const usuarios = await query('SELECT * FROM usuarios_telegram ORDER BY created_at DESC');
@@ -136,6 +146,15 @@ router.get('/seguridad-logs', async (req, res) => {
 });
 
 // Historial completo de retiros (Auditoría operativa)
+router.get('/historial', async (req, res) => {
+  try {
+    const historial = await query('SELECT * FROM historial_retiros ORDER BY fecha DESC LIMIT 500');
+    res.json(historial);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.get('/historial-retiros', async (req, res) => {
   try {
     const historial = await query('SELECT * FROM historial_retiros ORDER BY fecha DESC LIMIT 500');

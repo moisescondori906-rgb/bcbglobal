@@ -3,12 +3,20 @@ node_modules/
 dist/
 build/
 .env
+.env.*
 .env.local
 .env.*.local
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Files to ignore
+frontend/dist.zip
+dist.zip
+*.dm
+*.dm.txt
+baselineProfiles/
 
 # Editor
 .vscode/

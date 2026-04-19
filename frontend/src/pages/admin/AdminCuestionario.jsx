@@ -74,7 +74,7 @@ export default function AdminCuestionario() {
     try {
       const res = await api.post('/admin/cuestionario/castigar');
       alert(`¡Éxito! Se han aplicado castigos a ${res.punished} usuarios correspondientes al día ${res.target_date}.`);
-      fetchPunished();
+      fetchRespuestas();
     } catch (err) {
       alert('Error: ' + err.message);
     } finally {
@@ -298,14 +298,38 @@ export default function AdminCuestionario() {
                   <div>
                     <p className="text-xs font-black text-gray-900 uppercase tracking-tight">{r.nombre_usuario}</p>
                     <p className="text-[9px] text-gray-400 font-bold">{r.telefono}</p>
-                    <p className="text-[8px] text-emerald-600 font-black mt-1 uppercase tracking-widest">Participó el {r.fecha_dia}</p>
+                  </div>
+                  <div className="flex flex-col items-end">
+                    <span className={`text-[8px] font-black uppercase tracking-widest px-2 py-1 rounded-full ${r.es_correcta ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'}`}>
+                      {r.es_correcta ? 'Correcto' : 'Incorrecto'}
+                    </span>
+                    <p className="text-[8px] text-gray-400 font-medium mt-1">{new Date(r.created_at).toLocaleDateString()}</p>
                   </div>
                 </div>
               ))}
-              {respuestas.length === 0 && (
-                <p className="text-[10px] text-gray-400 text-center font-bold py-10 uppercase tracking-widest">No hay participaciones registradas</p>
+              {(!respuestas || respuestas.length === 0) && (
+                <div className="py-10 text-center">
+                  <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest">Sin participaciones hoy</p>
+                </div>
               )}
             </div>
+          </div>
+
+          <div className="bg-rose-50 border border-rose-100 rounded-[2rem] p-6 space-y-4">
+            <div className="flex items-center gap-3 text-rose-600">
+              <AlertTriangle size={20} />
+              <h2 className="text-xs font-black uppercase tracking-widest">Zona de Castigo</h2>
+            </div>
+            <p className="text-[9px] text-rose-500 font-bold uppercase leading-relaxed">
+              Aplica sanciones a los usuarios que NO participaron ayer. Los castigados no podrán realizar retiros ni usar la ruleta hasta mañana.
+            </p>
+            <button 
+              onClick={handleCastigar}
+              disabled={punishing}
+              className="w-full py-4 bg-rose-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-rose-200 active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {punishing ? 'Aplicando...' : 'Aplicar Castigos (Ayer)'}
+            </button>
           </div>
         </div>
       </div>

@@ -29,7 +29,6 @@ export default function Recharge() {
   const [comprobante, setComprobante] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [pc, setPc] = useState(null);
   const [success, setSuccess] = useState(false);
   const [timeLeft, setTimeLeft] = useState(0);
   const [isMounted, setIsMounted] = useState(false);
@@ -64,7 +63,6 @@ export default function Recharge() {
     api.levels.list().then(data => isMounted && setNiveles(data || [])).catch(() => {});
     api.publicContent().then(data => {
       if (isMounted) {
-        setPc(data || null);
         if (data?.horario_recarga) {
           const sched = isScheduleOpen(data.horario_recarga);
           if (!sched.ok) {

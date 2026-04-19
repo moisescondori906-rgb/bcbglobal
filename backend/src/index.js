@@ -35,11 +35,35 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = process.env.PORT || 4000;
 
+// 0. Robustez Global: Captura de errores no controlados
+process.on('uncaughtException', (err) => {
+  logger.error('[CRITICAL] Uncaught Exception:', {
+    message: err.message,
+    stack: err.stack
+  });
+  // En producción, podrías querer hacer un graceful shutdown si es necesario
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  logger.error('[CRITICAL] Unhandled Rejection:', {
+    promise,
+    reason: reason?.message || reason
+  });
+});
+
+// Validación de dependencias críticas al iniciar
+const criticalEnv = ['DB_HOST', 'DB_USER', 'DB_PASSWORD', 'DB_NAME', 'REDIS_URL', 'JWT_SECRET'];
+criticalEnv.forEach(key => {
+  if (!process.env[key]) {
+    logger.warn(`[VALIDATION] Variable de entorno crítica faltante: ${key}`);
+  }
+});
+
 // 1. Seguridad & Middleware de Producción
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(morgan('combined', { stream: { write: (msg) => logger.info(msg.trim()) } }));
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ limit: '10mb', extended: true }));
+app.use(express.json({ limit: '20mb' })); // Aumentado para vouchers de alta resolución
+app.use(express.urlencoded({ limit: '20mb', extended: true }));
 
 // Configuración de CORS estricta y optimizada
 const whitelist = [
@@ -66,19 +90,21 @@ app.use(cors(corsOptions));
 // 2. Webhooks de Telegram (Endpoint dedicado antes de las rutas generales)
 setupWebhooks().then(() => {
   logger.info('[SERVER] Webhooks de Telegram configurados.');
+}).catch(err => {
+  logger.error('[SERVER] Error configurando webhooks:', err.message);
 });
 
 // Inicializar Tareas Programadas (Jobs)
-setupJobs();
+try {
+  setupJobs();
+} catch (err) {
+  logger.error('[SERVER] Error inicializando Jobs:', err.message);
+}
 
 // 3. Health Check Avanzado (Métricas de Resiliencia)
 app.get('/api/health', async (req, res) => {
-  res.json({ status: 'ok', time: boliviaTime.getTimeString() });
+  res.json({ status: 'ok', time: boliviaTime.getTimeString(), uptime: process.uptime() });
 });
-
-// Middlewares generales
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
 
 // 4. Rutas de API
 const apiV1 = express.Router();
@@ -86,6 +112,16 @@ const apiV1 = express.Router();
 // Inyectar contexto de Tenant y métricas de SLA
 apiV1.use(tenantContext);
 apiV1.use(slaMiddleware);
+
+// Endpoint de Contenido Público (Configuraciones, Banners, etc.)
+apiV1.get('/public-content', async (req, res) => {
+  try {
+    const content = await preloadConfig();
+    res.json(content);
+  } catch (err) {
+    res.status(500).json({ error: 'Error al cargar contenido público' });
+  }
+});
 
 apiV1.use('/auth', rateLimiter(60000, 15), authRoutes);
 apiV1.use('/users', userRoutes);
@@ -111,6 +147,8 @@ app.use('/api/v2', apiV2);
 
 // Servir archivos estáticos
 const publicPath = path.join(__dirname, '../../frontend/public');
+const backendPublicPath = path.join(__dirname, '../public');
+app.use('/uploads', express.static(path.join(backendPublicPath, 'uploads')));
 app.use('/imag', express.static(path.join(publicPath, 'imag')));
 app.use('/video', express.static(path.join(publicPath, 'video')));
 app.use('/', express.static(publicPath));

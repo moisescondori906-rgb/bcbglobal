@@ -57,6 +57,7 @@ export default function Withdrawal() {
   const [isOptimizing, setIsOptimizing] = useState(false);
   const [hasWithdrawalToday, setHasWithdrawalToday] = useState(false);
   const [hasSignature, setHasSignature] = useState(false);
+  const [isPunished, setIsPunished] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -236,6 +237,16 @@ export default function Withdrawal() {
           )}
         </AnimatePresence>
         
+        {/* Alerta de Horario */}
+        {fueraHorario && (
+          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
+            <Card className="p-5 bg-amber-500/10 border-amber-500/20 flex items-center gap-4">
+              <ClockIcon size={20} className="text-amber-500 shrink-0" />
+              <p className="text-[10px] text-amber-500 font-black uppercase tracking-widest">{msgHorario || 'Fuera de horario de retiro'}</p>
+            </Card>
+          </motion.div>
+        )}
+
         {hasWithdrawalToday && (
           <Card className="p-6 border-amber-500/20 bg-amber-500/5 flex items-center gap-4">
             <ClockIcon size={24} className="text-amber-500 shrink-0" />

@@ -11,22 +11,29 @@ const tokens = {
 };
 
 // Validación de tokens obligatorios para producción
-if (process.env.NODE_ENV === 'production') {
-  Object.entries(tokens).forEach(([key, token]) => {
-    if (!token) logger.error(`[TELEGRAM] Falta token para bot: ${key}`);
-  });
+const missingTokens = Object.entries(tokens).filter(([key, token]) => !token);
+if (missingTokens.length > 0) {
+  const msg = `[TELEGRAM] Faltan tokens para bots: ${missingTokens.map(([k]) => k).join(', ')}`;
+  if (process.env.NODE_ENV === 'production') {
+    logger.error(msg);
+  } else {
+    logger.warn(msg);
+  }
 }
 
 // Inicialización resiliente de bots
 const createBot = (token, name) => {
-  if (!token) return null;
+  if (!token) {
+    logger.warn(`[TELEGRAM] Bot ${name} no se inicializará (Token ausente).`);
+    return null;
+  }
   try {
     const bot = new TelegramBot(token, { polling: false }); // Usar Webhooks en producción
-    logger.info(`[TELEGRAM] Bot ${name} inicializado.`);
+    logger.info(`[TELEGRAM] Bot ${name} inicializado correctamente.`);
     return bot;
   }
   catch (err) {
-    logger.error(`[TELEGRAM] Error al crear bot ${name}: ${err.message}`);
+    logger.error(`[TELEGRAM] Error fatal al crear bot ${name}: ${err.message}`);
     return null;
   }
 };
@@ -35,13 +42,39 @@ export const botAdmin = createBot(tokens.admin, 'ADMIN');
 export const botRetiros = createBot(tokens.retiros, 'RETIROS');
 export const botSecretaria = createBot(tokens.secretaria, 'SECRETARIA');
 
+// Importar Handlers para registrarlos en los bots
+import { handleCallbackQuery } from '../handlers/telegramHandler.js';
+
+const registerHandlers = (bot) => {
+  if (!bot) return;
+  bot.on('callback_query', (query) => handleCallbackQuery(bot, query));
+  
+  // Manejo de errores de polling (aunque usemos webhooks, esto evita crashes)
+  bot.on('error', (err) => logger.error(`[TELEGRAM] Bot Error: ${err.message}`));
+  bot.on('polling_error', (err) => logger.debug(`[TELEGRAM] Polling Error: ${err.message}`));
+};
+
+registerHandlers(botAdmin);
+registerHandlers(botRetiros);
+registerHandlers(botSecretaria);
+
 /**
  * Helper para enviar mensajes con retry y log de errores
  */
 async function safeSendMessage(bot, chatId, text, options = {}) {
-  if (!bot || !chatId) return null;
+  if (!bot) {
+    logger.error(`[TELEGRAM] Error: Bot no inicializado.`);
+    return null;
+  }
+  if (!chatId) {
+    logger.error(`[TELEGRAM] Error: Chat ID no configurado.`);
+    return null;
+  }
   try {
-    return await bot.sendMessage(chatId, text, { parse_mode: 'HTML', ...options });
+    logger.info(`[TELEGRAM] Enviando mensaje a ${chatId}...`);
+    const res = await bot.sendMessage(chatId, text, { parse_mode: 'HTML', ...options });
+    logger.info(`[TELEGRAM] Mensaje enviado con éxito a ${chatId}.`);
+    return res;
   }
   catch (err) {
     logger.error(`[TELEGRAM] Error enviando mensaje a ${chatId}: ${err.message}`);

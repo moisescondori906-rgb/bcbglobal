@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import bcrypt from 'bcryptjs';
+import redis from '../services/redisService.js';
 import { 
   getUsers, getLevels, findUserById, updateUser, 
   getPublicContent, approveLevelPurchase, rejectRetiro,
@@ -10,7 +11,7 @@ import {
 } from '../lib/queries.js';
 import { query, queryOne } from '../config/db.js';
 import { authenticate, requireAdmin } from '../middleware/auth.js';
-import { uploadToCloudinary, uploadVideoBuffer } from '../config/cloudinary.js';
+import { uploadToCloudinary, uploadVideoBuffer, uploadImageBuffer } from '../config/cloudinary.js';
 import logger from '../lib/logger.js';
 
 const router = Router();
@@ -87,12 +88,52 @@ router.get('/usuarios', async (req, res) => {
   }
 });
 
+router.get('/admins', async (req, res) => {
+  try {
+    const admins = await query(`SELECT id, nombre_usuario, telefono, rol, created_at FROM usuarios WHERE rol = 'admin'`);
+    res.json(admins);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/recargas', async (req, res) => {
+  try {
+    const rows = await query(`
+      SELECT c.*, u.nombre_usuario, u.telefono, n.nombre as nivel_nombre 
+      FROM compras_nivel c
+      JOIN usuarios u ON c.usuario_id = u.id
+      JOIN niveles n ON c.nivel_id = n.id
+      ORDER BY c.created_at DESC
+    `);
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/retiros', async (req, res) => {
+  try {
+    const rows = await query(`
+      SELECT r.*, u.nombre_usuario, u.telefono 
+      FROM retiros r
+      JOIN usuarios u ON r.usuario_id = u.id
+      ORDER BY r.created_at DESC
+    `);
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.post('/compras-nivel/:id/aprobar', async (req, res) => {
   try {
     const result = await approveLevelPurchase(req.params.id, req.user.id);
     const compra = await queryOne(`SELECT * FROM compras_nivel WHERE id = ?`, [req.params.id]);
     if (compra) {
       await distributeInvestmentCommissions(compra.usuario_id, compra.monto);
+      // Invalidar caché de ranking ya que un ascenso afecta el conteo de invitados reales
+      await redis.del('admin:ranking:invitados');
     }
     res.json({ ok: true, trace_id: result.traceId });
   } catch (err) {
@@ -169,6 +210,199 @@ router.post('/levels/sync', async (req, res) => {
   try {
     await syncLevels();
     res.json({ ok: true, message: 'Niveles sincronizados con la tabla oficial' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ========================
+// GESTIÓN DE MÉTODOS QR
+// ========================
+
+router.get('/metodos-qr', async (req, res) => {
+  try {
+    const list = await query(`SELECT * FROM metodos_qr ORDER BY orden ASC`);
+    res.json(list);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/metodos-qr-all', async (req, res) => {
+  try {
+    const list = await query(`SELECT * FROM metodos_qr ORDER BY created_at DESC`);
+    res.json(list);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/metodos-qr', async (req, res) => {
+  try {
+    const { nombre_titular, imagen_qr_url, imagen_base64, admin_id, activo, orden } = req.body;
+    let final_url = imagen_qr_url;
+
+    if (imagen_base64) {
+      const base64Data = imagen_base64.replace(/^data:image\/\w+;base64,/, '');
+      const buffer = Buffer.from(base64Data, 'base64');
+      const result = await uploadImageBuffer(buffer, {
+        folder: 'bcb_global/metodos_qr'
+      });
+      final_url = result.secure_url;
+    }
+
+    const id = uuidv4();
+    await query(`INSERT INTO metodos_qr (id, nombre_titular, imagen_qr_url, admin_id, activo, orden) VALUES (?, ?, ?, ?, ?, ?)`,
+      [id, nombre_titular, final_url, admin_id, activo !== false ? 1 : 0, orden || 0]);
+    res.json({ id, ok: true, imagen_qr_url: final_url });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.put('/metodos-qr/:id', async (req, res) => {
+  try {
+    const { nombre_titular, imagen_qr_url, imagen_base64, admin_id, activo, orden, seleccionada } = req.body;
+    let final_url = imagen_qr_url;
+
+    if (imagen_base64) {
+      const base64Data = imagen_base64.replace(/^data:image\/\w+;base64,/, '');
+      const buffer = Buffer.from(base64Data, 'base64');
+      const result = await uploadImageBuffer(buffer, {
+        folder: 'bcb_global/metodos_qr'
+      });
+      final_url = result.secure_url;
+    }
+
+    await query(`UPDATE metodos_qr SET nombre_titular = ?, imagen_qr_url = ?, admin_id = ?, activo = ?, orden = ?, seleccionada = ? WHERE id = ?`,
+      [nombre_titular, final_url, admin_id, activo !== false ? 1 : 0, orden || 0, seleccionada ? 1 : 0, req.params.id]);
+    res.json({ ok: true, imagen_qr_url: final_url });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.delete('/metodos-qr/:id', async (req, res) => {
+  try {
+    await query(`DELETE FROM metodos_qr WHERE id = ?`, [req.params.id]);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ========================
+// GESTIÓN DE PREMIOS RULETA
+// ========================
+
+router.get('/premios-ruleta', async (req, res) => {
+  try {
+    const list = await query(`SELECT * FROM premios_ruleta ORDER BY orden ASC`);
+    res.json(list);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/premios-ruleta', async (req, res) => {
+  try {
+    const { nombre, tipo, valor, probabilidad, activo, orden } = req.body;
+    const id = uuidv4();
+    await query(`INSERT INTO premios_ruleta (id, nombre, tipo, valor, probabilidad, activo, orden) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [id, nombre, tipo, valor, probabilidad, activo ? 1 : 0, orden || 0]);
+    res.json({ id, ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.put('/premios-ruleta/:id', async (req, res) => {
+  try {
+    const { nombre, tipo, valor, probabilidad, activo, orden } = req.body;
+    await query(`UPDATE premios_ruleta SET nombre = ?, tipo = ?, valor = ?, probabilidad = ?, activo = ?, orden = ? WHERE id = ?`,
+      [nombre, tipo, valor, probabilidad, activo ? 1 : 0, orden || 0, req.params.id]);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.delete('/premios-ruleta/:id', async (req, res) => {
+  try {
+    await query(`DELETE FROM premios_ruleta WHERE id = ?`, [req.params.id]);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ========================
+// GESTIÓN DE BANNERS
+// ========================
+
+router.get('/banners', async (req, res) => {
+  try {
+    const list = await query(`SELECT * FROM banners_carrusel ORDER BY orden ASC`);
+    res.json(list);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/banners', async (req, res) => {
+  try {
+    const { imagen_url, imagen_base64, titulo, link_url, activo, orden } = req.body;
+    let final_url = imagen_url;
+
+    if (imagen_base64) {
+      const base64Data = imagen_base64.replace(/^data:image\/\w+;base64,/, '');
+      const buffer = Buffer.from(base64Data, 'base64');
+      const result = await uploadImageBuffer(buffer, {
+        folder: 'bcb_global/banners'
+      });
+      final_url = result.secure_url;
+    }
+
+    const id = uuidv4();
+    await query(`INSERT INTO banners_carrusel (id, imagen_url, titulo, link_url, activo, orden) VALUES (?, ?, ?, ?, ?, ?)`,
+      [id, final_url, titulo, link_url, activo !== false ? 1 : 0, orden || 0]);
+    res.json({ id, ok: true, imagen_url: final_url });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.delete('/banners/:id', async (req, res) => {
+  try {
+    await query(`DELETE FROM banners_carrusel WHERE id = ?`, [req.params.id]);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/regalar-tickets', async (req, res) => {
+  try {
+    const { target_type, target_value, tickets } = req.body;
+    if (!tickets || isNaN(tickets)) return res.status(400).json({ error: 'Número de tickets inválido' });
+
+    let sql = 'UPDATE usuarios SET tickets_ruleta = tickets_ruleta + ?';
+    let params = [tickets];
+
+    if (target_type === 'nivel') {
+      sql += ' WHERE nivel_id = ?';
+      params.push(target_value);
+    } else if (target_type === 'usuario') {
+      sql += ' WHERE id = ?';
+      params.push(target_value);
+    } else if (target_type === 'todos') {
+      sql += ' WHERE rol = \'usuario\'';
+    } else {
+      return res.status(400).json({ error: 'Tipo de objetivo inválido' });
+    }
+
+    await query(sql, params);
+    res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -426,6 +660,90 @@ router.get('/cuestionario/respuestas', async (req, res) => {
   }
 });
 
+router.get('/public-content', async (req, res) => {
+  try {
+    const content = await getPublicContent();
+    res.json(content);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.put('/public-content', async (req, res) => {
+  try {
+    await refreshPublicContent(req.body);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/ranking-invitados', async (req, res) => {
+  const cacheKey = 'admin:ranking:invitados';
+  try {
+    // 1. Intentar obtener de Redis (Caché de 5 minutos para reportes pesados)
+    const cached = await redis.get(cacheKey);
+    if (cached) return res.json(JSON.parse(cached));
+
+    const levels = await getLevels();
+    const internarLevel = levels.find(l => l.codigo === 'internar');
+    const internarId = internarLevel?.id || '';
+
+    // Query para obtener el ranking base
+    const ranking = await query(`
+      SELECT 
+        u.id, 
+        u.nombre_usuario, 
+        u.telefono, 
+        u.codigo_invitacion,
+        u.tipo_lider,
+        n.nombre as nivel,
+        (
+          SELECT COUNT(*) FROM usuarios u1 
+          WHERE u1.invitado_por = u.id 
+          AND u1.nivel_id != ?
+        ) as count_a,
+        (
+          SELECT COUNT(*) FROM usuarios u1
+          JOIN usuarios u2 ON u2.invitado_por = u1.id
+          WHERE u1.invitado_por = u.id
+          AND u2.nivel_id != ?
+        ) as count_b,
+        (
+          SELECT COUNT(*) FROM usuarios u1
+          JOIN usuarios u2 ON u2.invitado_por = u1.id
+          JOIN usuarios u3 ON u3.invitado_por = u2.id
+          WHERE u1.invitado_por = u.id
+          AND u3.nivel_id != ?
+        ) as count_c
+      FROM usuarios u
+      LEFT JOIN niveles n ON u.nivel_id = n.id
+      WHERE u.rol = 'usuario'
+      ORDER BY (count_a + count_b + count_c) DESC
+      LIMIT 100
+    `, [internarId, internarId, internarId]);
+
+    // Formatear para el frontend
+    const formatted = ranking.map(u => ({
+      ...u,
+      invitados_count: u.count_a + u.count_b + u.count_c,
+      network_stats: {
+        A: u.count_a,
+        B: u.count_b,
+        C: u.count_c
+      },
+      level_stats: {} 
+    }));
+
+    // 2. Guardar en Redis por 300 segundos (5 min)
+    await redis.setex(cacheKey, 300, JSON.stringify(formatted));
+
+    res.json(formatted);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.post('/usuarios/:id/lider', async (req, res) => {
   try {
     const { tipo_lider } = req.body;
@@ -440,6 +758,7 @@ router.post('/usuarios/:id/nivel', async (req, res) => {
   try {
     const { nivel_id } = req.body;
     await query(`UPDATE usuarios SET nivel_id = ? WHERE id = ?`, [nivel_id, req.params.id]);
+    await redis.del('admin:ranking:invitados');
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: err.message });

@@ -4,9 +4,14 @@ import { CONFIG } from '../config.js';
 
 const DownloadButton = ({ variant = 'default' }) => {
   const [showIosModal, setShowIosModal] = useState(false);
-  const [device, setDevice] = useState('unknown');
+  const [device, setDevice] = useState(() => {
+    if (typeof window === 'undefined') return 'unknown';
+    const ua = navigator.userAgent.toLowerCase();
+    if (/android/.test(ua)) return 'android';
+    if (/iphone|ipad|ipod/.test(ua)) return 'ios';
+    return 'desktop';
+  });
   const [isInstalled, setIsInstalled] = useState(() => {
-    // Intento de detección síncrona inicial
     if (typeof window === 'undefined') return false;
     const isStandalone = window.navigator?.standalone || window.matchMedia?.('(display-mode: standalone)').matches;
     const isNative = window.Capacitor?.isNativePlatform?.() || false;
@@ -14,23 +19,12 @@ const DownloadButton = ({ variant = 'default' }) => {
   });
 
   useEffect(() => {
-    const ua = navigator.userAgent.toLowerCase();
-    const isAndroid = /android/.test(ua);
-    const isIos = /iphone|ipad|ipod/.test(ua);
-    
-    // Re-verificar en useEffect por si Capacitor se carga después
-    const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
-    const isNative = window.Capacitor?.isNativePlatform?.() || false;
-
-    if (isAndroid) {
-      setDevice('android');
-    } else if (isIos) {
-      setDevice('ios');
-    } else {
-      setDevice('desktop');
-    }
-
-    setIsInstalled(isStandalone || isNative);
+    // Re-verificar por si Capacitor se carga después
+    const checkCapacitor = () => {
+      const isNative = window.Capacitor?.isNativePlatform?.() || false;
+      if (isNative) setIsInstalled(true);
+    };
+    checkCapacitor();
   }, []);
 
   // Si la aplicación ya está instalada o es nativa, no mostramos los botones de descarga
