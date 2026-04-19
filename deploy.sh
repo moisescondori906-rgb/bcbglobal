@@ -1,48 +1,55 @@
 #!/bin/bash
 
-# ==============================================================================
-# BCB GLOBAL - SCRIPT DE DESPLIEGUE PROFESIONAL (VPS)
-# ==============================================================================
+# ==========================================
+# BCB GLOBAL - SCRIPT DE DESPLIEGUE v7.0.5
+# ==========================================
 
-# Colores para la consola
-GREEN='\033[0;32m'
-BLUE='\033[0;34m'
-YELLOW='\033[1;33m'
-RED='\033[0;31m'
-NC='\033[0m' # No Color
+set -e # Salir si ocurre un error
 
-echo -e "${BLUE}🚀 Iniciando despliegue de BCB Global v7.0.1 Stable...${NC}"
+echo "🚀 Iniciando despliegue de BCB Global v7.0.5..."
 
-# 1. Sincronización con Repositorio
-echo -e "${YELLOW}📦 Actualizando código desde GitHub...${NC}"
-git pull origin main || { echo -e "${RED}❌ Error al hacer git pull${NC}"; exit 1; }
+# 1. ACTUALIZAR CÓDIGO
+echo "📥 Descargando cambios de Git..."
+git pull origin main
 
-# 2. Instalación de Dependencias del Backend
-echo -e "${YELLOW}⚙️ Instalando dependencias del Backend (Sin legacy-peer-deps)...${NC}"
+# 2. BACKEND
+echo "⚙️ Configurando Backend..."
 cd backend
-npm install --no-fund --no-audit || { echo -e "${RED}❌ Error en npm install (Backend)${NC}"; exit 1; }
+npm install
+# Limpiar logs antiguos
+mkdir -p logs
+rm -f logs/*.log
 
-# 3. Instalación y Build del Frontend
-echo -e "${YELLOW}🎨 Construyendo el Frontend (Vite)...${NC}"
+# Validación de sintaxis antes de reiniciar
+node -c src/index.js
+echo "✅ Backend validado."
+
+# 3. FRONTEND
+echo "🏗️ Construyendo Frontend..."
 cd ../frontend
-npm install --no-fund --no-audit || { echo -e "${RED}❌ Error en npm install (Frontend)${NC}"; exit 1; }
-npm run build || { echo -e "${RED}❌ Error al construir el Frontend. Verifique errores de JSX/Vite.${NC}"; exit 1; }
+npm install
+npm run build
+echo "✅ Frontend construido exitosamente."
 
-# 4. Reinicio de Servicios con PM2
-echo -e "${YELLOW}🔄 Reiniciando procesos con PM2 (Cluster Mode)...${NC}"
-cd ../backend
-# Validación de integridad antes de reiniciar
-node --check src/index.js || { echo -e "${RED}❌ Error de sintaxis en el Backend. Abortando reinicio.${NC}"; exit 1; }
-
-# Verificamos si el proceso ya existe
-if pm2 show bcb-global-backend > /dev/null 2>&1; then
-    pm2 restart ecosystem.config.cjs --env production
-else
-    pm2 start ecosystem.config.cjs --env production
-fi
-
-
+# 4. REINICIO DE SERVICIOS
+echo "🔄 Reiniciando procesos con PM2..."
+cd ..
+pm2 restart bcb-global-backend || pm2 start backend/src/index.js --name bcb-global-backend
 pm2 save
 
-echo -e "${GREEN}✅ ¡Despliegue completado con éxito! El sistema está online y estable.${NC}"
-pm2 status
+# 5. VERIFICACIÓN FINAL
+echo "🩺 Verificando salud del sistema..."
+sleep 5
+HEALTH=$(curl -s http://localhost:4000/health | grep -o "ok" || echo "failed")
+
+if [ "$HEALTH" == "ok" ]; then
+    echo "✅ SISTEMA ONLINE (v7.0.5)"
+    echo "📋 Últimos logs:"
+    pm2 logs bcb-global-backend --lines 20 --no-daemon & sleep 3 ; kill $!
+else
+    echo "❌ ERROR: El backend no respondió correctamente tras el reinicio."
+    pm2 logs bcb-global-backend --lines 50 --no-daemon & sleep 5 ; kill $!
+    exit 1
+fi
+
+echo "🚀 DESPLIEGUE COMPLETADO EXITOSAMENTE."

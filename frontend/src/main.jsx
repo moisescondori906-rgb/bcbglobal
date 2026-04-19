@@ -2,31 +2,29 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.jsx'
+import ErrorBoundary from './components/ui/ErrorBoundary'
 
-// --- MECANISMO DE LIMPIEZA NUCLEAR v7.0.0 ---
-// Fuerza la eliminación de cualquier caché antigua detectada
-const APP_VERSION = '7.0.0';
+// --- MECANISMO DE LIMPIEZA NUCLEAR v7.0.5 ---
+const APP_VERSION = '7.0.5';
 const currentVersion = localStorage.getItem('global_app_version');
 
 if (currentVersion !== APP_VERSION) {
-  console.log('[Global] Nueva versión detectada. Limpiando caché...');
+  console.log(`[BCB-GLOBAL] Actualizando a v${APP_VERSION}. Limpiando estados antiguos...`);
+  // Limpiar Service Workers y Caché de forma segura
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.getRegistrations().then(registrations => {
-      for (let registration of registrations) {
-        registration.unregister();
-      }
-    });
+    navigator.serviceWorker.getRegistrations().then(regs => regs.forEach(r => r.unregister()));
   }
-  caches.keys().then(names => {
-    for (let name of names) caches.delete(name);
-  });
+  if ('caches' in window) {
+    caches.keys().then(names => names.forEach(n => caches.delete(n)));
+  }
   localStorage.setItem('global_app_version', APP_VERSION);
-  // No recargamos aquí para evitar bucles, pero el próximo F5 será limpio
 }
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <App />
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
   </StrictMode>,
 )
 

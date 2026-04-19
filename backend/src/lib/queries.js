@@ -149,41 +149,117 @@ export async function getDayStatus(dateStr = boliviaTime.todayStr()) {
   }
 }
 
-/**
- * Mock getUserTeamReport para evitar errores de importación
- */
 export async function getUserTeamReport(userId) {
-  return { ok: true, data: [] };
+  try {
+    // 1. Obtener niveles para mapeo
+    const levels = await getLevels();
+    const internarId = levels.find(l => l.codigo === 'internar')?.id || '';
+
+    // 2. Reporte de 3 niveles con conteo real (sin nivel Internar para ingresos)
+    const level1 = await query(`
+      SELECT u.id, u.nombre_usuario, u.telefono, u.created_at, n.nombre as nivel_nombre, u.nivel_id
+      FROM usuarios u 
+      LEFT JOIN niveles n ON u.nivel_id = n.id
+      WHERE u.invitado_por = ?`, [userId]);
+
+    const level2 = level1.length > 0 ? await query(`
+      SELECT u.id, u.nombre_usuario, u.telefono, u.created_at, n.nombre as nivel_nombre, u.nivel_id
+      FROM usuarios u 
+      LEFT JOIN niveles n ON u.nivel_id = n.id
+      WHERE u.invitado_por IN (?)`, [level1.map(u => u.id)]) : [];
+
+    const level3 = level2.length > 0 ? await query(`
+      SELECT u.id, u.nombre_usuario, u.telefono, u.created_at, n.nombre as nivel_nombre, u.nivel_id
+      FROM usuarios u 
+      LEFT JOIN niveles n ON u.nivel_id = n.id
+      WHERE u.invitado_por IN (?)`, [level2.map(u => u.id)]) : [];
+
+    // 3. Cálculo de Comisiones (Solo Inversión Activa)
+    const commissions = await query(`
+      SELECT 
+        CASE 
+          WHEN descripcion LIKE '%Nivel A%' THEN 'A'
+          WHEN descripcion LIKE '%Nivel B%' THEN 'B'
+          WHEN descripcion LIKE '%Nivel C%' THEN 'C'
+          ELSE 'Otros'
+        END as nivel_red,
+        SUM(monto) as total
+      FROM movimientos_saldo 
+      WHERE usuario_id = ? AND tipo_movimiento = 'comision_inversion'
+      GROUP BY nivel_red
+    `, [userId]);
+
+    const commMap = commissions.reduce((acc, curr) => {
+      acc[curr.nivel_red] = Number(curr.total || 0);
+      return acc;
+    }, {});
+
+    const totalCommissions = Object.values(commMap).reduce((a, b) => a + b, 0);
+
+    return {
+      resumen: {
+        total_miembros: level1.length + level2.length + level3.length,
+        ingresos_totales: totalCommissions,
+        comisiones_hoy: 0 
+      },
+      niveles: [
+        { nivel: 'A', porcentaje: 10, total_miembros: level1.length, monto_recarga: commMap['A'] || 0 },
+        { nivel: 'B', porcentaje: 3, total_miembros: level2.length, monto_recarga: commMap['B'] || 0 },
+        { nivel: 'C', porcentaje: 1, total_miembros: level3.length, monto_recarga: commMap['C'] || 0 }
+      ],
+      detalles: {
+        level1: level1.map(u => ({ ...u, join_date: u.created_at })),
+        level2: level2.map(u => ({ ...u, join_date: u.created_at })),
+        level3: level3.map(u => ({ ...u, join_date: u.created_at }))
+      }
+    };
+  } catch (err) {
+    logger.error(`[Team Report Error]: ${err.message}`);
+    return { resumen: { total_miembros: 0, ingresos_totales: 0 }, niveles: [] };
+  }
 }
 
 /**
  * Validación Centralizada: ¿Puede realizar tareas hoy?
  */
 export async function canPerformTasks(userId, dateStr = boliviaTime.todayStr()) {
-  const status = await getDayStatus(dateStr);
-  if (!status) return { ok: true }; 
+  try {
+    const status = await getDayStatus(dateStr);
+    if (!status) return { ok: true }; 
 
-  if (!status.tareas_habilitadas) {
-    return { ok: false, message: status.motivo || 'Las tareas están suspendidas por hoy.' };
+    if (!status.tareas_habilitadas) {
+      return { ok: false, message: status.motivo || 'Las tareas están suspendidas por hoy.' };
+    }
+
+    // Verificar reglas por nivel si existen
+    const user = await findUserById(userId);
+    if (!user) return { ok: false, message: 'Usuario no encontrado.' };
+    if (user.bloqueado) return { ok: false, message: 'Tu cuenta ha sido bloqueada.' };
+    
+    const levels = await getLevels();
+    const userLevel = levels.find(l => String(l.id) === String(user.nivel_id));
+
+    const levelRules = typeof status.reglas_niveles === 'string' 
+      ? JSON.parse(status.reglas_niveles) 
+      : (status.reglas_niveles || {});
+
+    if (userLevel && levelRules[userLevel.codigo]?.tareas === false) {
+      return { ok: false, message: `Las tareas no están habilitadas para el nivel ${userLevel.nombre} hoy.` };
+    }
+
+    // 3. Verificar Límite Diario Real (Anti-Bypass) v7.0.5
+    const countResult = await queryOne(`SELECT COUNT(*) as total FROM actividad_tareas WHERE usuario_id = ? AND fecha_dia = ?`, [userId, dateStr]);
+    const completed = countResult?.total || 0;
+    
+    if (userLevel && completed >= userLevel.num_tareas_diarias) {
+      return { ok: false, message: 'Límite de tareas diarias alcanzado.' };
+    }
+
+    return { ok: true };
+  } catch (err) {
+    logger.error(`[canPerformTasks Error]: ${err.message}`);
+    return { ok: false, message: 'Error interno de validación de tareas.' };
   }
-
-  // Verificar reglas por nivel si existen
-  const user = await findUserById(userId);
-  if (!user) return { ok: false, message: 'Usuario no encontrado.' };
-  if (user.bloqueado) return { ok: false, message: 'Tu cuenta ha sido bloqueada.' };
-  
-  const levels = await getLevels();
-  const userLevel = levels.find(l => String(l.id) === String(user.nivel_id));
-
-  const levelRules = typeof status.reglas_niveles === 'string' 
-    ? JSON.parse(status.reglas_niveles) 
-    : (status.reglas_niveles || {});
-
-  if (userLevel && levelRules[userLevel.codigo]?.tareas === false) {
-    return { ok: false, message: `Las tareas no están habilitadas para el nivel ${userLevel.nombre} hoy.` };
-  }
-
-  return { ok: true };
 }
 
 /**
@@ -999,12 +1075,15 @@ export async function handleLevelUpRewards() {
 // 5. COMISIONES (Regla de Jerarquía)
 // ========================
 
+/**
+ * distributeInvestmentCommissions v7.0.5: Distribución de 3 niveles con regla de jerarquía
+ */
 export async function distributeInvestmentCommissions(userId, amount) {
   try {
     const user = await findUserById(userId);
     if (!user || !user.invitado_por) return;
 
-    const [levels] = await query(`SELECT * FROM niveles`);
+    const levels = await getLevels();
     const userLevel = levels.find(l => String(l.id) === String(user.nivel_id));
     if (!userLevel) return;
 
@@ -1018,7 +1097,7 @@ export async function distributeInvestmentCommissions(userId, amount) {
     for (const config of configs) {
       if (!currentUplineId) break;
       
-      const uplineId = currentUplineId; // Guardar ID actual para el loop
+      const uplineId = currentUplineId;
 
       await transaction(async (conn) => {
         // Bloqueo de upline
@@ -1034,7 +1113,7 @@ export async function distributeInvestmentCommissions(userId, amount) {
         // Avanzar al siguiente upline para la próxima iteración
         currentUplineId = uplineData.invitado_por;
 
-        // REGLA DE JERARQUÍA
+        // REGLA DE JERARQUÍA: El upline debe ser >= nivel que el invitado para cobrar
         if (uplineData.nivel_codigo === 'internar' || Number(uplineData.nivel_orden) < Number(userLevel.orden)) {
           return;
         }

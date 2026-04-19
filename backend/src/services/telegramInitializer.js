@@ -1,38 +1,32 @@
 import logger from '../lib/logger.js';
-import { query } from '../config/db.js';
 
 /**
- * Inicializador centralizado de manejadores de Telegram.
- * Diseñado para evitar dependencias circulares y asegurar resiliencia.
+ * Inicializador centralizado de manejadores de Telegram v7.0.5.
+ * Diseñado para aislamiento total y resiliencia de servicios.
  */
 export async function initTelegramHandlers() {
-  logger.info('[TELEGRAM] Iniciando servicios de bots...');
+  logger.info('[TELEGRAM] Iniciando secuencia de bots...');
 
   try {
-    // 1. Validar si los bots deben iniciar (Check de base de datos opcional)
-    const botsConfig = await query('SELECT clave, valor FROM configuraciones WHERE clave LIKE "TELEGRAM_BOT_%"');
+    const { setupAdminBot, setupRetirosBot, setupSecretariaBot } = await import('./telegramBot.js');
     
-    // 2. Importación dinámica para evitar bloqueos si un archivo está corrupto
-    const { setupAdminBot } = await import('./telegramBot.js');
-    
-    // 3. Inicializar cada bot de forma independiente con try/catch individual
-    // Bot Admin (El más crítico)
-    try {
-      if (!process.env.TELEGRAM_BOT_TOKEN_ADMIN) {
-        logger.warn('[TELEGRAM] TELEGRAM_BOT_TOKEN_ADMIN no configurado. Saltando...');
-      } else {
-        await setupAdminBot();
-        logger.info('[TELEGRAM] Admin Bot iniciado correctamente.');
-      }
-    } catch (botErr) {
-      logger.error('[TELEGRAM] Error iniciando Admin Bot:', botErr.message);
-    }
+    // Inicialización en paralelo con control de errores individual
+    const bots = [
+      { name: 'Admin', setup: setupAdminBot },
+      { name: 'Retiros', setup: setupRetirosBot },
+      { name: 'Secretaria', setup: setupSecretariaBot }
+    ];
 
-    // Aquí se pueden agregar más bots (Secretaria, Retiros, etc.) siguiendo el mismo patrón
-    
-    logger.info('[TELEGRAM] Proceso de inicialización finalizado.');
+    await Promise.all(bots.map(async (bot) => {
+      try {
+        await bot.setup();
+      } catch (err) {
+        logger.warn(`[TELEGRAM] No se pudo iniciar el bot ${bot.name}: ${err.message}`);
+      }
+    }));
+
+    logger.info('[TELEGRAM] Secuencia de inicialización completada.');
   } catch (err) {
     logger.error('[TELEGRAM] Error fatal en el inicializador:', err.message);
-    // IMPORTANTE: No relanzamos el error para no tumbar el servidor Express
   }
 }

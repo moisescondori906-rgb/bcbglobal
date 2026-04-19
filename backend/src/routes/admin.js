@@ -46,7 +46,8 @@ router.get('/dashboard', asyncHandler(async (req, res) => {
       (SELECT COALESCE(SUM(monto), 0) FROM compras_nivel WHERE estado = 'completada') as total_ventas_nivel,
       (SELECT COALESCE(SUM(monto), 0) FROM retiros WHERE estado = 'pagado') as total_retiros,
       (SELECT COUNT(*) FROM retiros WHERE estado = 'pendiente') as pendientes_retiro,
-      (SELECT COUNT(*) FROM compras_nivel WHERE estado = 'pendiente') as pendientes_compra_nivel
+      (SELECT COUNT(*) FROM compras_nivel WHERE estado = 'pendiente') as pendientes_recarga,
+      (SELECT COALESCE(SUM(monto), 0) FROM movimientos_saldo WHERE tipo_movimiento = 'recarga' AND DATE(fecha) = CURDATE()) as ingresos_hoy
   `);
   res.json(stats[0]);
 }));
@@ -597,11 +598,6 @@ router.post('/usuarios/:id/password', asyncHandler(async (req, res) => {
   await query(`UPDATE usuarios SET ${field} = ? WHERE id = ?`, [hashed, req.params.id]);
   res.json({ ok: true });
 }));
-
-router.post('/cuestionario/castigar', (req, res) => {
-  // Endpoint obsoleto, ahora las encuestas son pasivas
-  res.json({ ok: true, message: 'La función de castigo ha sido desactivada. Las encuestas son ahora opcionales.', punished: 0 });
-});
 
 router.post('/cuestionario/castigar', (req, res) => {
   // Endpoint obsoleto, ahora las encuestas son pasivas
