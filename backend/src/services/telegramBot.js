@@ -23,29 +23,31 @@ if (missingTokens.length > 0) {
 
 // Inicialización resiliente de bots
 const createBot = (token, name) => {
-  if (!token) {
-    logger.warn(`[TELEGRAM] Bot ${name} NO se inicializará (Token ausente).`);
-    return null;
-  }
-  
-  // Validar formato de token (numérico:alfanumérico)
-  if (!/^\d+:[\w-]+$/.test(token)) {
-    logger.error(`[TELEGRAM] Formato de token inválido para bot ${name}.`);
-    return null;
-  }
-
+  // Envoltorio de seguridad total para evitar caídas del backend
   try {
+    if (!token) {
+      logger.warn(`[TELEGRAM] Bot ${name} NO se inicializará (Token ausente). El sistema seguirá operando.`);
+      return null;
+    }
+    
+    // Validar formato de token (numérico:alfanumérico)
+    if (!/^\d+:[\w-]+$/.test(token)) {
+      logger.error(`[TELEGRAM] Formato de token inválido para bot ${name}.`);
+      return null;
+    }
+
     const bot = new TelegramBot(token, { polling: false }); 
     
-    // Sobrescribir sendMessage para que sea resiliente automáticamente
+    // Sobrescribir sendMessage para que sea resiliente automáticamente (Blindaje de API)
     const originalSendMessage = bot.sendMessage.bind(bot);
     bot.sendMessage = async (chatId, text, options = {}) => {
       if (!bot) return null;
       try {
         return await originalSendMessage(chatId, text, { parse_mode: 'HTML', ...options });
       } catch (err) {
-        logger.error(`[TELEGRAM-API] Error en bot ${name} enviando a ${chatId}: ${err.message}`);
-        return null; // No lanzar error para no romper el flujo del backend
+        logger.error(`[TELEGRAM-API] Error controlado en bot ${name} enviando a ${chatId}: ${err.message}`);
+        // Retornamos null en lugar de lanzar error para proteger el hilo principal
+        return null; 
       }
     };
 
@@ -53,7 +55,7 @@ const createBot = (token, name) => {
     return bot;
   }
   catch (err) {
-    logger.error(`[TELEGRAM] Error fatal al instanciar bot ${name}: ${err.message}. El backend seguirá funcionando.`);
+    logger.error(`[TELEGRAM] Error fatal aislado al instanciar bot ${name}: ${err.message}. El backend sigue vivo.`);
     return null;
   }
 };

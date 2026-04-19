@@ -36,23 +36,26 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = process.env.PORT || 4000;
 
-// 0. Robustez Global: Captura de errores no controlados
+// 0. Robustez Global: Blindaje Anti-Caídas (Nivel Senior)
 process.on('uncaughtException', (err) => {
-  logger.error('[CRITICAL] Uncaught Exception:', {
+  logger.error('[FATAL] Uncaught Exception:', {
     message: err.message,
     stack: err.stack
   });
-  // En producción, podrías querer hacer un graceful shutdown si es necesario
+  // En producción, no cerramos el proceso a menos que sea crítico
+  if (process.env.NODE_ENV === 'production') {
+    logger.warn('[SHIELD] Manteniendo el servidor vivo a pesar del error crítico.');
+  }
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-  logger.error('[CRITICAL] Unhandled Rejection:', {
+  logger.error('[FATAL] Unhandled Rejection:', {
     promise,
     reason: reason?.message || reason
   });
 });
 
-// Validación de dependencias críticas al iniciar
+// Validación de dependencias críticas al iniciar con reporte detallado
 const criticalEnv = [
   'DB_HOST', 'DB_USER', 'DB_PASSWORD', 'DB_NAME', 
   'REDIS_HOST', 'REDIS_PORT', 'JWT_SECRET',
@@ -63,8 +66,10 @@ const missingEnv = criticalEnv.filter(key => !process.env[key]);
 if (missingEnv.length > 0) {
   logger.error('[CRITICAL] Faltan variables de entorno obligatorias:', missingEnv);
   if (process.env.NODE_ENV === 'production') {
-    logger.error('[SHUTDOWN] No se puede iniciar en producción sin variables críticas.');
+    logger.error('[SHUTDOWN] No se puede iniciar en producción sin variables críticas. Verifique .env');
     process.exit(1);
+  } else {
+    logger.warn('[DEBUG] Iniciando en modo limitado (Faltan variables .env)');
   }
 }
 
