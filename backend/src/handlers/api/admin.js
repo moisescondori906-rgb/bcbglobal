@@ -649,7 +649,6 @@ router.get('/ranking-invitados', asyncHandler(async (req, res) => {
       u.nombre_real,
       u.telefono, 
       u.codigo_invitacion,
-      u.tipo_lider,
       n.nombre as nivel,
       (
         SELECT COUNT(*) FROM usuarios u1 
@@ -695,12 +694,6 @@ router.get('/ranking-invitados', asyncHandler(async (req, res) => {
   await redis.setex(cacheKey, 300, JSON.stringify(formatted));
 
   res.json(formatted);
-}));
-
-router.post('/usuarios/:id/lider', asyncHandler(async (req, res) => {
-  const { tipo_lider } = req.body;
-  await query(`UPDATE usuarios SET tipo_lider = ? WHERE id = ?`, [tipo_lider, req.params.id]);
-  res.json({ ok: true });
 }));
 
 router.post('/usuarios/:id/nivel', asyncHandler(async (req, res) => {
