@@ -31,15 +31,36 @@ export async function setupTelegramLogic() {
     }
 
     try {
-      // 2. VALIDACIÓN DE OPERADOR (Basado en usuarios_telegram v10.4.0)
-      const member = await queryOne(`
+      // 2. VALIDACIÓN DE OPERADOR (Doble Factor: Tabla Especial + Tabla Usuarios v10.5.0)
+      let member = await queryOne(`
         SELECT * FROM usuarios_telegram 
         WHERE telegram_id = ? AND activo = 1
       `, [telegramUserId]);
 
+      // Si no está en usuarios_telegram, buscamos en la tabla usuarios principal (rol admin)
       if (!member) {
+        const webAdmin = await queryOne(`
+          SELECT id, nombre_usuario as nombre, telegram_username 
+          FROM usuarios 
+          WHERE telegram_user_id = ? AND rol = 'admin' AND activo = 1
+        `, [telegramUserId]);
+
+        if (webAdmin) {
+          // Auto-vincular para futuras validaciones rápidas
+          await query(`
+            INSERT IGNORE INTO usuarios_telegram (telegram_id, nombre, telegram_username, activo)
+            VALUES (?, ?, ?, 1)
+          `, [telegramUserId, webAdmin.nombre, telegramUsername || webAdmin.telegram_username]);
+          
+          member = { telegram_id: telegramUserId, nombre: webAdmin.nombre, activo: 1 };
+          logger.info(`[TELEGRAM-AUTH] Auto-vinculado administrador web: ${webAdmin.nombre} (${telegramUserId})`);
+        }
+      }
+
+      if (!member) {
+        logger.warn(`[TELEGRAM-AUTH-REJECTED] Usuario sin permisos intentó usar el bot. ID: ${telegramUserId}, Username: ${telegramUsername}`);
         return safeTelegramCall(() => bot.answerCallbackQuery(callbackId, { 
-          text: '❌ No tienes permisos de administrador vinculados.', 
+          text: `❌ Sin permisos vinculados.\nTu ID de Telegram es: ${telegramUserId}\nRegístralo en el panel de Admin.`, 
           show_alert: true 
         }), 'answerCallbackQuery-noMember');
       }
