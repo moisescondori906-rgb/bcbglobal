@@ -17,6 +17,7 @@ conn.on('ready', () => {
   
    const commands = [
     'cd /var/www/bcb_global && git fetch origin && git reset --hard origin/main',
+    'find /var/www/bcb_global/backend/src -name "*.js" -delete',
     'fuser -k 4000/tcp || true',
     'pm2 kill',
     'cd /var/www/bcb_global/backend && npm install',

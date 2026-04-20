@@ -3,15 +3,15 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import logger, { createModuleLogger } from './utils/logger.js';
-import { errorHandler } from './handlers/errorHandler.js';
-import { initTelegramHandlers } from './services/telegramInitializer.js';
-import { query } from './config/db.js';
-import { syncLevels } from './services/dbService.js';
-import { safeAsync } from './utils/safe.js';
+import logger, { createModuleLogger } from './utils/logger.mjs';
+import { errorHandler } from './handlers/errorHandler.mjs';
+import { initTelegramHandlers } from './services/telegramInitializer.mjs';
+import { query } from './config/db.mjs';
+import { syncLevels } from './services/dbService.mjs';
+import { safeAsync } from './utils/safe.mjs';
 
-import validateEnv from './config/validateEnv.js';
-import redis from './services/redisService.js';
+import validateEnv from './config/validateEnv.mjs';
+import redis from './services/redisService.mjs';
 
 // 1. BLINDAJE GLOBAL Y VALIDACIÓN DE ENTORNO v9.0.0
 validateEnv();
@@ -136,17 +136,17 @@ app.use('/uploads', express.static(path.join(__dirname, '../public/uploads')));
 app.use(express.static(path.join(__dirname, '../public')));
 
 // 2. IMPORTACIÓN DE RUTAS (CON ASYNC HANDLER INTEGRADO)
-import authRoutes from './handlers/api/auth.js';
-import userRoutes from './handlers/api/users.js';
-import taskRoutes from './handlers/api/tasks.js';
-import rechargeRoutes from './handlers/api/recharges.js';
-import withdrawalRoutes from './handlers/api/withdrawals.js';
-import adminRoutes from './handlers/api/admin.js';
-import telegramAdminRoutes from './handlers/api/telegram_admin.js';
-import telegramWebhookRoutes from './handlers/api/telegram_webhook.js';
-import sorteoRoutes from './handlers/api/sorteo.js';
-import saasRoutes from './handlers/api/saas.js';
-import levelRoutes from './handlers/api/levels.js';
+import authRoutes from './handlers/api/auth.mjs';
+import userRoutes from './handlers/api/users.mjs';
+import taskRoutes from './handlers/api/tasks.mjs';
+import rechargeRoutes from './handlers/api/recharges.mjs';
+import withdrawalRoutes from './handlers/api/withdrawals.mjs';
+import adminRoutes from './handlers/api/admin.mjs';
+import telegramAdminRoutes from './handlers/api/telegram_admin.mjs';
+import telegramWebhookRoutes from './handlers/api/telegram_webhook.mjs';
+import sorteoRoutes from './handlers/api/sorteo.mjs';
+import saasRoutes from './handlers/api/saas.mjs';
+import levelRoutes from './handlers/api/levels.mjs';
 
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);

@@ -4,7 +4,7 @@ module.exports = {
       name: 'bcb-global-backend',
       script: 'src/index.mjs',
       cwd: '/var/www/bcb_global/backend',
-      instances: 'max',
+      instances: 2,
       exec_mode: 'cluster',
       env: {
         NODE_ENV: 'production',
