@@ -31,12 +31,13 @@ export async function safeAsync(fn, context = 'GeneralAsync') {
 
 /**
  * safeTelegram - Wrapper específico para llamadas a la API de Telegram.
+ * Previene que fallos en los bots (throttling, red, tokens) afecten al servidor.
  */
 export const safeTelegram = async (fn, context = 'TelegramAction') => { 
   try { 
     return await fn(); 
-  } catch (error) { 
-    console.error(`🤖 Telegram error (${context}):`, error.message); 
+  } catch (e) { 
+    console.error(`🤖 [TELEGRAM-ERROR] ${context}:`, e.message); 
     return null; 
   } 
 };

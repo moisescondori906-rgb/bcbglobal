@@ -18,13 +18,14 @@ validateEnv();
 
 const app = express();
 
-// Blindaje total contra caídas por errores no capturados
+// Blindaje total contra caídas por errores no capturados (ANTI-CRASH)
 process.on('uncaughtException', (err) => {
-  console.error('Uncaught Exception:', err.stack);
+  console.error('🔥 Uncaught Exception:', err.stack);
+  // No salimos para que PM2 mantenga el cluster activo
 });
 
 process.on('unhandledRejection', (err) => {
-  console.error('Unhandled Rejection:', err);
+  console.error('🔥 Unhandled Rejection:', err);
 });
 
 // Endpoint de Healthcheck Profesional v9.0.0
