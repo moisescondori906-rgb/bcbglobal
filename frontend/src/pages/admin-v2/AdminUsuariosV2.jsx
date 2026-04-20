@@ -25,7 +25,7 @@ import {
 import { api } from '../../lib/api';
 import { formatCurrency, formatDate } from '../../utils/format';
 
-const UserRow = ({ user, onEdit, onDelete, onToggleStatus }) => (
+const UserRow = ({ user, onEdit, onDelete, onToggleStatus, onToggleBlock, onResetPassword }) => (
   <motion.tr 
     initial={{ opacity: 0 }}
     animate={{ opacity: 1 }}
@@ -33,11 +33,14 @@ const UserRow = ({ user, onEdit, onDelete, onToggleStatus }) => (
   >
     <td className="px-6 py-5">
       <div className="flex items-center gap-4">
-        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black text-white shadow-lg border border-white/10 ${user.rol === 'admin' ? 'bg-gradient-to-tr from-amber-500 to-orange-600' : 'bg-gradient-to-tr from-slate-700 to-slate-800'}`}>
+        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black text-white shadow-lg border border-white/10 ${user.rol === 'admin' ? 'bg-gradient-to-tr from-amber-500 to-orange-600' : user.bloqueado ? 'bg-rose-900/50 grayscale' : 'bg-gradient-to-tr from-slate-700 to-slate-800'}`}>
           {user.nombre_usuario.charAt(0).toUpperCase()}
         </div>
         <div className="flex flex-col overflow-hidden">
-          <p className="text-sm font-black text-white truncate uppercase tracking-tight">{user.nombre_usuario}</p>
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-black text-white truncate uppercase tracking-tight">{user.nombre_usuario}</p>
+            {user.bloqueado && <Shield className="text-rose-500" size={12} />}
+          </div>
           <div className="flex items-center gap-2">
             <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full tracking-widest ${user.rol === 'admin' ? 'bg-amber-500/10 text-amber-500' : 'bg-slate-500/10 text-slate-500'}`}>
               {user.rol}
@@ -61,16 +64,19 @@ const UserRow = ({ user, onEdit, onDelete, onToggleStatus }) => (
     </td>
     <td className="px-6 py-5 text-center">
       <div className="flex flex-col items-center gap-1">
-        <span className={`px-4 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest border transition-all ${user.activo ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-rose-500/10 text-rose-500 border-rose-500/20'}`}>
-          {user.activo ? 'Cuenta Activa' : 'Baneado'}
+        <span className={`px-4 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest border transition-all ${user.bloqueado ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' : user.activo ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-amber-500/10 text-amber-500 border-amber-500/20'}`}>
+          {user.bloqueado ? 'BLOQUEADO' : user.activo ? 'Cuenta Activa' : 'Inactivo'}
         </span>
         <p className="text-[8px] font-bold text-slate-600 uppercase tracking-widest">{formatDate(user.created_at)}</p>
       </div>
     </td>
     <td className="px-6 py-5 text-right">
       <div className="flex items-center justify-end gap-2">
-        <button onClick={() => onToggleStatus(user)} className={`p-2.5 rounded-xl transition-all border border-white/5 shadow-lg ${user.activo ? 'bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white' : 'bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 hover:text-white'}`}>
-          {user.activo ? <UserX size={16} /> : <UserCheck size={16} />}
+        <button onClick={() => onToggleBlock(user)} className={`p-2.5 rounded-xl transition-all border border-white/5 shadow-lg ${user.bloqueado ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white'}`} title={user.bloqueado ? "Desbloquear" : "Bloquear acceso"}>
+          <Shield size={16} />
+        </button>
+        <button onClick={() => onResetPassword(user)} className="p-2.5 rounded-xl bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white transition-all border border-white/5 shadow-lg" title="Reset Password">
+          <RefreshCw size={16} />
         </button>
         <button onClick={() => onEdit(user)} className="p-2.5 rounded-xl bg-sav-primary/10 text-sav-primary hover:bg-sav-primary hover:text-white transition-all border border-sav-primary/20 shadow-lg">
           <Edit3 size={16} />
@@ -104,15 +110,26 @@ export default function AdminUsuariosV2() {
     }
   };
 
-  const filteredUsers = users.filter(u => {
-    const matchesSearch = u.nombre_usuario.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          u.id.toString().includes(searchTerm);
-    const matchesRole = filterRole === 'all' || u.rol === filterRole;
-    return matchesSearch && matchesRole;
-  });
+  const handleToggleBlock = async (user) => {
+    if (!confirm(`¿Seguro que quieres ${user.bloqueado ? 'DESBLOQUEAR' : 'BLOQUEAR'} a ${user.nombre_usuario}?`)) return;
+    try {
+      await api.post(`/admin/usuarios/${user.id}/toggle-block`);
+      fetchUsers();
+    } catch (err) {
+      alert(err.message);
+    }
+  };
 
-  const paginatedUsers = filteredUsers.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
-  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
+  const handleResetPassword = async (user) => {
+    const newPass = prompt(`Ingresa la nueva contraseña para ${user.nombre_usuario}:`);
+    if (!newPass) return;
+    try {
+      await api.post(`/admin/usuarios/${user.id}/reset-password`, { password: newPass });
+      alert('Contraseña actualizada');
+    } catch (err) {
+      alert(err.message);
+    }
+  };
 
   const handleToggleStatus = async (user) => {
     try {
@@ -122,6 +139,16 @@ export default function AdminUsuariosV2() {
       console.error('Error toggling status:', err);
     }
   };
+
+  const filteredUsers = users.filter(u => {
+    const matchesSearch = (u.nombre_usuario || '').toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          u.id.toString().includes(searchTerm);
+    const matchesRole = filterRole === 'all' || u.rol === filterRole;
+    return matchesSearch && matchesRole;
+  });
+
+  const paginatedUsers = filteredUsers.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
 
   return (
     <div className="space-y-10">
@@ -197,9 +224,9 @@ export default function AdminUsuariosV2() {
                   <UserRow 
                     key={user.id} 
                     user={user} 
-                    onToggleStatus={handleToggleStatus}
-                    onEdit={() => {}} // TODO
-                    onDelete={() => {}} // TODO
+                    onToggleBlock={handleToggleBlock}
+                    onResetPassword={handleResetPassword}
+                    onEdit={() => {}} // TODO: Modal edición completa
                   />
                 ))
               ) : (

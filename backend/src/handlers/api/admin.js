@@ -467,35 +467,20 @@ router.get('/calendario', asyncHandler(async (req, res) => {
 }));
 
 router.post('/calendario', asyncHandler(async (req, res) => {
-  const { 
-    fecha, 
-    tipo_dia, 
-    es_feriado, 
-    tareas_habilitadas, 
-    retiros_habilitados, 
-    recargas_habilitadas, 
-    motivo, 
-    reglas_niveles 
-  } = req.body;
-
-  if (!fecha) return res.status(400).json({ error: 'Fecha requerida' });
-
+  const { fecha, tareas_habilitadas, retiros_habilitados, recargas_habilitadas, motivo, reglas_niveles } = req.body;
+  
   await query(`
     INSERT INTO calendario_operativo 
-    (fecha, tipo_dia, es_feriado, tareas_habilitadas, retiros_habilitados, recargas_habilitadas, motivo, reglas_niveles) 
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    (fecha, tareas_habilitadas, retiros_habilitados, recargas_habilitadas, motivo, reglas_niveles) 
+    VALUES (?, ?, ?, ?, ?, ?)
     ON DUPLICATE KEY UPDATE 
-      tipo_dia = VALUES(tipo_dia),
-      es_feriado = VALUES(es_feriado),
-      tareas_habilitadas = VALUES(tareas_habilitadas),
-      retiros_habilitados = VALUES(retiros_habilitados),
-      recargas_habilitadas = VALUES(recargas_habilitadas),
-      motivo = VALUES(motivo),
-      reglas_niveles = VALUES(reglas_niveles)
+    tareas_habilitadas = VALUES(tareas_habilitadas),
+    retiros_habilitados = VALUES(retiros_habilitados),
+    recargas_habilitadas = VALUES(recargas_habilitadas),
+    motivo = VALUES(motivo),
+    reglas_niveles = VALUES(reglas_niveles)
   `, [
     fecha, 
-    tipo_dia || 'laboral', 
-    es_feriado ? 1 : 0, 
     tareas_habilitadas ? 1 : 0, 
     retiros_habilitados ? 1 : 0, 
     recargas_habilitadas ? 1 : 0, 
@@ -515,6 +500,24 @@ router.delete('/calendario/:fecha', asyncHandler(async (req, res) => {
 // CUESTIONARIO Y ENCUESTAS (PASIVO)
 // ========================
 
+router.get('/cuestionarios', asyncHandler(async (req, res) => {
+  const list = await query(`SELECT * FROM cuestionarios ORDER BY created_at DESC`);
+  res.json(list);
+}));
+
+router.post('/cuestionarios', asyncHandler(async (req, res) => {
+  const { titulo, descripcion, preguntas, activo } = req.body;
+  const id = uuidv4();
+  await query(`INSERT INTO cuestionarios (id, titulo, descripcion, preguntas, activo) VALUES (?, ?, ?, ?, ?)`,
+    [id, titulo, descripcion, JSON.stringify(preguntas), activo ? 1 : 0]);
+  res.json({ id, ok: true });
+}));
+
+router.delete('/cuestionarios/:id', asyncHandler(async (req, res) => {
+  await query(`DELETE FROM cuestionarios WHERE id = ?`, [req.params.id]);
+  res.json({ ok: true });
+}));
+
 router.get('/cuestionario/respuestas', asyncHandler(async (req, res) => {
   const list = await query(`
     SELECT r.*, u.nombre_usuario, u.telefono 
@@ -532,7 +535,38 @@ router.get('/public-content', asyncHandler(async (req, res) => {
 }));
 
 router.put('/public-content', asyncHandler(async (req, res) => {
-  await refreshPublicContent(req.body);
+  const { soporte_canal_url, soporte_gerente_url, marquee_text, comision_retiro, ruleta_activa, recompensas_visibles } = req.body;
+  
+  const content = await getPublicContent();
+  const newContent = { 
+    ...content,
+    soporte_canal_url: soporte_canal_url !== undefined ? soporte_canal_url : content.soporte_canal_url,
+    soporte_gerente_url: soporte_gerente_url !== undefined ? soporte_gerente_url : content.soporte_gerente_url,
+    marquee_text: marquee_text !== undefined ? marquee_text : content.marquee_text,
+    comision_retiro: comision_retiro !== undefined ? Number(comision_retiro) : content.comision_retiro,
+    ruleta_activa: ruleta_activa !== undefined ? !!ruleta_activa : content.ruleta_activa,
+    recompensas_visibles: recompensas_visibles !== undefined ? !!recompensas_visibles : content.recompensas_visibles
+  };
+
+  await refreshPublicContent(newContent);
+  res.json({ ok: true, content: newContent });
+}));
+
+router.post('/usuarios/:id/toggle-block', asyncHandler(async (req, res) => {
+  const user = await findUserById(req.params.id);
+  if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+  
+  const newStatus = user.bloqueado ? 0 : 1;
+  await updateUser(req.params.id, { bloqueado: newStatus });
+  res.json({ ok: true, bloqueado: !!newStatus });
+}));
+
+router.post('/usuarios/:id/reset-password', asyncHandler(async (req, res) => {
+  const { password } = req.body;
+  if (!password) return res.status(400).json({ error: 'Password requerido' });
+  
+  const hashedPassword = await bcrypt.hash(password, 10);
+  await updateUser(req.params.id, { contrasena: hashedPassword });
   res.json({ ok: true });
 }));
 
