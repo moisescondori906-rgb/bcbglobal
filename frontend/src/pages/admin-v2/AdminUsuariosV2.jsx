@@ -44,11 +44,14 @@ const UserRow = ({ user, onEdit, onDelete, onToggleStatus, onToggleBlock, onRese
             <p className="text-sm font-black text-white truncate uppercase tracking-tight">{user.nombre_usuario}</p>
             {user.bloqueado && <Shield className="text-rose-500" size={12} />}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col">
+            <p className="text-[10px] font-bold text-slate-400 truncate">{user.nombre_real || 'Sin nombre real'}</p>
+            <p className="text-[10px] font-black text-sav-primary tracking-widest">{user.telefono}</p>
+          </div>
+          <div className="flex items-center gap-2 mt-1">
             <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full tracking-widest ${user.rol === 'admin' ? 'bg-amber-500/10 text-amber-500' : 'bg-slate-500/10 text-slate-500'}`}>
               {user.rol}
             </span>
-            <span className="text-[8px] font-bold text-slate-600 uppercase tracking-widest">ID: {user.id}</span>
           </div>
         </div>
       </div>
@@ -204,8 +207,12 @@ export default function AdminUsuariosV2() {
   };
 
   const filteredUsers = users.filter(u => {
-    const matchesSearch = (u.nombre_usuario || '').toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          u.id.toString().includes(searchTerm);
+    const searchLower = searchTerm.toLowerCase();
+    const matchesSearch = 
+      (u.nombre_usuario || '').toLowerCase().includes(searchLower) || 
+      (u.nombre_real || '').toLowerCase().includes(searchLower) ||
+      (u.telefono || '').toLowerCase().includes(searchLower) ||
+      u.id.toString().includes(searchTerm);
     const matchesRole = filterRole === 'all' || u.rol === filterRole;
     return matchesSearch && matchesRole;
   });

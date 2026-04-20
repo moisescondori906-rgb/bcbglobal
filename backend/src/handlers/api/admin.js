@@ -637,15 +637,16 @@ router.get('/ranking-invitados', asyncHandler(async (req, res) => {
   const cached = await redis.get(cacheKey);
   if (cached) return res.json(JSON.parse(cached));
 
-  const levels = await getLevels();
+  const levels = await getLevels().catch(() => []);
   const internarLevel = levels.find(l => l.codigo === 'internar');
-  const internarId = internarLevel?.id || '';
+  const internarId = internarLevel?.id || 'NO_LEVEL';
 
   // Query para obtener el ranking base
   const ranking = await query(`
     SELECT 
       u.id, 
       u.nombre_usuario, 
+      u.nombre_real,
       u.telefono, 
       u.codigo_invitacion,
       u.tipo_lider,
@@ -673,7 +674,10 @@ router.get('/ranking-invitados', asyncHandler(async (req, res) => {
     WHERE u.rol = 'usuario'
     ORDER BY (count_a + count_b + count_c) DESC
     LIMIT 100
-  `, [internarId, internarId, internarId]);
+  `, [internarId, internarId, internarId]).catch(err => {
+    logger.error(`[RANKING-ERROR]: ${err.message}`);
+    return [];
+  });
 
   // Formatear para el frontend
   const formatted = ranking.map(u => ({

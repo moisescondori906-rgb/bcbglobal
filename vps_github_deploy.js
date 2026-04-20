@@ -19,7 +19,8 @@ conn.on('ready', () => {
     'cd /var/www/bcb_global && git pull origin main',
     'cd /var/www/bcb_global/backend && npm install',
     'cd /var/www/bcb_global/frontend && npm install && npm run build',
-    'pm2 reload bcb-global || (cd /var/www/bcb_global/backend && pm2 start src/index.js --name bcb-global)',
+    'cd /var/www/bcb_global/backend && (pm2 reload bcb-global-backend || pm2 start ecosystem.config.cjs)',
+    'pm2 delete bcb-global || true',
     'sleep 5',
     'pm2 status',
     'curl -s http://localhost:4000/health'
