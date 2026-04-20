@@ -2,14 +2,14 @@
   "name": "global-backend",
   "version": "1.0.0",
   "description": "Global API Backend",
-  "main": "src/index.js",
+  "main": "src/index.mjs",
   "type": "module",
   "engines": {
     "node": ">=18.0.0"
   },
   "scripts": {
-    "start": "node src/index.js",
-    "dev": "node --watch src/index.js"
+    "start": "node src/index.mjs",
+    "dev": "node --watch src/index.mjs"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

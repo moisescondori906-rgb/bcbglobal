@@ -46,8 +46,8 @@ export default function AdminMetodosQrV2() {
     setLoading(true);
     try {
       const [adminsRes, metodosRes] = await Promise.all([
-        api.get('/admin/admins'),
-        api.request('/admin/metodos-qr-all').catch(() => api.admin.metodosQr())
+        api.admin.admins(),
+        api.admin.metodosQrAll().catch(() => api.admin.metodosQr())
       ]);
       setAdmins(adminsRes || []);
       setMetodos(Array.isArray(metodosRes) ? metodosRes : []);

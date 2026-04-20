@@ -41,7 +41,7 @@ export default function AdminCalendarioV2() {
   const fetchCalendario = async () => {
     setLoading(true);
     try {
-      const res = await api.get('/admin/calendario');
+      const res = await api.admin.calendario();
       setList(Array.isArray(res) ? res : []);
     } catch (err) {
       console.error(err);
@@ -53,7 +53,7 @@ export default function AdminCalendarioV2() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await api.post('/admin/calendario', form);
+      await api.admin.crearCalendario(form);
       setShowModal(false);
       fetchCalendario();
     } catch (err) {
@@ -64,7 +64,7 @@ export default function AdminCalendarioV2() {
   const handleDelete = async (fecha) => {
     if (!confirm('¿Eliminar regla especial para esta fecha?')) return;
     try {
-      await api.delete(`/admin/calendario/${fecha}`);
+      await api.admin.eliminarCalendario(fecha);
       fetchCalendario();
     } catch (err) {
       alert('Error');

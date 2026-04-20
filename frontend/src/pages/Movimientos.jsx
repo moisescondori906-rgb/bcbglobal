@@ -53,7 +53,6 @@ export default function Movimientos() {
       console.error('[Movimientos] Fetch fatal error:', err);
     } finally {
       clearTimeout(safetyTimeout);
-      console.log('[Movimientos] Loading complete.');
       setLoading(false);
     }
   }, [user?.id]);

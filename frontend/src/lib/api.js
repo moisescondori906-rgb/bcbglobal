@@ -219,6 +219,10 @@ export const api = {
   },
   admin: {
     dashboard: () => request('/admin/dashboard'),
+    admins: () => request('/admin/admins'),
+    crearAdmin: (data) => request('/admin/admins', { method: 'POST', body: JSON.stringify(data) }),
+    updateAdmin: (id, data) => request(`/admin/admins/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    eliminarAdmin: (id) => request(`/admin/admins/${id}`, { method: 'DELETE' }),
     usuarios: () => request('/admin/usuarios'),
     usuarioEarnings: (id) => request(`/admin/usuarios/${id}/earnings`),
     ajusteUsuario: (id, data) => request(`/admin/usuarios/${id}/ajuste`, { method: 'POST', body: JSON.stringify(data) }),
@@ -279,6 +283,7 @@ export const api = {
     aprobarRetiro: (id) => request(`/admin/retiros/${id}/aprobar`, { method: 'POST' }),
     rechazarRetiro: (id, motivo) => request(`/admin/retiros/${id}/rechazar`, { method: 'POST', body: JSON.stringify({ motivo }) }),
     metodosQr: () => request('/admin/metodos-qr'),
+    metodosQrAll: () => request('/admin/metodos-qr-all'),
     crearMetodoQr: (data) => request('/admin/metodos-qr', { method: 'POST', body: JSON.stringify(data) }),
     actualizarMetodoQr: (id, data) => request(`/admin/metodos-qr/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
     eliminarMetodoQr: (id) => request(`/admin/metodos-qr/${id}`, { method: 'DELETE' }),

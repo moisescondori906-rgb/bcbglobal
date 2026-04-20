@@ -62,8 +62,6 @@ router.get('/stats', asyncHandler(async (req, res) => {
   });
 }));
 
-router.get('/dashboard', asyncHandler(async (req, res) => {
-
 router.get('/compras-nivel', asyncHandler(async (req, res) => {
   const rows = await query(`
     SELECT c.*, u.nombre_usuario, u.telefono, n.nombre as nivel_nombre 

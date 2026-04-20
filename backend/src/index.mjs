@@ -7,7 +7,7 @@ import logger, { createModuleLogger } from './utils/logger.mjs';
 import { errorHandler } from './handlers/errorHandler.mjs';
 import { initTelegramHandlers } from './services/telegramInitializer.mjs';
 import { query } from './config/db.mjs';
-import { syncLevels } from './services/dbService.mjs';
+import { syncLevels, preloadLevels, preloadConfig } from './services/dbService.mjs';
 import { safeAsync } from './utils/safe.mjs';
 
 import validateEnv from './config/validateEnv.mjs';
@@ -174,8 +174,10 @@ async function startServer() {
     });
 
     // 2. INICIALIZACIONES ASÍNCRONAS (No bloqueantes)
-    // Sincronizar niveles
+    // Sincronizar niveles y pre-cargar caches
     syncLevels().catch(e => console.warn(`[SYNC] Falló: ${e.message}`));
+    preloadLevels().catch(e => console.warn(`[CACHE-LEVELS] Falló: ${e.message}`));
+    preloadConfig().catch(e => console.warn(`[CACHE-CONFIG] Falló: ${e.message}`));
 
     // Telegram
     setTimeout(() => {
