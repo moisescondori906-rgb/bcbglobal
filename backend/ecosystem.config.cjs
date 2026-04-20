@@ -2,12 +2,14 @@ module.exports = {
   apps: [
     {
       name: 'bcb-global-backend',
-      script: 'src/index.js',
+      script: 'src/index.mjs',
+      cwd: '/var/www/bcb_global/backend',
       instances: 'max',
       exec_mode: 'cluster',
       env: {
         NODE_ENV: 'production',
-        PORT: 4000
+        PORT: 4000,
+        DEBUG: '*'
       },
       env_development: {
         NODE_ENV: 'development',

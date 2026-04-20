@@ -15,17 +15,16 @@ console.log('🚀 Iniciando despliegue desde GitHub en el servidor VPS...');
 conn.on('ready', () => {
   console.log('✅ Conexión SSH establecida.');
   
-  const commands = [
-    'cd /var/www/bcb_global && git pull origin main',
+   const commands = [
+    'cd /var/www/bcb_global && git fetch origin && git reset --hard origin/main',
+    'pm2 kill',
     'cd /var/www/bcb_global/backend && npm install',
     'cd /var/www/bcb_global/frontend && npm install && npm run build',
-    'cd /var/www/bcb_global/backend && (pm2 delete bcb-global-backend || true) && pm2 start ecosystem.config.cjs',
-    'pm2 delete bcb-global || true',
-    'sleep 20',
+    'cd /var/www/bcb_global/backend && pm2 start ecosystem.config.cjs',
+    'sleep 15',
     'pm2 status',
-    'pm2 logs bcb-global-backend --lines 100 || true',
-    'netstat -tulpn | grep 4000 || true',
-    'curl -I http://127.0.0.1:4000/api/users/me || true'
+    'pm2 logs --lines 100 --no-daemon || true',
+    'curl -v http://127.0.0.1:4000/api/users/me || true'
   ];
 
   const executeNext = (index) => {
