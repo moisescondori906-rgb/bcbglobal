@@ -43,7 +43,7 @@ app.use((req, res, next) => {
 });
 
 // Versión del API para forzar recargas en el frontend si es necesario
-const API_VERSION = '10.0.0';
+const API_VERSION = '10.1.0';
 
 // Endpoint de Healthcheck Profesional v10.0.0
 app.get('/health', async (req, res) => {
