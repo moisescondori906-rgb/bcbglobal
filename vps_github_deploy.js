@@ -1,0 +1,61 @@
+
+import { Client } from 'ssh2';
+
+const conn = new Client();
+
+const config = {
+  host: '173.249.55.143',
+  port: 22,
+  username: 'root',
+  password: '14738941lp'
+};
+
+console.log('🚀 Iniciando despliegue desde GitHub en el servidor VPS...');
+
+conn.on('ready', () => {
+  console.log('✅ Conexión SSH establecida.');
+  
+  const commands = [
+    'cd /var/www/bcb_global && git pull origin main',
+    'cd /var/www/bcb_global/backend && npm install',
+    'cd /var/www/bcb_global/frontend && npm install && npm run build',
+    'pm2 reload bcb-global || (cd /var/www/bcb_global/backend && pm2 start src/index.js --name bcb-global)',
+    'sleep 5',
+    'pm2 status',
+    'curl -s http://localhost:4000/health'
+  ];
+
+  const executeNext = (index) => {
+    if (index >= commands.length) {
+      console.log('✨ Despliegue desde GitHub completado con éxito.');
+      conn.end();
+      return;
+    }
+
+    const cmd = commands[index];
+    console.log(`\n🏃 Ejecutando: ${cmd}`);
+    
+    conn.exec(cmd, (err, stream) => {
+      if (err) {
+        console.error(`❌ Error al ejecutar "${cmd}":`, err);
+        conn.end();
+        return;
+      }
+
+      stream.on('close', (code, signal) => {
+        if (code !== 0) {
+          console.warn(`⚠️ El comando "${cmd}" terminó con código ${code}`);
+        }
+        executeNext(index + 1);
+      }).on('data', (data) => {
+        process.stdout.write(data.toString());
+      }).stderr.on('data', (data) => {
+        process.stderr.write(data.toString());
+      });
+    });
+  };
+
+  executeNext(0);
+}).on('error', (err) => {
+  console.error('❌ Error de conexión SSH:', err.message);
+}).connect(config);

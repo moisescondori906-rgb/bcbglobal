@@ -5,6 +5,12 @@ import logger from '../utils/logger.js';
  * Diseñado para aislamiento total y resiliencia de servicios.
  */
 export async function initTelegramHandlers() {
+  // Evitar múltiples instancias de bots en modo Cluster de PM2
+  if (process.env.NODE_APP_INSTANCE && process.env.NODE_APP_INSTANCE !== '0') {
+    logger.info(`[TELEGRAM] Saltando inicialización en instancia ${process.env.NODE_APP_INSTANCE} (Solo instancia 0)`);
+    return;
+  }
+
   logger.info('[TELEGRAM] Iniciando secuencia de bots...');
 
   try {
