@@ -66,10 +66,16 @@ export async function setupSecretariaBot() {
 
       // Solo responder en el chat de secretaria configurado o si es comando /start
       const targetSecretariaId = process.env.TELEGRAM_CHAT_SECRETARIA || '-1003900884989';
+      
+      // Permitir /start en cualquier lugar para obtener el ID si es necesario
+      if (text === '/start' && chatId !== targetSecretariaId) {
+        await botSecretaria.sendMessage(chatId, `🆔 Tu ID de Chat es: <code>${chatId}</code>\nConfigúralo en el .env como TELEGRAM_CHAT_SECRETARIA`, { parse_mode: 'HTML' });
+      }
+
       if (chatId !== targetSecretariaId && text !== '/start') return;
 
       // 1. Comando de historial por teléfono (ej: +59174344916)
-      const phoneRegex = /^\+?591\d{8}$/;
+      const phoneRegex = /^\+?591\d{8,11}$/; // Ampliado para soportar diferentes formatos
       if (phoneRegex.test(text.replace(/\s/g, ''))) {
         const telefono = text.replace(/\s/g, '').replace('+', '');
         await handleSecretariaHistory(botSecretaria, chatId, telefono);

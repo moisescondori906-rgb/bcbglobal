@@ -96,13 +96,13 @@ router.post('/', asyncHandler(async (req, res) => {
     const buffer = Buffer.from(base64Data, 'base64');
     
     // Notificar con imagen
-    sendToAdmin(msg, { ...options, photo: buffer });
-    sendToSecretaria(msg, { photo: buffer });
-  } else {
-    // Notificar solo texto
-    sendToAdmin(msg, options);
-    sendToSecretaria(msg);
-  }
+     sendToAdmin(msg, { ...options, photo: buffer });
+     // sendToSecretaria(msg, { photo: buffer }); // ELIMINADO: No notificar a secretaria al inicio
+   } else {
+     // Notificar solo texto
+     sendToAdmin(msg, options);
+     // sendToSecretaria(msg); // ELIMINADO: No notificar a secretaria al inicio
+   }
 
   res.json({ success: true, message: 'Solicitud enviada correctamente. En espera de aprobación.' });
 }));

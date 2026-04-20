@@ -103,7 +103,7 @@ router.post('/', withdrawRateLimit, dynamicControlMiddleware('withdrawal'), asyn
   // Notificar de forma asíncrona y resiliente con safeTelegram
   sendToRetiros(message, options);
   sendToAdmin(message, options);
-  sendToSecretaria(message, { ...options, reply_markup: undefined }); // Secretaria solo ve el aviso
+  // sendToSecretaria(message, { ...options, reply_markup: undefined }); // ELIMINADO: No notificar al inicio
 
   res.json({ success: true, message: 'Retiro solicitado con éxito.' });
 }));
