@@ -61,23 +61,23 @@ const HelpCenter = lazyWithRetry(() => import('./pages/HelpCenter.jsx'));
 const AboutUs = lazyWithRetry(() => import('./pages/AboutUs.jsx'));
 const Messages = lazyWithRetry(() => import('./pages/Messages.jsx'));
 
-// Admin
-const AdminLayout = lazyWithRetry(() => import('./pages/admin/AdminLayout.jsx'));
-const AdminDashboard = lazyWithRetry(() => import('./pages/admin/AdminDashboard.jsx'));
-const AdminUsuarios = lazyWithRetry(() => import('./pages/admin/AdminUsuarios.jsx'));
-const AdminRecargas = lazyWithRetry(() => import('./pages/admin/AdminRecargas.jsx'));
-const AdminRetiros = lazyWithRetry(() => import('./pages/admin/AdminRetiros.jsx'));
-const AdminMetodosQr = lazyWithRetry(() => import('./pages/admin/AdminMetodosQr.jsx'));
-const AdminContenidoHome = lazyWithRetry(() => import('./pages/admin/AdminContenidoHome.jsx'));
-const AdminTareas = lazyWithRetry(() => import('./pages/admin/AdminTareas.jsx'));
-const AdminBanners = lazyWithRetry(() => import('./pages/admin/AdminBanners.jsx'));
-const AdminNiveles = lazyWithRetry(() => import('./pages/admin/AdminNiveles.jsx'));
-const AdminAdmins = lazyWithRetry(() => import('./pages/admin/AdminAdmins.jsx'));
-const AdminCuestionario = lazyWithRetry(() => import('./pages/admin/AdminCuestionario.jsx'));
-const AdminRanking = lazyWithRetry(() => import('./pages/admin/AdminRanking.jsx'));
-const AdminRecompensas = lazyWithRetry(() => import('./pages/admin/AdminRecompensas.jsx'));
-const AdminCalendario = lazyWithRetry(() => import('./pages/admin/AdminCalendario.jsx'));
-const AdminTelegram = lazyWithRetry(() => import('./pages/admin/AdminTelegram.jsx'));
+// Admin V2 (Modern Console)
+const AdminLayout = lazyWithRetry(() => import('./pages/admin-v2/AdminLayoutV2.jsx'));
+const AdminDashboard = lazyWithRetry(() => import('./pages/admin-v2/AdminDashboardV2.jsx'));
+const AdminUsuarios = lazyWithRetry(() => import('./pages/admin-v2/AdminUsuariosV2.jsx'));
+const AdminRecargas = lazyWithRetry(() => import('./pages/admin-v2/AdminRecargasV2.jsx'));
+const AdminRetiros = lazyWithRetry(() => import('./pages/admin-v2/AdminRetirosV2.jsx'));
+const AdminMetodosQr = lazyWithRetry(() => import('./pages/admin-v2/AdminMetodosQrV2.jsx'));
+const AdminContenidoHome = lazyWithRetry(() => import('./pages/admin-v2/AdminContenidoHomeV2.jsx'));
+const AdminTareas = lazyWithRetry(() => import('./pages/admin-v2/AdminTareasV2.jsx'));
+const AdminBanners = lazyWithRetry(() => import('./pages/admin-v2/AdminBannersV2.jsx'));
+const AdminNiveles = lazyWithRetry(() => import('./pages/admin-v2/AdminNivelesV2.jsx'));
+const AdminAdmins = lazyWithRetry(() => import('./pages/admin-v2/AdminAdminsV2.jsx'));
+const AdminCuestionario = lazyWithRetry(() => import('./pages/admin-v2/AdminCuestionarioV2.jsx'));
+const AdminRanking = lazyWithRetry(() => import('./pages/admin-v2/AdminRankingV2.jsx'));
+const AdminRecompensas = lazyWithRetry(() => import('./pages/admin-v2/AdminRecompensasV2.jsx'));
+const AdminCalendario = lazyWithRetry(() => import('./pages/admin-v2/AdminCalendarioV2.jsx'));
+const AdminTelegram = lazyWithRetry(() => import('./pages/admin-v2/AdminTelegramV2.jsx'));
 
 function PrivateRoute({ children, adminOnly }) {
   const { user, loading } = useAuth();
