@@ -55,9 +55,14 @@ export async function attachRequestUser(req, res, next) {
   }
 
   try {
-    req.requestUser = await findUserById(req.user.id, req.tenantId);
+    req.requestUser = await findUserById(req.user.id);
     
-    // Doble validación: El usuario debe pertenecer al tenant del contexto
+    // Si no se encuentra el usuario, puede ser un token antiguo o usuario eliminado
+    if (!req.requestUser) {
+      return res.status(401).json({ error: 'Sesión inválida o usuario no encontrado' });
+    }
+
+    // Doble validación: El usuario debe pertenecer al tenant del contexto (si aplica)
     if (req.requestUser && req.tenantId && req.requestUser.tenant_id !== req.tenantId) {
       return res.status(403).json({ 
         error: 'Acceso denegado: El usuario no pertenece a este tenant',

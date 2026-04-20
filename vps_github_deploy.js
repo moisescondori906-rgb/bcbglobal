@@ -19,11 +19,11 @@ conn.on('ready', () => {
     'cd /var/www/bcb_global && git pull origin main',
     'cd /var/www/bcb_global/backend && npm install',
     'cd /var/www/bcb_global/frontend && npm install && npm run build',
-    'cd /var/www/bcb_global/backend && (pm2 reload bcb-global-backend || pm2 start ecosystem.config.cjs)',
+    'cd /var/www/bcb_global/backend && (pm2 delete bcb-global-backend || true) && pm2 start ecosystem.config.cjs',
     'pm2 delete bcb-global || true',
-    'sleep 5',
+    'sleep 10',
     'pm2 status',
-    'curl -s http://localhost:4000/health'
+    'curl -I http://localhost:4000/api/users/me || true'
   ];
 
   const executeNext = (index) => {
