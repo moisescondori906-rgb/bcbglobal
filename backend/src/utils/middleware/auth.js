@@ -9,7 +9,8 @@ export const authenticate = (req, res, next) => {
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'sav-demo-secret');
+    const secret = process.env.JWT_SECRET || 'sav-demo-secret';
+    const decoded = jwt.verify(token, secret);
     
     // Inyectar datos del token en la request
     req.user = {
@@ -20,8 +21,11 @@ export const authenticate = (req, res, next) => {
     };
 
     next();
-  } catch {
-    return res.status(401).json({ error: 'Token inválido o expirado' });
+  } catch (err) {
+    return res.status(401).json({ 
+      error: 'Token inválido o expirado',
+      details: process.env.NODE_ENV === 'development' ? err.message : undefined 
+    });
   }
 };
 
