@@ -148,31 +148,52 @@ async function handleSecretariaHistory(bot, chatId, telefono) {
  * @section FUNCIONES DE ENVÍO SEGURO (Aislamiento de fallos)
  */
 
+/**
+ * Notifica a los administradores v11.0.0 (Soporte para Imagen)
+ */
 export async function sendToAdmin(message, options = {}) {
   return safeTelegram(async () => {
     const bot = await setupAdminBot();
     const chatId = process.env.TELEGRAM_CHAT_ADMIN;
     if (bot && chatId) {
+      if (options.photo) {
+        const { photo, ...otherOptions } = options;
+        return await bot.sendPhoto(chatId, photo, { caption: message, parse_mode: 'HTML', ...otherOptions });
+      }
       return await bot.sendMessage(chatId, message, { parse_mode: 'HTML', ...options });
     }
   }, 'sendToAdmin');
 }
 
+/**
+ * Notifica a retiros v11.0.0 (Soporte para Imagen)
+ */
 export async function sendToRetiros(message, options = {}) {
   return safeTelegram(async () => {
     const bot = await setupRetirosBot() || await setupAdminBot(); 
     const chatId = process.env.TELEGRAM_CHAT_RETIROS || process.env.TELEGRAM_CHAT_ADMIN;
     if (bot && chatId) {
+      if (options.photo) {
+        const { photo, ...otherOptions } = options;
+        return await bot.sendPhoto(chatId, photo, { caption: message, parse_mode: 'HTML', ...otherOptions });
+      }
       return await bot.sendMessage(chatId, message, { parse_mode: 'HTML', ...options });
     }
   }, 'sendToRetiros');
 }
 
+/**
+ * Notifica a secretaria v11.0.0 (Soporte para Imagen)
+ */
 export async function sendToSecretaria(message, options = {}) {
   return safeTelegram(async () => {
     const bot = await setupSecretariaBot() || await setupAdminBot();
     const chatId = process.env.TELEGRAM_CHAT_SECRETARIA || process.env.TELEGRAM_CHAT_ADMIN;
     if (bot && chatId) {
+      if (options.photo) {
+        const { photo, ...otherOptions } = options;
+        return await bot.sendPhoto(chatId, photo, { caption: message, parse_mode: 'HTML', ...otherOptions });
+      }
       return await bot.sendMessage(chatId, message, { parse_mode: 'HTML', ...options });
     }
   }, 'sendToSecretaria');

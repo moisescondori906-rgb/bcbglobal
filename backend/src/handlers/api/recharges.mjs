@@ -52,45 +52,9 @@ router.post('/', asyncHandler(async (req, res) => {
     return res.status(429).json({ error: 'Límite de 3 solicitudes por día alcanzado.' });
   }
 
-  // 2. Procesar Comprobante (Cloudinary con Fallback Local)
-  let final_comprobante_url = comprobante_url;
-  if (comprobante_url && comprobante_url.startsWith('data:image')) {
-    try {
-      // Intentar Cloudinary
-      if (process.env.CLOUDINARY_CLOUD_NAME) {
-        const base64Data = comprobante_url.replace(/^data:image\/\w+;base64,/, '');
-        const buffer = Buffer.from(base64Data, 'base64');
-        const uploadResult = await uploadImageBuffer(buffer, {
-          folder: 'bcb_global/comprobantes_recarga'
-        });
-        final_comprobante_url = uploadResult.secure_url;
-      } else {
-        throw new Error('Cloudinary not configured');
-      }
-    } catch (cloudErr) {
-      // Fallback: Guardar Localmente (Blindado)
-      logger.warn(`[RECHARGE] Cloudinary falló o no configurado, usando storage local: ${cloudErr.message}`);
-      try {
-        const base64Data = comprobante_url.replace(/^data:image\/\w+;base64,/, '');
-        const buffer = Buffer.from(base64Data, 'base64');
-        const filename = `voucher_${Date.now()}_${uuidv4().substring(0, 8)}.jpg`;
-        const uploadDir = path.join(process.cwd(), 'public/uploads');
-        
-        if (!fs.existsSync(uploadDir)) {
-          fs.mkdirSync(uploadDir, { recursive: true });
-        }
-        
-        fs.writeFileSync(path.join(uploadDir, filename), buffer);
-        final_comprobante_url = `${process.env.BACKEND_URL || ''}/uploads/${filename}`;
-      } catch (fsErr) {
-        logger.error(`[RECHARGE-FS-ERROR] Falló guardado local: ${fsErr.message}`);
-        return res.status(500).json({ 
-          error: 'Error crítico al procesar el comprobante. Por favor, intenta de nuevo o contacta a soporte.',
-          traceId: uuidv4().substring(0, 8)
-        });
-      }
-    }
-  }
+  // 2. Procesar Comprobante (SOLO TELEGRAM v11.0.0)
+  // No guardamos en Cloudinary ni Local para ahorrar espacio
+  let final_comprobante_url = 'telegram_stored';
 
   // 3. Encontrar nivel_id correspondiente al monto
   const levels = await getLevels();
@@ -126,9 +90,19 @@ router.post('/', asyncHandler(async (req, res) => {
     }
   };
 
-  // Notificar de forma asíncrona y resiliente
-  sendToAdmin(msg, options);
-  sendToSecretaria(msg, { ...options, reply_markup: undefined }); // Secretaria solo ve el aviso, no botones de acción
+  // Enviar imagen directamente a Telegram si existe
+  if (comprobante_url && comprobante_url.startsWith('data:image')) {
+    const base64Data = comprobante_url.replace(/^data:image\/\w+;base64,/, '');
+    const buffer = Buffer.from(base64Data, 'base64');
+    
+    // Notificar con imagen
+    sendToAdmin(msg, { ...options, photo: buffer });
+    sendToSecretaria(msg, { photo: buffer });
+  } else {
+    // Notificar solo texto
+    sendToAdmin(msg, options);
+    sendToSecretaria(msg);
+  }
 
   res.json({ success: true, message: 'Solicitud enviada correctamente. En espera de aprobación.' });
 }));
