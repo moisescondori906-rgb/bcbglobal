@@ -33,33 +33,10 @@ export async function safeAsync(fn, context = 'GeneralAsync') {
  * safeTelegram - Wrapper específico para llamadas a la API de Telegram.
  */
 export const safeTelegram = async (fn, context = 'TelegramAction') => { 
-  if (TELEGRAM_CIRCUIT_STATE.isOpen) {
-    const now = Date.now();
-    if (now - TELEGRAM_CIRCUIT_STATE.lastFailureTime > TELEGRAM_CIRCUIT_STATE.COOLDOWN_MS) {
-      telegramLogger.info(`[CIRCUIT-BREAKER] Reintentando conexión (Half-Open) en ${context}`);
-      TELEGRAM_CIRCUIT_STATE.isOpen = false;
-      TELEGRAM_CIRCUIT_STATE.failures = 0;
-    } else {
-      telegramLogger.warn(`[CIRCUIT-BREAKER] Saltando llamada: Circuito ABIERTO en ${context}`);
-      return null;
-    }
-  }
-
   try { 
-    const result = await fn(); 
-    if (TELEGRAM_CIRCUIT_STATE.failures > 0) TELEGRAM_CIRCUIT_STATE.failures--;
-    return result;
+    return await fn(); 
   } catch (error) { 
-    TELEGRAM_CIRCUIT_STATE.failures++;
-    TELEGRAM_CIRCUIT_STATE.lastFailureTime = Date.now();
-    
     console.error(`🤖 Telegram error (${context}):`, error.message); 
-    
-    if (TELEGRAM_CIRCUIT_STATE.failures >= TELEGRAM_CIRCUIT_STATE.MAX_FAILURES) {
-      TELEGRAM_CIRCUIT_STATE.isOpen = true;
-      telegramLogger.error(`[CIRCUIT-BREAKER] Circuito ABIERTO por ${TELEGRAM_CIRCUIT_STATE.MAX_FAILURES} fallos consecutivos.`);
-    }
-    
     return null; 
   } 
 };

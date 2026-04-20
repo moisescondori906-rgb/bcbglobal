@@ -20,28 +20,19 @@ const app = express();
 
 // Blindaje total contra caídas por errores no capturados
 process.on('uncaughtException', (err) => {
-  logger.error('[CRITICAL-FATAL] Uncaught Exception:', { 
-    message: err.message, 
-    stack: err.stack,
-    time: new Date().toISOString()
-  });
-  // No salimos del proceso para mantener el servicio activo en PM2 Cluster
+  console.error('Uncaught Exception:', err.stack);
 });
 
-process.on('unhandledRejection', (reason, promise) => {
-  logger.error('[CRITICAL-FATAL] Unhandled Rejection:', { 
-    reason: reason instanceof Error ? reason.message : reason,
-    stack: reason instanceof Error ? reason.stack : null,
-    time: new Date().toISOString()
-  });
+process.on('unhandledRejection', (err) => {
+  console.error('Unhandled Rejection:', err);
 });
 
 // Endpoint de Healthcheck Profesional v9.0.0
 app.get('/health', async (req, res) => {
   const health = {
     status: 'ok',
-    db: 'connected',
-    redis: 'connected',
+    db: 'ok',
+    redis: 'ok',
     uptime: Math.floor(process.uptime()),
     timestamp: new Date().toISOString()
   };
