@@ -50,7 +50,12 @@ export default function Recharge() {
   }, []);
 
   const handleLevelSelect = (level) => {
-    setSelectedLevel(level);
+    // Si ya está seleccionado, lo deseleccionamos para forzar re-render de AnimatePresence
+    if (selectedLevel?.id === level.id) {
+      setSelectedLevel(null);
+    } else {
+      setSelectedLevel(level);
+    }
   };
 
   const handleContinue = () => {
@@ -192,21 +197,26 @@ export default function Recharge() {
           </section>
 
           {/* Sticky Continue Button */}
-          <AnimatePresence>
+          <div className="h-24" /> {/* Spacer to allow scrolling past the button */}
+          <AnimatePresence mode="wait">
             {selectedLevel && (
               <motion.div 
-                initial={{ opacity: 0, y: 100 }}
+                key="sticky-button"
+                initial={{ opacity: 0, y: 50 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 100 }}
-                className="fixed bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-sav-dark via-sav-dark/95 to-transparent z-50"
+                exit={{ opacity: 0, y: 50 }}
+                transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                className="fixed bottom-24 left-0 right-0 p-6 z-[100] flex justify-center pointer-events-none"
               >
-                <Button 
-                  onClick={handleContinue}
-                  className="w-full h-16 rounded-[2rem] shadow-[0_20px_50px_-10px_rgba(220,38,38,0.5)] flex items-center justify-center gap-3 group"
-                >
-                  <span className="text-xs font-black uppercase tracking-[0.2em]">Seleccionar Método de Pago</span>
-                  <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
-                </Button>
+                <div className="w-full max-w-md pointer-events-auto">
+                  <Button 
+                    onClick={handleContinue}
+                    className="w-full h-16 rounded-[2rem] shadow-[0_20px_50px_-10px_rgba(220,38,38,0.5)] flex items-center justify-center gap-3 group bg-sav-primary hover:bg-sav-primary/90 transition-all border-none"
+                  >
+                    <span className="text-xs font-black uppercase tracking-[0.2em]">Continuar al Pago</span>
+                    <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                  </Button>
+                </div>
               </motion.div>
             )}
           </AnimatePresence>

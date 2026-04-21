@@ -43,9 +43,9 @@ app.use((req, res, next) => {
 });
 
 // Versión del API para forzar recargas en el frontend si es necesario
-const API_VERSION = '11.4.0';
+const API_VERSION = '11.4.1';
 
-// Endpoint de Healthcheck Profesional v11.4.0 (Resiliente con Timeout)
+// Endpoint de Healthcheck Profesional v11.4.1 (Resiliente con Timeout)
 app.get('/api/health', async (req, res) => {
   let dbStatus = 'ok';
   let redisStatus = 'ok';
@@ -216,7 +216,7 @@ async function startServer() {
     console.log(`[STARTUP] Intentando iniciar servidor en puerto: ${PORT}`);
     // 1. ESCUCHAR PUERTO INMEDIATAMENTE (Evitar 502 Bad Gateway)
     const server = app.listen(PORT, '0.0.0.0', () => {
-      console.log(`[SERVER] BCB Global Backend v11.4.0 estable en puerto ${PORT}`);
+      console.log(`[SERVER] BCB Global Backend v11.4.1 estable en puerto ${PORT}`);
       
       // 1.5 Validar salud básica una vez arriba (No bloqueante)
       checkSystemHealth();
