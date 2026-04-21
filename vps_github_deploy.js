@@ -7,7 +7,8 @@ const config = {
   host: '173.249.55.143',
   port: 22,
   username: 'root',
-  password: '14738941lp'
+  password: '14738941lp',
+  readyTimeout: 60000 // Aumentado a 60s
 };
 
 console.log('🚀 Iniciando despliegue desde GitHub en el servidor VPS...');
@@ -30,7 +31,7 @@ conn.on('ready', () => {
     'pm2 status',
     'tail -n 100 /var/www/bcb_global/backend/logs/out.log || true',
     'tail -n 100 /var/www/bcb_global/backend/logs/err.log || true',
-    'curl -v http://127.0.0.1:4000/health || true'
+    'curl -v http://127.0.0.1:4000/api/health || true'
   ];
 
   const executeNext = (index) => {

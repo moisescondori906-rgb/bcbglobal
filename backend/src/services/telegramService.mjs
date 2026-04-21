@@ -76,7 +76,7 @@ export async function setupTelegramLogic() {
       let webAdmin = await queryOne(`
         SELECT id, nombre_usuario as nombre 
         FROM usuarios 
-        WHERE (telegram_user_id = ? OR telegram_user_id = ?) AND rol = 'admin' AND activo = 1
+        WHERE (telegram_user_id = ? OR telegram_user_id = ?) AND rol = 'admin'
       `, [telegramUserId, from.username]);
 
       if (!webAdmin) {
@@ -170,9 +170,21 @@ export async function setupTelegramLogic() {
               }
             } else {
               if (isAceptar) {
+                // VALIDACIÓN DE JERARQUÍA ANTES DE APROBAR EN TELEGRAM
+                const levels = await getLevels();
+                const compra = await getRecargaById(refId);
+                if (!compra) throw new Error('Orden de recarga no encontrada.');
+
+                const targetLevel = levels.find(l => l.id === compra.nivel_id);
+                const user = await queryOne('SELECT * FROM usuarios WHERE id = ?', [compra.usuario_id]);
+                const currentLevel = levels.find(l => l.id === user.nivel_id);
+
+                if (currentLevel && targetLevel && targetLevel.orden < currentLevel.orden) {
+                  throw new Error(`No se puede bajar de nivel. El usuario ya es ${currentLevel.nombre}.`);
+                }
+
                 await approveLevelPurchase(refId, adminId);
                 // Notificar comisiones (async)
-                const compra = await getRecargaById(refId);
                 if (compra) distributeInvestmentCommissions(compra.usuario_id, compra.monto);
               } else {
                 await conn.query(

@@ -160,8 +160,20 @@ router.get('/retiros', asyncHandler(async (req, res) => {
 }));
 
 router.post('/compras-nivel/:id/aprobar', asyncHandler(async (req, res) => {
-  const result = await approveLevelPurchase(req.params.id, req.user.id);
   const compra = await queryOne(`SELECT * FROM compras_nivel WHERE id = ?`, [req.params.id]);
+  if (!compra) return res.status(404).json({ error: 'Orden de compra no encontrada' });
+
+  // VALIDACIÓN DE JERARQUÍA ANTES DE APROBAR (Doble Check)
+  const levels = await getLevels();
+  const targetLevel = levels.find(l => l.id === compra.nivel_id);
+  const user = await findUserById(compra.usuario_id);
+  const currentLevel = levels.find(l => l.id === user.nivel_id);
+
+  if (currentLevel && targetLevel && targetLevel.orden < currentLevel.orden) {
+    return res.status(400).json({ error: 'No se puede aprobar un nivel inferior al actual.' });
+  }
+
+  const result = await approveLevelPurchase(req.params.id, req.user.id);
   if (compra) {
     await distributeInvestmentCommissions(compra.usuario_id, compra.monto);
     // Invalidar caché de ranking ya que un ascenso afecta el conteo de invitados reales
@@ -172,8 +184,20 @@ router.post('/compras-nivel/:id/aprobar', asyncHandler(async (req, res) => {
 
 // Alias para compatibilidad con el frontend
 router.post('/recargas/:id/aprobar', asyncHandler(async (req, res) => {
-  const result = await approveLevelPurchase(req.params.id, req.user.id);
   const compra = await queryOne(`SELECT * FROM compras_nivel WHERE id = ?`, [req.params.id]);
+  if (!compra) return res.status(404).json({ error: 'Orden de compra no encontrada' });
+
+  // VALIDACIÓN DE JERARQUÍA ANTES DE APROBAR (Doble Check)
+  const levels = await getLevels();
+  const targetLevel = levels.find(l => l.id === compra.nivel_id);
+  const user = await findUserById(compra.usuario_id);
+  const currentLevel = levels.find(l => l.id === user.nivel_id);
+
+  if (currentLevel && targetLevel && targetLevel.orden < currentLevel.orden) {
+    return res.status(400).json({ error: 'No se puede aprobar un nivel inferior al actual.' });
+  }
+
+  const result = await approveLevelPurchase(req.params.id, req.user.id);
   if (compra) {
     await distributeInvestmentCommissions(compra.usuario_id, compra.monto);
     await redis.del('admin:ranking:invitados');

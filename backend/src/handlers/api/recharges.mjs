@@ -56,12 +56,21 @@ router.post('/', asyncHandler(async (req, res) => {
   // No guardamos en Cloudinary ni Local para ahorrar espacio
   let final_comprobante_url = 'telegram_stored';
 
-  // 3. Encontrar nivel_id correspondiente al monto
+  // 3. Encontrar nivel_id correspondiente al monto y validar jerarquía
   const levels = await getLevels();
   const matchingLevel = levels.find(l => Math.abs(Number(l.deposito) - Number(monto)) < 0.01);
   
   if (!matchingLevel) {
     return res.status(400).json({ error: 'El monto no coincide con ningún nivel VIP disponible.' });
+  }
+
+  // VALIDACIÓN DE JERARQUÍA: No permitir bajar de nivel
+  const user = req.requestUser;
+  const currentLevel = levels.find(l => l.id === user.nivel_id);
+  if (currentLevel && matchingLevel.orden < currentLevel.orden) {
+    return res.status(400).json({ 
+      error: `No puedes adquirir el nivel ${matchingLevel.nombre} porque ya posees un nivel superior (${currentLevel.nombre}). La meta es subir.` 
+    });
   }
 
   const id = uuidv4();
