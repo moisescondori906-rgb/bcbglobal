@@ -43,27 +43,45 @@ app.use((req, res, next) => {
 });
 
 // Versión del API para forzar recargas en el frontend si es necesario
-const API_VERSION = '11.2.0';
+const API_VERSION = '11.2.1';
 
-// Endpoint de Healthcheck Profesional v11.2.0 (Resiliente)
+// Endpoint de Healthcheck Profesional v11.2.1 (Resiliente y Real)
 app.get('/api/health', async (req, res) => {
+  let dbStatus = 'ok';
+  let redisStatus = 'ok';
+  
   try {
-    const health = {
-      status: 'ok',
-      version: API_VERSION,
-      db: 'ok',
-      redis: 'ok',
-      uptime: Math.floor(process.uptime()),
-      timestamp: new Date().toISOString()
-    };
-    res.json(health);
+    await query('SELECT 1');
   } catch (err) {
-    logger.error('[HEALTH-CHECK-ERROR]', err.message);
-    res.status(500).json({ status: 'error', message: err.message });
+    dbStatus = 'error';
+  }
+
+  try {
+    await redis.ping();
+  } catch (err) {
+    redisStatus = 'error';
+  }
+
+  const health = {
+    status: (dbStatus === 'ok' && redisStatus === 'ok') ? 'ok' : 'degraded',
+    version: API_VERSION,
+    db: dbStatus,
+    redis: redisStatus,
+    uptime: Math.floor(process.uptime()),
+    timestamp: new Date().toISOString()
+  };
+
+  if (health.status === 'degraded') {
+    res.status(207).json(health); // Multi-Status para indicar degradación sin abortar
+  } else {
+    res.json(health);
   }
 });
 
-// Registro de salud de servicios críticos al arranque
+// 1.5 SISTEMA DE MONITOREO CONTINUO (HEARTBEAT 10s) v9.3.0 (SaaS Ready)
+const monitorLogger = createModuleLogger('MONITOR');
+
+// Mover el check de salud al final del arranque para no bloquear el puerto
 const checkSystemHealth = async () => {
   try {
     await query('SELECT 1');
@@ -72,15 +90,10 @@ const checkSystemHealth = async () => {
     logger.info('[HEALTH] Redis: OK');
     return true;
   } catch (err) {
-    logger.error('[FATAL] Fallo de salud en servicios críticos:', err.message);
-    process.exit(1);
+    logger.error('[HEALTH-WARNING] Algunos servicios críticos no están listos:', err.message);
+    return false;
   }
 };
-
-await checkSystemHealth();
-
-// 1.5 SISTEMA DE MONITOREO CONTINUO (HEARTBEAT 10s) v9.3.0 (SaaS Ready)
-const monitorLogger = createModuleLogger('MONITOR');
 
 setInterval(async () => {
   await safeAsync(async () => {
@@ -142,6 +155,20 @@ app.use(cors({
 app.use(express.json({ limit: '20mb' }));
 app.use(express.urlencoded({ extended: true, limit: '20mb' }));
 
+// 1.8 OPTIMIZACIÓN DE CONEXIONES Y PERSISTENCIA (v11.2.1)
+app.use((req, res, next) => {
+  // Asegurar que Nginx no cierre la conexión prematuramente
+  res.set('Connection', 'keep-alive');
+  res.set('Keep-Alive', 'timeout=65');
+  
+  // Blindaje contra abortos del cliente (Evitar fugas de memoria)
+  req.on('aborted', () => {
+    logger.warn(`[ABORTED-REQUEST] El cliente abortó la petición: ${req.method} ${req.originalUrl}`);
+  });
+  
+  next();
+});
+
 // Servir archivos estáticos de forma segura
 app.use('/uploads', express.static(path.join(process.cwd(), 'public/uploads')));
 app.use(express.static(path.join(process.cwd(), 'public')));
@@ -181,7 +208,10 @@ async function startServer() {
     console.log(`[STARTUP] Intentando iniciar servidor en puerto: ${PORT}`);
     // 1. ESCUCHAR PUERTO INMEDIATAMENTE (Evitar 502 Bad Gateway)
     const server = app.listen(PORT, '0.0.0.0', () => {
-      console.log(`[SERVER] BCB Global Backend v9.1.0 estable en puerto ${PORT}`);
+      console.log(`[SERVER] BCB Global Backend v11.2.1 estable en puerto ${PORT}`);
+      
+      // 1.5 Validar salud básica una vez arriba (No bloqueante)
+      checkSystemHealth();
     });
 
     // 2. INICIALIZACIONES ASÍNCRONAS (No bloqueantes)

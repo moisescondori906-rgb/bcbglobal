@@ -7,19 +7,18 @@ const config = {
   port: 22,
   username: 'root',
   password: '14738941lp',
-  readyTimeout: 60000
+  readyTimeout: 90000
 };
 
-console.log('🔍 Investigando tareas en el VPS...');
+console.log('🔍 Revisando configuración de Nginx en el VPS...');
 
 conn.on('ready', () => {
   console.log('✅ Conexión SSH establecida.');
   
   const commands = [
-    'mysql -u root -p14738941lp -e "DESCRIBE bcb_global.tareas;"',
-    'mysql -u root -p14738941lp -e "SELECT * FROM bcb_global.tareas;"',
-    'mysql -u root -p14738941lp -e "SELECT * FROM bcb_global.calendario_operativo WHERE fecha = CURDATE();"',
-    'mysql -u root -p14738941lp -e "SELECT COUNT(*) FROM bcb_global.tareas WHERE activa = 1;"'
+    'ls /etc/nginx/sites-enabled/',
+    'cat /etc/nginx/sites-enabled/bcb_global || cat /etc/nginx/sites-enabled/default',
+    'nginx -t'
   ];
 
   const executeNext = (index) => {
