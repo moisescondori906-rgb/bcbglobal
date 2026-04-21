@@ -93,25 +93,42 @@ router.get('/stats', asyncHandler(async (req, res) => {
 
 router.get('/earnings', asyncHandler(async (req, res) => {
   const userId = req.user.id;
+  const user = req.requestUser;
 
   // MODO DEMO: Bypass si el ID es el de demo
   if (userId === DEMO_USER_ID) {
     return res.json({
+      summary: { total: user.saldo_principal, hoy: 50.40 },
       history: [
-        { id: '1', tipo_movimiento: 'tarea', monto: 1.80, fecha: new Date().toISOString(), descripcion: 'Tarea completada demo' },
-        { id: '2', tipo_movimiento: 'tarea_red', monto: 0.50, fecha: new Date().toISOString(), descripcion: 'Comisión red demo' }
+        { id: '1', tipo_movimiento: 'tarea', monto: 1.80, created_at: new Date().toISOString(), descripcion: 'Tarea completada demo' },
+        { id: '2', tipo_movimiento: 'tarea_red', monto: 0.50, created_at: new Date().toISOString(), descripcion: 'Comisión red demo' }
       ]
     });
   }
 
+  const today = boliviaTime.todayStr();
+
+  // 1. Obtener historial (v11.3.4)
   const movimientos = await query(`
     SELECT * FROM movimientos_saldo 
     WHERE usuario_id = ? 
-    ORDER BY fecha DESC 
+    ORDER BY created_at DESC 
     LIMIT 50
   `, [userId]);
+
+  // 2. Obtener resumen de hoy y total acumulado (Ganancias Reales)
+  const stats = await queryOne(`
+    SELECT 
+      COALESCE(SUM(CASE WHEN fecha_dia = ? THEN monto_ganado ELSE 0 END), 0) as hoy
+    FROM actividad_tareas 
+    WHERE usuario_id = ?
+  `, [today, userId]);
   
   res.json({
+    summary: {
+      total: user.saldo_principal, // Balance actual real
+      hoy: stats.hoy              // Ganancia de hoy por tareas
+    },
     history: movimientos
   });
 }));
