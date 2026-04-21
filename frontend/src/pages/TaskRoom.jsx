@@ -345,16 +345,15 @@ export default function TaskRoom() {
               delay={i * 0.05}
             >
               <div className="relative w-20 h-20 rounded-2xl overflow-hidden border border-sav-border shrink-0 bg-black">
-                {/* Previsualización del video en lugar del logo estático */}
+                {/* Previsualización del video optimizada para Android v11.3.1 */}
                 <video 
-                  src={t.video_url} 
+                  src={`${t.video_url}#t=0.1`} 
                   className="w-full h-full object-cover opacity-60 group-hover:opacity-100 group-hover:scale-110 transition-all duration-500"
                   muted
                   playsInline
                   loop
-                  preload="none" // EVITAR CARGA SIMULTÁNEA DE TODOS LOS VIDEOS (v11.2.4)
+                  preload="metadata" // CARGAR SOLO EL INICIO PARA MOSTRAR EL THUMBNAIL EN ANDROID
                   onMouseOver={(e) => {
-                    e.target.setAttribute('preload', 'auto'); // Empezar a cargar al pasar el mouse
                     e.target.play().catch(() => {});
                   }}
                   onMouseOut={(e) => e.target.pause()}
