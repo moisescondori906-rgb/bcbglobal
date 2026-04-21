@@ -79,6 +79,14 @@ async function request(url, options = {}, retries = 2) {
         ...options, 
         headers,
         signal: controller.signal
+      }).catch(err => {
+        // Manejar errores de red/abortos antes de res.ok
+        if (err.name === 'AbortError' || err.message?.includes('aborted')) {
+          const abortError = new Error('Conexión interrumpida o tiempo de espera agotado. Reintentando...');
+          abortError.name = 'AbortError';
+          throw abortError;
+        }
+        throw err;
       });
       
       clearTimeout(timeoutId);

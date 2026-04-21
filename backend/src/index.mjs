@@ -43,21 +43,27 @@ app.use((req, res, next) => {
 });
 
 // Versión del API para forzar recargas en el frontend si es necesario
-const API_VERSION = '11.3.4';
+const API_VERSION = '11.3.5';
 
-// Endpoint de Healthcheck Profesional v11.3.4 (Resiliente y Real)
+// Endpoint de Healthcheck Profesional v11.3.5 (Resiliente con Timeout)
 app.get('/api/health', async (req, res) => {
   let dbStatus = 'ok';
   let redisStatus = 'ok';
   
   try {
-    await query('SELECT 1');
+    // Timeout de 2s para DB
+    const dbPromise = query('SELECT 1');
+    const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 2000));
+    await Promise.race([dbPromise, timeoutPromise]);
   } catch (err) {
     dbStatus = 'error';
   }
 
   try {
-    await redis.ping();
+    // Timeout de 2s para Redis
+    const redisPromise = redis.ping();
+    const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 2000));
+    await Promise.race([redisPromise, timeoutPromise]);
   } catch (err) {
     redisStatus = 'error';
   }
@@ -72,7 +78,7 @@ app.get('/api/health', async (req, res) => {
   };
 
   if (health.status === 'degraded') {
-    res.status(207).json(health); // Multi-Status para indicar degradación sin abortar
+    res.status(207).json(health); 
   } else {
     res.json(health);
   }
@@ -155,15 +161,17 @@ app.use(cors({
 app.use(express.json({ limit: '20mb' }));
 app.use(express.urlencoded({ extended: true, limit: '20mb' }));
 
-// 1.8 OPTIMIZACIÓN DE CONEXIONES Y PERSISTENCIA (v11.2.1)
+// 1.8 OPTIMIZACIÓN DE CONEXIONES Y PERSISTENCIA (v11.3.5)
 app.use((req, res, next) => {
-  // Asegurar que Nginx no cierre la conexión prematuramente
-  res.set('Connection', 'keep-alive');
-  res.set('Keep-Alive', 'timeout=65');
+  // Eliminamos Connection: keep-alive manual para dejar que Nginx lo gestione
+  // res.set('Connection', 'keep-alive');
   
   // Blindaje contra abortos del cliente (Evitar fugas de memoria)
   req.on('aborted', () => {
-    logger.warn(`[ABORTED-REQUEST] El cliente abortó la petición: ${req.method} ${req.originalUrl}`);
+    // Solo loguear si no es un health check común
+    if (!req.originalUrl.includes('health')) {
+      logger.warn(`[ABORTED-REQUEST] El cliente abortó la petición: ${req.method} ${req.originalUrl}`);
+    }
   });
   
   next();
@@ -208,7 +216,7 @@ async function startServer() {
     console.log(`[STARTUP] Intentando iniciar servidor en puerto: ${PORT}`);
     // 1. ESCUCHAR PUERTO INMEDIATAMENTE (Evitar 502 Bad Gateway)
     const server = app.listen(PORT, '0.0.0.0', () => {
-      console.log(`[SERVER] BCB Global Backend v11.3.4 estable en puerto ${PORT}`);
+      console.log(`[SERVER] BCB Global Backend v11.3.5 estable en puerto ${PORT}`);
       
       // 1.5 Validar salud básica una vez arriba (No bloqueante)
       checkSystemHealth();
