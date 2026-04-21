@@ -93,7 +93,12 @@ export default function TaskRoom() {
   useAndroidBackHandler(activeTask, () => setActiveTask(null));
 
   const startTask = (task) => {
-    if (data.tareas_restantes <= 0) return;
+    if (data?.tareas_restantes <= 0) {
+      setErrorMessage('Límite diario de tareas alcanzado. Sube de nivel para realizar más tareas.');
+      setShowResult(true);
+      setIsCorrect(false);
+      return;
+    }
     setActiveTask(task);
     setTimer(10);
     setSurveyVisible(false);
@@ -135,7 +140,7 @@ export default function TaskRoom() {
     );
   }
 
-  if ((error || data?.bloqueado || (data && !data.tareas_restantes && data.num_tareas_diarias === 0)) && !activeTask) {
+  if ((error || data?.bloqueado) && !activeTask) {
     const isLevelBlocked = data && !data.tareas_restantes && data.num_tareas_diarias === 0;
     
     // Determinar el título basado en el mensaje del backend
@@ -330,9 +335,12 @@ export default function TaskRoom() {
         <div className="grid grid-cols-1 gap-4">
           {data?.tareas?.map((t, i) => (
             <Card 
-              key={t.id} 
+              key={`${t.id}-${i}`} // Usar i para evitar problemas de key si hay pocos videos
               variant="outline" 
-              className="p-4 flex items-center gap-4 active:scale-[0.98] transition-all cursor-pointer group"
+              className={cn(
+                "p-4 flex items-center gap-4 active:scale-[0.98] transition-all cursor-pointer group",
+                data.tareas_restantes <= 0 && "opacity-60 grayscale-[0.5]"
+              )}
               onClick={() => startTask(t)}
               delay={i * 0.05}
             >

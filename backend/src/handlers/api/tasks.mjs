@@ -96,21 +96,12 @@ router.get('/', dynamicControlMiddleware('task_list'), asyncHandler(async (req, 
   logger.info(`[TASKS-DEBUG] User: ${user.nombre_usuario} (${user.id}), Level: ${level.nombre}, Diarias: ${numTareasDiarias}, Completadas: ${todayCompletedCount}, Restantes: ${remaining}`);
 
   let availableTasks = [];
-  if (remaining > 0) {
-    // 1. Obtener TODAS las tareas activas sin filtrar por nivel (v11.2.2)
-    const allTasks = await getTasks();
-    logger.info(`[TASKS-DEBUG] Total tareas activas en sistema: ${allTasks.length}`);
-    
-    if (allTasks.length > 0) {
-      // 2. Aleatoriedad total: Mezclar todas las tareas disponibles
-      const shuffled = [...allTasks].sort(() => 0.5 - Math.random());
-      
-      // 3. Seleccionar una muestra para el usuario (le mostramos lo que le falta + un pequeño margen)
-      availableTasks = shuffled.slice(0, Math.min(shuffled.length, remaining + 3));
-      
-      logger.info(`[TASKS-DEBUG] Tareas aleatorias asignadas: ${availableTasks.length}`);
-    }
-  }
+  // 1. Obtener TODAS las tareas activas sin filtros (v11.3.0)
+  const allTasks = await getTasks();
+  logger.info(`[TASKS-DEBUG] User: ${user.nombre_usuario}, Level: ${level.nombre}, Diarias: ${numTareasDiarias}, Completadas: ${todayCompletedCount}, Restantes: ${remaining}`);
+  
+  // 2. Mostrar todas las tareas disponibles para que el usuario elija (Se pueden repetir)
+  availableTasks = allTasks;
 
   res.json({
     nivel: level.nombre,

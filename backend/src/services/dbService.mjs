@@ -597,14 +597,7 @@ export async function completeTask(userId, taskId, idempotencyKey = null) {
     if (!user) throw new Error('Usuario no encontrado');
     if (user.bloqueado) throw new Error('Tu cuenta se encuentra bloqueada.');
 
-    // 2. LOCK ACTIVIDAD: Evita doble acreditación simultánea
-    const [taskCheck] = await conn.query(
-      'SELECT id FROM actividad_tareas WHERE usuario_id = ? AND tarea_id = ? AND fecha_dia = ? FOR UPDATE',
-      [userId, taskId, todayBolivia]
-    );
-    if (taskCheck.length > 0) throw new Error('Esta tarea ya fue completada y pagada hoy.');
-
-    // 3. VALIDAR LÍMITE DIARIO
+    // 2. VALIDAR LÍMITE DIARIO (Se permite repetir el mismo video v11.3.0)
     const [countResult] = await conn.query(
       'SELECT COUNT(*) as total FROM actividad_tareas WHERE usuario_id = ? AND fecha_dia = ? FOR UPDATE',
       [userId, todayBolivia]
