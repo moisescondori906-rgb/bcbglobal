@@ -45,6 +45,7 @@ const TaskRoom = lazyWithRetry(() => import('./pages/TaskRoom.jsx'));
 const Profile = lazyWithRetry(() => import('./pages/Profile.jsx'));
 const Withdrawal = lazyWithRetry(() => import('./pages/Withdrawal.jsx'));
 const Recharge = lazyWithRetry(() => import('./pages/Recharge.jsx'));
+const PaymentMethods = lazyWithRetry(() => import('./pages/PaymentMethods.jsx'));
 const VIP = lazyWithRetry(() => import('./pages/VIP.jsx'));
 const Ganancias = lazyWithRetry(() => import('./pages/Ganancias.jsx'));
 const Movimientos = lazyWithRetry(() => import('./pages/Movimientos.jsx'));
@@ -142,6 +143,7 @@ function AppRoutes() {
         <Route path="/movimientos" element={<PrivateRoute><Movimientos /></PrivateRoute>} />
         <Route path="/noticias-conferencia" element={<PrivateRoute><NoticiasConferencia /></PrivateRoute>} />
         <Route path="/retiro" element={<PrivateRoute><Withdrawal /></PrivateRoute>} />
+        <Route path="/pagar" element={<PrivateRoute><PaymentMethods /></PrivateRoute>} />
         <Route path="/recargar" element={<PrivateRoute><Recharge /></PrivateRoute>} />
         <Route path="/seguridad" element={<PrivateRoute><Security /></PrivateRoute>} />
         <Route path="/vincular-tarjeta" element={<PrivateRoute><VincularTarjeta /></PrivateRoute>} />
