@@ -129,7 +129,7 @@ export async function setupTelegramLogic() {
           if (action === 'tomar') {
             // Permitir tomar incluso si ya está tomado (para permitir re-asignación libre v10.4.0)
             if (caso.estado_operativo === 'resuelto') {
-              throw new Error(`Este caso ya fue resuelto por ${caso.tomado_por_nombre || 'otro operador'}.`);
+              throw new Error(`Este caso ya fue resuelto por otro operador.`);
             }
 
             // Marcar como tomado en bloqueo (actualiza el responsable actual)
