@@ -344,9 +344,12 @@ export default function TaskRoom() {
                   muted
                   playsInline
                   loop
-                  onMouseOver={(e) => e.target.play()}
+                  preload="none" // EVITAR CARGA SIMULTÁNEA DE TODOS LOS VIDEOS (v11.2.4)
+                  onMouseOver={(e) => {
+                    e.target.setAttribute('preload', 'auto'); // Empezar a cargar al pasar el mouse
+                    e.target.play().catch(() => {});
+                  }}
                   onMouseOut={(e) => e.target.pause()}
-                  // Auto-play pequeño fragmento si es posible o simplemente dejarlo listo
                 />
                 <div className="absolute inset-0 bg-sav-dark/20 flex items-center justify-center opacity-100 group-hover:opacity-0 transition-opacity pointer-events-none">
                   <Play size={20} className="text-white fill-white/80" />

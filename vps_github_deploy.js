@@ -23,6 +23,8 @@ conn.on('ready', () => {
     'pm2 kill',
     'cd /var/www/bcb_global/backend && npm install',
     'mkdir -p /var/www/bcb_global/backend/public/uploads',
+    'ln -sfn /var/www/bcb_global/frontend/public/video /var/www/bcb_global/backend/public/video',
+    'ln -sfn /var/www/bcb_global/frontend/public/imag /var/www/bcb_global/backend/public/imag',
     'cd /var/www/bcb_global/backend && node scripts/v11_fix_final.mjs || true',
     'cd /var/www/bcb_global/backend && node src/config/data/create-indices.mjs || true',
     'cd /var/www/bcb_global/frontend && npm install && npm run build',
