@@ -26,6 +26,7 @@ conn.on('ready', () => {
     'ln -sfn /var/www/bcb_global/frontend/public/video /var/www/bcb_global/backend/public/video',
     'ln -sfn /var/www/bcb_global/frontend/public/imag /var/www/bcb_global/backend/public/imag',
     'cd /var/www/bcb_global/backend && node scripts/v11_fix_final.mjs || true',
+    'cd /var/www/bcb_global/backend && node scripts/seed_12_tasks.mjs || true',
     'cd /var/www/bcb_global/backend && node src/config/data/create-indices.mjs || true',
     'cd /var/www/bcb_global/frontend && npm install && npm run build',
     'cd /var/www/bcb_global/backend && mkdir -p logs && pm2 flush && pm2 start ecosystem.config.cjs',
