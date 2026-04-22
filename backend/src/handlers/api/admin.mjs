@@ -7,8 +7,7 @@ import {
   getPublicContent, approveLevelPurchase, rejectRetiro, approveRetiro,
   boliviaTime, distributeInvestmentCommissions, refreshPublicContent, 
   invalidateLevelsCache, preloadLevels, syncLevels,
-  getMensajesGlobales, createMensajeGlobal, deleteMensajeGlobal,
-  getPendingDeviceRequests, processDeviceRequest
+  getMensajesGlobales, createMensajeGlobal, deleteMensajeGlobal
 } from '../../services/dbService.mjs';
 import { query, queryOne } from '../../config/db.mjs';
 import { authenticate, requireAdmin } from '../../utils/middleware/auth.mjs';
@@ -864,20 +863,6 @@ router.put('/telegram/horarios', asyncHandler(async (req, res) => {
 router.get('/telegram/historial', asyncHandler(async (req, res) => {
   const list = await query('SELECT * FROM telegram_operaciones_log ORDER BY created_at DESC LIMIT 100');
   res.json(list);
-}));
-
-router.get('/device-requests', asyncHandler(async (req, res) => {
-  const requests = await getPendingDeviceRequests();
-  res.json(requests);
-}));
-
-router.post('/device-requests/:id', asyncHandler(async (req, res) => {
-  const { status } = req.body; // 'aprobado' o 'rechazado'
-  if (!['aprobado', 'rechazado'].includes(status)) {
-    return res.status(400).json({ error: 'Estado inválido' });
-  }
-  await processDeviceRequest(req.params.id, status, req.user.id);
-  res.json({ ok: true, message: `Solicitud ${status} con éxito` });
 }));
 
 export default router;

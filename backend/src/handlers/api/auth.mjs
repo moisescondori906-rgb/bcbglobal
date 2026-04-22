@@ -2,7 +2,7 @@ import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
-import { findUserByTelefono, createUser, getLevels, updateUser, createDeviceRequest } from '../../services/dbService.mjs';
+import { findUserByTelefono, createUser, getLevels, updateUser } from '../../services/dbService.mjs';
 import { queryOne } from '../../config/db.mjs';
 import { sendToAdmin } from '../../services/telegramBot.mjs';
 import { BillingService } from '../../services/billingService.mjs';

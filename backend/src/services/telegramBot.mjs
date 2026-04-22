@@ -2,7 +2,6 @@ import TelegramBot from 'node-telegram-bot-api';
 import logger from '../utils/logger.mjs';
 import { safeTelegram } from '../utils/safe.mjs';
 import { query, queryOne } from '../config/db.mjs';
-import { processDeviceRequest } from '../services/dbService.mjs';
 
 // Instancias de bots (Singleton pattern con inicialización perezosa)
 let botAdmin = null;

@@ -1457,45 +1457,4 @@ export async function createTaskActivity(data) {
   return { id, ...data };
 }
 
-export async function createDeviceRequest(userId, deviceId, deviceInfo = {}) {
-  const id = uuidv4();
-  await query(
-    `INSERT INTO solicitudes_dispositivo (id, usuario_id, device_id, modelo_dispositivo, estado) 
-     VALUES (?, ?, ?, ?, 'pendiente')`,
-    [id, userId, deviceId, deviceInfo.model || 'Desconocido']
-  );
-  return id;
-}
-
-export async function getPendingDeviceRequests() {
-  return query(
-    `SELECT s.*, u.nombre_usuario, u.telefono 
-     FROM solicitudes_dispositivo s
-     JOIN usuarios u ON s.usuario_id = u.id
-     WHERE s.estado = 'pendiente'
-     ORDER BY s.created_at DESC`
-  );
-}
-
-export async function processDeviceRequest(requestId, status, adminId) {
-  const [request] = await query(`SELECT * FROM solicitudes_dispositivo WHERE id = ?`, [requestId]);
-  if (!request) throw new Error('Solicitud no encontrada');
-
-  await transaction(async (conn) => {
-    await conn.query(
-      `UPDATE solicitudes_dispositivo SET estado = ?, admin_id = ?, procesado_at = NOW() WHERE id = ?`,
-      [status, adminId, requestId]
-    );
-
-    if (status === 'aprobado') {
-      await conn.query(
-        `UPDATE usuarios SET last_device_id = ?, device_permission = 'linked' WHERE id = ?`,
-        [request.device_id, request.usuario_id]
-      );
-    }
-  });
-
-  return { ok: true };
-}
-
 
