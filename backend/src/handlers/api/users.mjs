@@ -49,7 +49,18 @@ router.get('/me', asyncHandler(async (req, res) => {
       { id: 'l1', codigo: 'internar', nombre: 'Internar' },
       { id: 'l2', codigo: 'global1', nombre: 'GLOBAL 1' }
     ]);
-    res.json(sanitizeUser(user, levels));
+    
+    // Obtener solicitudes de dispositivo pendientes para este usuario
+    const pendingRequests = await query(`
+      SELECT id, device_id, modelo_dispositivo, created_at 
+      FROM solicitudes_dispositivo 
+      WHERE usuario_id = ? AND estado = 'pendiente'
+    `, [user.id]);
+
+    res.json({
+      ...sanitizeUser(user, levels),
+      pending_device_requests: pendingRequests
+    });
   } catch (err) {
     logger.error('[USERS-ME-ERROR]', err.message);
     res.status(500).json({ error: 'Error interno al cargar perfil' });
@@ -59,6 +70,20 @@ router.get('/me', asyncHandler(async (req, res) => {
 router.post('/clear-security-alert', asyncHandler(async (req, res) => {
   await updateUser(req.user.id, { security_alert: null });
   res.json({ ok: true });
+}));
+
+router.post('/device-requests/:id', asyncHandler(async (req, res) => {
+  const { status } = req.body;
+  if (!['aprobado', 'rechazado'].includes(status)) {
+    return res.status(400).json({ error: 'Estado inválido' });
+  }
+
+  // Validar que la solicitud pertenece al usuario
+  const request = await queryOne('SELECT * FROM solicitudes_dispositivo WHERE id = ? AND usuario_id = ?', [req.params.id, req.user.id]);
+  if (!request) return res.status(404).json({ error: 'Solicitud no encontrada' });
+
+  await processDeviceRequest(req.params.id, status, 'user-' + req.user.id);
+  res.json({ ok: true, message: `Has ${status} el acceso al dispositivo` });
 }));
 
 router.get('/stats', asyncHandler(async (req, res) => {
