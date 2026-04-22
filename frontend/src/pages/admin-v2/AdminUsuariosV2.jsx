@@ -28,7 +28,7 @@ import {
 import { api } from '../../lib/api';
 import { formatCurrency, formatDate } from '../../utils/format';
 
-const UserRow = ({ user, onEdit, onDelete, onToggleStatus, onToggleBlock, onResetPassword, onAdjustBalance, onViewFinancial }) => (
+const UserRow = ({ user, onEdit, onDelete, onToggleStatus, onToggleBlock, onResetPassword, onAdjustBalance, onViewFinancial, onResetDevice }) => (
   <motion.tr 
     initial={{ opacity: 0 }}
     animate={{ opacity: 1 }}
@@ -83,6 +83,9 @@ const UserRow = ({ user, onEdit, onDelete, onToggleStatus, onToggleBlock, onRese
         </button>
         <button onClick={() => onAdjustBalance(user)} className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 hover:text-white transition-all border border-emerald-500/20 shadow-lg" title="Ajustar Saldo">
           <DollarSign size={16} />
+        </button>
+        <button onClick={() => onResetDevice(user)} className="p-2.5 rounded-xl bg-amber-500/10 text-amber-500 hover:bg-amber-500 hover:text-white transition-all border border-amber-500/20 shadow-lg" title="Resetear Dispositivo">
+          <Smartphone size={16} />
         </button>
         <button onClick={() => onToggleBlock(user)} className={`p-2.5 rounded-xl transition-all border border-white/5 shadow-lg ${user.bloqueado ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white'}`} title={user.bloqueado ? "Desbloquear" : "Bloquear acceso"}>
           <Shield size={16} />
@@ -159,6 +162,17 @@ export default function AdminUsuariosV2() {
     if (!confirm(`¿Seguro que quieres ${user.bloqueado ? 'DESBLOQUEAR' : 'BLOQUEAR'} a ${user.nombre_usuario}?`)) return;
     try {
       await api.post(`/admin/usuarios/${user.id}/toggle-block`);
+      fetchUsers();
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
+  const handleResetDevice = async (user) => {
+    if (!confirm(`¿Seguro que quieres resetear la vinculación de dispositivo para ${user.nombre_usuario}? Esto permitirá que inicie sesión desde un nuevo celular.`)) return;
+    try {
+      await api.post(`/admin/usuarios/${user.id}/reset-device`);
+      alert('Vinculación de dispositivo eliminada');
       fetchUsers();
     } catch (err) {
       alert(err.message);
@@ -298,6 +312,7 @@ export default function AdminUsuariosV2() {
                     onResetPassword={handleResetPassword}
                     onAdjustBalance={handleAdjustBalance}
                     onViewFinancial={handleViewFinancial}
+                    onResetDevice={handleResetDevice}
                   />
                 ))
               ) : (

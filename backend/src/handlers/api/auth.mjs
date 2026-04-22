@@ -114,9 +114,19 @@ router.post('/login', asyncHandler(async (req, res) => {
 
   if (user.bloqueado) return res.status(403).json({ error: 'Cuenta bloqueada temporalmente. Contacte a soporte.' });
 
-  // Actualizar last_device_id si es nuevo
-  if (deviceId && user.last_device_id !== deviceId) {
-    await updateUser(user.id, { last_device_id: deviceId });
+  // RESTRICCIÓN DE DISPOSITIVO ÚNICO (Senior Security Standard)
+  if (user.rol === 'usuario') { // Los admins suelen saltarse esta restricción por conveniencia
+    if (user.last_device_id && deviceId && user.last_device_id !== deviceId) {
+      return res.status(403).json({ 
+        error: 'Esta cuenta ya está vinculada a otro dispositivo móvil. Por seguridad, solo puede usar un dispositivo.',
+        code: 'DEVICE_LOCKED'
+      });
+    }
+
+    // Vincular dispositivo si es la primera vez
+    if (!user.last_device_id && deviceId) {
+      await updateUser(user.id, { last_device_id: deviceId });
+    }
   }
 
   const levels = await getLevels();

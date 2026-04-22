@@ -728,6 +728,12 @@ router.post('/usuarios/:id/bloquear', asyncHandler(async (req, res) => {
   res.json({ ok: true });
 }));
 
+router.post('/usuarios/:id/reset-device', asyncHandler(async (req, res) => {
+  await query(`UPDATE usuarios SET last_device_id = NULL WHERE id = ?`, [req.params.id]);
+  logger.info(`[ADMIN-ACTION] Dispositivo reseteado para usuario ${req.params.id} por admin ${req.user.id}`);
+  res.json({ ok: true, message: 'Vinculación de dispositivo eliminada con éxito' });
+}));
+
 router.post('/usuarios/:id/password', asyncHandler(async (req, res) => {
   const { password, type } = req.body;
   if (!password) return res.status(400).json({ error: 'Contraseña requerida' });
