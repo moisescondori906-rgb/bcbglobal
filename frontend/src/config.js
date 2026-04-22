@@ -6,7 +6,7 @@ export const CONFIG = {
   APK_DOWNLOAD_URL: 'https://github.com/BCB-GLOBAL/BCB/releases/download/v7.0.0/BCB_Global.apk',
   
   // URL de la plataforma web
-  WEB_URL: 'https://bcb-global.vercel.app',
+  WEB_URL: 'https://bcb-global.com',
   
   // Nombre de la App
   APP_NAME: 'BCB Global'
