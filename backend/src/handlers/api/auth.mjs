@@ -115,17 +115,26 @@ router.post('/login', asyncHandler(async (req, res) => {
   if (user.bloqueado) return res.status(403).json({ error: 'Cuenta bloqueada temporalmente. Contacte a soporte.' });
 
   // RESTRICCIÓN DE DISPOSITIVO ÚNICO (Senior Security Standard)
-  if (user.rol === 'usuario') { // Los admins suelen saltarse esta restricción por conveniencia
+  if (user.rol === 'usuario') { 
     if (user.last_device_id && deviceId && user.last_device_id !== deviceId) {
-      return res.status(403).json({ 
-        error: 'Esta cuenta ya está vinculada a otro dispositivo móvil. Por seguridad, solo puede usar un dispositivo.',
-        code: 'DEVICE_LOCKED'
-      });
+      // Si tiene permiso explícito 'switch_device', permitimos el cambio una vez
+      if (user.device_permission === 'switch_pending') {
+        await updateUser(user.id, { 
+          last_device_id: deviceId,
+          device_permission: 'linked' 
+        });
+        logger.info(`[DEVICE-SWITCH] Usuario ${user.id} cambió a nuevo dispositivo ${deviceId}`);
+      } else {
+        return res.status(403).json({ 
+          error: 'Esta cuenta ya está vinculada a otro dispositivo móvil. Solicite permiso al administrador para cambiar de dispositivo.',
+          code: 'DEVICE_LOCKED'
+        });
+      }
     }
 
     // Vincular dispositivo si es la primera vez
     if (!user.last_device_id && deviceId) {
-      await updateUser(user.id, { last_device_id: deviceId });
+      await updateUser(user.id, { last_device_id: deviceId, device_permission: 'linked' });
     }
   }
 
@@ -157,6 +166,7 @@ function sanitizeUser(u, levels) {
     tickets_ruleta: Number(u.tickets_ruleta) || 0,
     tiene_password_fondo: !!u.password_fondo_hash,
     last_device_id: u.last_device_id,
+    device_permission: u.device_permission,
   };
 }
 

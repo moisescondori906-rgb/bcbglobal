@@ -45,7 +45,6 @@ const menuGroups = [
     items: [
       { to: '/admin/recargas', icon: CreditCard, label: 'Recargas' },
       { to: '/admin/retiros', icon: Wallet, label: 'Retiros' },
-      { to: '/admin/metodos-qr', icon: QrCode, label: 'Métodos de Pago' },
     ]
   },
   {
@@ -64,7 +63,7 @@ const menuGroups = [
       { to: '/admin/telegram', icon: Send, label: 'Bots Telegram' },
       { to: '/admin/cuestionarios', icon: HelpCircle, label: 'Cuestionarios' },
       { to: '/admin/banners', icon: Image, label: 'Multimedia' },
-      { to: '/admin/contenido-home', icon: Bell, label: 'Configuración' },
+      { to: '/admin/metodos-qr', icon: QrCode, label: 'Configuración' },
     ]
   }
 ];

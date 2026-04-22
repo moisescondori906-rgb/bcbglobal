@@ -6,19 +6,22 @@ import {
   getPremiosRuleta, createSorteoGanador, updateUser, 
   getSorteosGanadores, getPublicContent, addUserEarnings
 } from '../../services/dbService.mjs';
-import { queryOne, transaction } from '../../config/db.mjs';
+import { query, queryOne, transaction } from '../../config/db.mjs';
 import { asyncHandler } from '../../utils/asyncHandler.mjs';
 
 const router = Router();
 
 router.get('/config', asyncHandler(async (req, res) => {
-  const config = await getPublicContent();
-  res.json(config);
+  const pc = await getPublicContent();
+  res.json({
+    recompensas_visibles: pc.recompensas_visibles !== false,
+    ruleta_activa: pc.ruleta_activa !== false
+  });
 }));
 
 router.get('/premios', asyncHandler(async (req, res) => {
-  const premios = await getPremiosRuleta();
-  res.json(premios);
+  const list = await query('SELECT * FROM premios_ruleta WHERE activo = 1 ORDER BY orden ASC');
+  res.json(list);
 }));
 
 router.get('/historial', asyncHandler(async (req, res) => {

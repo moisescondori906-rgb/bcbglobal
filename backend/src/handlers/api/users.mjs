@@ -33,6 +33,8 @@ function sanitizeUser(u, levels) {
     avatar_url: u.avatar_url,
     tickets_ruleta: u.tickets_ruleta || 0,
     tiene_password_fondo: !!u.password_fondo_hash,
+    device_permission: u.device_permission,
+    last_device_id: u.last_device_id,
   };
 }
 

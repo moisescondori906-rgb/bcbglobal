@@ -729,9 +729,9 @@ router.post('/usuarios/:id/bloquear', asyncHandler(async (req, res) => {
 }));
 
 router.post('/usuarios/:id/reset-device', asyncHandler(async (req, res) => {
-  await query(`UPDATE usuarios SET last_device_id = NULL WHERE id = ?`, [req.params.id]);
-  logger.info(`[ADMIN-ACTION] Dispositivo reseteado para usuario ${req.params.id} por admin ${req.user.id}`);
-  res.json({ ok: true, message: 'Vinculación de dispositivo eliminada con éxito' });
+  await query(`UPDATE usuarios SET last_device_id = NULL, device_permission = 'switch_pending' WHERE id = ?`, [req.params.id]);
+  logger.info(`[ADMIN-ACTION] Dispositivo reseteado y permiso de cambio otorgado para usuario ${req.params.id} por admin ${req.user.id}`);
+  res.json({ ok: true, message: 'Vinculación eliminada. El usuario ahora puede vincular un nuevo dispositivo.' });
 }));
 
 router.post('/usuarios/:id/password', asyncHandler(async (req, res) => {
