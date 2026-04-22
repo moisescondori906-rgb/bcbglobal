@@ -179,7 +179,7 @@ export default function Profile() {
                     </div>
                     <div className="space-y-0.5">
                       <p className="text-[8px] font-black text-sav-muted uppercase tracking-widest leading-none">Renta Diaria</p>
-                      <p className="text-lg font-black text-white">+{Number(rentaDiaria).toFixed(2)}</p>
+                      <p className="text-lg font-black text-white">+{Number(rentaDiaria || 0).toFixed(2)}</p>
                     </div>
                     <div className="pt-3 border-t border-white/5 flex justify-between items-center">
                       <span className="text-[8px] font-bold text-sav-muted uppercase">Inversión</span>
@@ -205,11 +205,11 @@ export default function Profile() {
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
               <p className="text-[8px] font-black text-sav-muted uppercase tracking-widest">Ingresos Hoy</p>
-              <p className="text-lg font-black text-sav-success">+{stats?.ingresos_hoy?.toLocaleString() || '0.00'}</p>
+              <p className="text-lg font-black text-sav-success">+{(stats?.ingresos_hoy || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
             </div>
             <div className="space-y-1 text-right">
               <p className="text-[8px] font-black text-sav-muted uppercase tracking-widest">Total Acumulado</p>
-              <p className="text-lg font-black text-white">{stats?.total_acumulado?.toLocaleString() || '0.00'}</p>
+              <p className="text-lg font-black text-white">{(stats?.total_acumulado || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
             </div>
           </div>
         </Card>

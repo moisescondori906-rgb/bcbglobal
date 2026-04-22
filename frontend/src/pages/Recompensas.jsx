@@ -339,7 +339,7 @@ export default function Recompensas() {
             <div className="text-right">
               <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Saldo Total</p>
               <p className="text-sm font-black text-[#1a1f36]">
-                {((user?.saldo_comisiones || 0) + (user?.saldo_principal || 0)).toFixed(2)} BOB
+                {((Number(user?.saldo_comisiones) || 0) + (Number(user?.saldo_principal) || 0)).toFixed(2)} BOB
               </p>
             </div>
           </div>

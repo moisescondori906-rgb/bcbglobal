@@ -375,7 +375,7 @@ export default function Withdrawal() {
                       <p className="text-[9px] font-black text-white/80 uppercase tracking-tighter truncate">{n.nombre}</p>
                       <div className="space-y-0.5">
                         <p className="text-[7px] font-black text-sav-muted uppercase tracking-widest leading-none">Renta Diaria</p>
-                        <p className="text-sm font-black text-sav-success">+{Number(n.ingreso_diario || (Number(n.num_tareas_diarias || 0) * Number(n.ganancia_tarea || 0))).toFixed(2)}</p>
+                        <p className="text-sm font-black text-sav-success">+{Number(n.ingreso_diario || (Number(n.num_tareas_diarias || 0) * Number(n.ganancia_tarea || 0))).toFixed(2)} BOB</p>
                       </div>
                     </div>
                     <div className="absolute right-[-5px] bottom-[-5px] opacity-[0.05] rotate-12 group-hover:rotate-[25deg] transition-transform duration-700">

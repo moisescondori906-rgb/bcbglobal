@@ -228,7 +228,7 @@ export default function Dashboard() {
                 </div>
                 <div className="flex items-baseline gap-2">
                   <p className="text-5xl font-black text-white tracking-tighter drop-shadow-[0_4px_12px_rgba(0,0,0,0.3)]">
-                    {(user?.saldo_principal ?? 0).toLocaleString()}
+                    {(user?.saldo_principal || 0).toLocaleString()}
                   </p>
                   <span className="text-xs font-black text-white/60 uppercase tracking-widest">BOB</span>
                 </div>
@@ -272,13 +272,13 @@ export default function Dashboard() {
             <div className="space-y-1">
               <p className="text-[9px] font-black text-sav-muted uppercase tracking-widest">Ingresos Hoy</p>
               <p className="text-2xl font-black text-sav-success drop-shadow-[0_0_15px_rgba(16,185,129,0.3)]">
-                +{(stats?.ingresos_hoy ?? 0).toLocaleString()} <span className="text-[10px] font-bold opacity-50">BOB</span>
+                +{(stats?.ingresos_hoy || 0).toLocaleString()} <span className="text-[10px] font-bold opacity-50">BOB</span>
               </p>
             </div>
             <div className="space-y-1 text-right">
               <p className="text-[9px] font-black text-sav-muted uppercase tracking-widest">Total Acumulado</p>
               <p className="text-2xl font-black text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.1)]">
-                {(stats?.total_acumulado ?? 0).toLocaleString()} <span className="text-[10px] font-bold opacity-50">BOB</span>
+                {(stats?.total_acumulado || 0).toLocaleString()} <span className="text-[10px] font-bold opacity-50">BOB</span>
               </p>
             </div>
           </div>
@@ -315,7 +315,7 @@ export default function Dashboard() {
                     </div>
                     <div className="space-y-0.5">
                       <p className="text-[8px] font-black text-sav-muted uppercase tracking-widest leading-none">Renta Diaria</p>
-                      <p className="text-lg font-black text-white">+{Number(n.ingreso_diario).toFixed(2)}</p>
+                      <p className="text-lg font-black text-white">+{Number(n.ingreso_diario || 0).toFixed(2)}</p>
                     </div>
                     <div className="pt-3 border-t border-white/5 flex justify-between items-center">
                       <span className="text-[8px] font-bold text-sav-muted uppercase">Inversión</span>
