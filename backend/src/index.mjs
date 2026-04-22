@@ -3,6 +3,10 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
+
+// CONFIGURACIÓN GLOBAL DE ZONA HORARIA (Bolivia - America/La_Paz)
+process.env.TZ = 'America/La_Paz';
+
 import logger, { createModuleLogger } from './utils/logger.mjs';
 import { errorHandler } from './handlers/errorHandler.mjs';
 import { initTelegramHandlers } from './services/telegramInitializer.mjs';
@@ -195,6 +199,13 @@ import telegramWebhookRoutes from './handlers/api/telegram_webhook.mjs';
 import sorteoRoutes from './handlers/api/sorteo.mjs';
 import saasRoutes from './handlers/api/saas.mjs';
 import levelRoutes from './handlers/api/levels.mjs';
+
+import { getPublicContent } from './services/dbService.mjs';
+
+app.get('/api/public-content', asyncHandler(async (req, res) => {
+  const content = await getPublicContent();
+  res.json(content);
+}));
 
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);

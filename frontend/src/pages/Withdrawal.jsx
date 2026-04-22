@@ -28,7 +28,7 @@ import {
   Lock as LockIcon,
   Plus as PlusIcon
 } from 'lucide-react';
-import { isScheduleOpen } from '../lib/schedule';
+import { isScheduleOpen, getBoliviaNow } from '../lib/schedule';
 import imageCompression from 'browser-image-compression';
 
 // UI Components
@@ -73,8 +73,8 @@ export default function Withdrawal() {
         if (!isMounted) return;
         
         // Verificación básica en frontend (El backend valida rigurosamente)
-        const now = new Date();
-        const todayStr = new Date(now.toLocaleString('en-US', { timeZone: 'America/La_Paz' })).toISOString().split('T')[0];
+        const boliviaNow = getBoliviaNow();
+        const todayStr = boliviaNow.getFullYear() + '-' + String(boliviaNow.getMonth() + 1).padStart(2, '0') + '-' + String(boliviaNow.getDate()).padStart(2, '0');
         const alreadyDone = Array.isArray(withdrawalsRes) && withdrawalsRes.some(w => w.estado !== 'rechazado' && w.created_at && w.created_at.split('T')[0] === todayStr);
         setHasWithdrawalToday(alreadyDone);
       } catch (err) {
@@ -148,7 +148,7 @@ export default function Withdrawal() {
   const msgHorario = !schedRet.ok ? schedRet.message : '';
 
   // --- VALIDACIÓN DE DÍAS SEGÚN NIVEL ---
-  const today = new Date().getDay(); // 0=Dom, 1=Lun, 2=Mar... 6=Sab
+  const today = getBoliviaNow().getDay(); // 0=Dom, 1=Lun, 2=Mar... 6=Sab
   const levelRules = {
     'global1': 2, // Martes
     'global2': 3, // Miércoles

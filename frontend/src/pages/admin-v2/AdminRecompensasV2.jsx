@@ -90,7 +90,11 @@ export default function AdminRecompensasV2() {
   const handleGiftSubmit = async (e) => {
     e.preventDefault();
     try {
-      const res = await api.admin.regalarTickets(giftForm);
+      const res = await api.admin.regalarTickets({
+        target_type: giftForm.tipo,
+        target_value: giftForm.targetId,
+        tickets: giftForm.cantidad
+      });
       alert(res.message || 'Tickets distribuidos');
       setShowGiftModal(false);
     } catch (err) {

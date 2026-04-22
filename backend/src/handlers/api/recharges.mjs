@@ -40,6 +40,21 @@ router.post('/', asyncHandler(async (req, res) => {
     return res.status(400).json({ error: 'Monto inválido' });
   }
 
+  // 0. Validar horario del QR seleccionado
+  if (metodo_qr_id) {
+    const qr = await queryOne(`SELECT dias_semana, hora_inicio, hora_fin FROM metodos_qr WHERE id = ? AND activo = 1`, [metodo_qr_id]);
+    if (qr) {
+      const now = boliviaTime.now();
+      const currentDay = now.getDay();
+      const currentTime = now.toTimeString().split(' ')[0];
+
+      const days = (qr.dias_semana || '0,1,2,3,4,5,6').split(',').map(Number);
+      if (!days.includes(currentDay) || currentTime < qr.hora_inicio || currentTime > qr.hora_fin) {
+        return res.status(403).json({ error: 'El punto de pago seleccionado no está disponible en este horario.' });
+      }
+    }
+  }
+
   // 1. VALIDACIÓN CENTRALIZADA (CALENDARIO) 
   const opStatus = await canRecharge(req.user.id);
   if (!opStatus.ok) {

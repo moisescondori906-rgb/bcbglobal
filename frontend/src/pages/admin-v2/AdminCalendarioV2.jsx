@@ -19,14 +19,20 @@ import {
   Info
 } from 'lucide-react';
 import { api } from '../../lib/api';
+import { getBoliviaNow } from '../../lib/schedule';
 
 export default function AdminCalendarioV2() {
+  const getTodayStr = () => {
+    const now = getBoliviaNow();
+    return now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+  };
+
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingDay, setEditingDay] = useState(null);
   const [form, setForm] = useState({
-    fecha: new Date().toISOString().split('T')[0],
+    fecha: getTodayStr(),
     tareas_habilitadas: true,
     retiros_habilitados: true,
     recargas_habilitadas: true,
@@ -89,7 +95,7 @@ export default function AdminCalendarioV2() {
         </div>
 
         <button 
-          onClick={() => { setEditingDay(null); setForm({ fecha: new Date().toISOString().split('T')[0], tareas_habilitadas: true, retiros_habilitados: true, recargas_habilitadas: true, motivo: '', reglas_niveles: {} }); setShowModal(true); }}
+          onClick={() => { setEditingDay(null); setForm({ fecha: getTodayStr(), tareas_habilitadas: true, retiros_habilitados: true, recargas_habilitadas: true, motivo: '', reglas_niveles: {} }); setShowModal(true); }}
           className="flex items-center gap-2 px-8 py-4 rounded-2xl bg-sav-primary text-white text-[10px] font-black uppercase tracking-widest hover:scale-[1.02] active:scale-95 transition-all shadow-xl"
         >
           <Plus size={18} /> Add Exception Day

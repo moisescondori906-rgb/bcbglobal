@@ -19,7 +19,7 @@ import {
 import { displayLevelCode } from '../lib/displayLevel.js';
 
 export default function Recompensas() {
-  const { user, setUser } = useAuth();
+  const { user, refreshUser } = useAuth();
   const [premios, setPremios] = useState([]);
   const [historial, setHistorial] = useState([]);
   const [config, setConfig] = useState(null);
@@ -76,18 +76,21 @@ export default function Recompensas() {
   }, [spinning]);
 
   const spinWheel = async () => {
-    if (spinning || premios.length === 0) return;
+    if (spinning || premios.length === 0 || (Number(user?.tickets_ruleta) || 0) < 1) return;
     
     setError(null);
     setResult(null);
     
     try {
-      const res = await api.sorteo.girar();
+      const idempotency_key = `spin_${user.id}_${Date.now()}`;
+      const res = await api.sorteo.girar({ idempotency_key });
+      
       if (res.ok) {
         setSpinning(true);
         
         const premioIndex = premios.findIndex(p => p.id === res.premio.id);
-        const segmentAngle = 360 / premios.length;
+        const count = premios.length || 1;
+        const segmentAngle = 360 / count;
         const extraRounds = 10 * 360; 
         const targetAngle = extraRounds + (360 - (premioIndex * segmentAngle)) - (segmentAngle / 2);
         
@@ -97,12 +100,10 @@ export default function Recompensas() {
         setTimeout(() => {
           setSpinning(false);
           setResult(res.premio);
-          setUser({
-            ...user,
-            saldo_comisiones: res.nuevo_saldo_comisiones,
-            tickets_ruleta: res.tickets_restantes
+          refreshUser();
+          api.sorteo.historial().then(data => {
+             if (data) setHistorial(data);
           });
-          api.sorteo.historial().then(setHistorial);
         }, 5000);
       }
     } catch (err) {
@@ -163,32 +164,8 @@ export default function Recompensas() {
     );
   }
 
-  // Bloqueo para Internar
-  if (user?.nivel_codigo === 'internar') {
-    return (
-      <Layout>
-        <div className="p-6 flex flex-col items-center justify-center min-h-[70vh] text-center space-y-8 animate-fade">
-          <div className="w-24 h-24 bg-sav-primary/10 text-sav-primary rounded-[2.5rem] flex items-center justify-center shadow-2xl border border-sav-primary/20">
-            <Lock size={48} />
-          </div>
-          <div className="space-y-3">
-            <h2 className="text-3xl font-black text-white uppercase tracking-tighter">Ruleta Bloqueada</h2>
-            <p className="text-sm text-sav-muted font-bold leading-relaxed max-w-xs mx-auto">
-              Como <span className="text-white">Internar</span>, aún no tienes acceso a los premios de la ruleta BCB Global.
-            </p>
-          </div>
-          <div className="bg-sav-surface p-6 rounded-[2rem] border border-sav-border text-left w-full shadow-inner">
-            <p className="text-[10px] text-sav-primary font-black uppercase tracking-[0.2em] mb-2 flex items-center gap-2">
-              <AlertCircle size={14} /> Requisito:
-            </p>
-            <p className="text-xs text-sav-muted leading-relaxed font-bold uppercase tracking-widest">
-              Sube a nivel <span className="text-white">GLOBAL 1</span> o superior para desbloquear la ruleta de premios y ganar tickets por cada ascenso.
-            </p>
-          </div>
-        </div>
-      </Layout>
-    );
-  }
+  // Bloqueo para Internar (RELAJADO: Mostrar página pero deshabilitar giro)
+  const isInternar = user?.nivel_codigo === 'internar';
 
   const amigosRequeridos = config?.recompensa_amigos_cantidad || 10;
   const nivelMinimoAmigos = config?.recompensa_amigos_nivel_minimo || 'Global';
@@ -196,13 +173,20 @@ export default function Recompensas() {
   const totalAmigosA = teamStats?.niveles?.[0]?.total_miembros || 0;
   
   // Lógica para verificar si cumple requisitos del reto de amigos
-  const cumpleNivel = (user?.nivel_codigo || '').toUpperCase() !== 'INTERNAR'; // Internar es pasante
+  const cumpleNivel = !isInternar; 
   const cumpleAmigos = totalAmigosA >= amigosRequeridos;
   const retoAmigosHabilitado = cumpleNivel && cumpleAmigos;
 
   return (
     <Layout>
       <div className="bg-gray-50 min-h-screen pb-24">
+        {isInternar && (
+          <div className="bg-sav-primary/10 border-b border-sav-primary/20 p-4 text-center">
+            <p className="text-[10px] font-black text-sav-primary uppercase tracking-widest flex items-center justify-center gap-2">
+               <Lock size={14} /> La ruleta requiere nivel GLOBAL 1 o superior para participar
+            </p>
+          </div>
+        )}
         {/* Header Section */}
         <div className="bg-[#1a1f36] pt-12 pb-32 px-6 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-500/10 rounded-full -mr-48 -mt-48 blur-3xl" />
@@ -298,16 +282,16 @@ export default function Recompensas() {
             <div className="mt-12 text-center w-full max-w-xs">
               <button
                 onClick={spinWheel}
-                disabled={spinning || premios.length === 0 || (Number(user?.tickets_ruleta) || 0) < 1}
+                disabled={spinning || premios.length === 0 || (Number(user?.tickets_ruleta) || 0) < 1 || isInternar}
                 className={`
                   w-full py-5 rounded-2xl font-black uppercase tracking-[0.2em] transition-all duration-300
-                  ${spinning || premios.length === 0 || (Number(user?.tickets_ruleta) || 0) < 1
+                  ${spinning || premios.length === 0 || (Number(user?.tickets_ruleta) || 0) < 1 || isInternar
                     ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
                     : 'bg-[#1a1f36] text-white shadow-[0_20px_40px_rgba(26,31,54,0.3)] hover:scale-[1.02] active:scale-[0.98]'
                   }
                 `}
               >
-                {spinning ? 'Girando...' : 'Girar Ahora'}
+                {spinning ? 'Girando...' : isInternar ? 'Nivel Insuficiente' : 'Girar Ahora'}
               </button>
 
               <div className="mt-6 flex items-center justify-center gap-6">

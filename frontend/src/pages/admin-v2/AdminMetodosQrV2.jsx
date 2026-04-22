@@ -235,7 +235,7 @@ export default function AdminMetodosQrV2() {
                 >
                   <option value="">-- SELECCIONAR OPERADOR --</option>
                   {admins.map(a => (
-                    <option key={a.id} value={a.id}>{a.nombre}</option>
+                    <option key={a.id} value={a.id}>{a.nombre_usuario || a.nombre}</option>
                   ))}
                 </select>
               </div>
@@ -356,7 +356,7 @@ export default function AdminMetodosQrV2() {
                           </div>
                         )}
                       </div>
-                      <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Responsable: <span className="text-sav-primary">{admins.find(a => a.id === m.admin_id)?.nombre || 'Desconocido'}</span></p>
+                      <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Responsable: <span className="text-sav-primary">{admins.find(a => a.id === m.admin_id)?.nombre_usuario || admins.find(a => a.id === m.admin_id)?.nombre || 'Desconocido'}</span></p>
                       <div className="flex items-center gap-2 mt-2">
                         <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 border border-white/5 text-[9px] font-black text-slate-400 uppercase">
                           <Clock size={12} className="text-sav-primary" />
@@ -458,6 +458,18 @@ export default function AdminMetodosQrV2() {
                       />
                     </div>
                   </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 italic">Días de la semana (0-6)</label>
+                  <input
+                    type="text"
+                    value={editingMetodo.dias_semana || '0,1,2,3,4,5,6'}
+                    onChange={(e) => setEditingMetodo(prev => ({ ...prev, dias_semana: e.target.value }))}
+                    placeholder="0,1,2,3,4,5,6"
+                    className="w-full px-6 py-4 rounded-xl bg-[#0f111a] border border-white/5 text-[10px] font-black text-white outline-none focus:border-sav-primary/30 transition-all shadow-inner"
+                  />
+                  <p className="text-[8px] text-slate-600 uppercase font-bold italic mt-1 px-1">0: Dom, 1: Lun, 2: Mar, 3: Mie, 4: Jue, 5: Vie, 6: Sab</p>
                 </div>
 
                 <div className="space-y-2">

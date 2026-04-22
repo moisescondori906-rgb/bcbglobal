@@ -18,6 +18,7 @@ const poolConfig = {
   queueLimit: 0,
   enableKeepAlive: true,
   keepAliveInitialDelay: 10000,
+  timezone: '-04:00', // Forzar zona horaria de Bolivia en la sesión de MySQL
 };
 
 const pool = mysql.createPool(poolConfig);

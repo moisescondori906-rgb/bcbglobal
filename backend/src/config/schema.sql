@@ -170,9 +170,16 @@ CREATE TABLE IF NOT EXISTS metodos_qr (
   id VARCHAR(36) PRIMARY KEY,
   nombre_titular VARCHAR(200) NOT NULL,
   imagen_qr_url TEXT,
+  admin_id VARCHAR(36), -- Vinculado a un admin de la tabla usuarios
   activo TINYINT(1) DEFAULT 1,
+  seleccionada TINYINT(1) DEFAULT 0,
   orden INT DEFAULT 0,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  dias_semana TEXT DEFAULT '0,1,2,3,4,5,6',
+  hora_inicio TIME DEFAULT '00:00:00',
+  hora_fin TIME DEFAULT '23:59:59',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (admin_id) REFERENCES usuarios(id) ON DELETE CASCADE,
+  INDEX idx_metodos_qr_admin (admin_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 12. BANNERS CARRUSEL
