@@ -624,10 +624,17 @@ export async function completeTask(userId, taskId, idempotencyKey = null) {
     await conn.query('UPDATE usuarios SET saldo_principal = ? WHERE id = ?', [newBalance, userId]);
     
     const activityId = uuidv4();
-    await conn.query(
-      'INSERT INTO actividad_tareas (id, usuario_id, tarea_id, monto_ganado, fecha_dia) VALUES (?, ?, ?, ?, ?)',
-      [activityId, userId, taskId, amount, todayBolivia]
-    );
+    try {
+      await conn.query(
+        'INSERT INTO actividad_tareas (id, usuario_id, tarea_id, monto_ganado, fecha_dia) VALUES (?, ?, ?, ?, ?)',
+        [activityId, userId, taskId, amount, todayBolivia]
+      );
+    } catch (err) {
+      if (err.code === 'ER_DUP_ENTRY') {
+        throw new Error('Ya has completado esta tarea hoy.');
+      }
+      throw err;
+    }
 
     // 5. MOVIMIENTO Y AUDITORÍA
     const movimientoId = uuidv4();
