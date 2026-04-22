@@ -73,9 +73,9 @@ export default function AdminRetirosV2() {
   };
 
   const filteredList = list.filter(r => {
-    const matchesSearch = r.usuario?.nombre_usuario?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    const matchesSearch = r.nombre_usuario?.toLowerCase().includes(searchTerm.toLowerCase()) || 
                           r.id.toString().includes(searchTerm) ||
-                          r.telefono_pago?.includes(searchTerm);
+                          r.telefono?.includes(searchTerm);
     const matchesStatus = filterStatus === 'all' || r.estado === filterStatus;
     return matchesSearch && matchesStatus;
   });
@@ -154,11 +154,11 @@ export default function AdminRetirosV2() {
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3">
                       <div className="w-12 h-12 rounded-2xl bg-slate-800 flex items-center justify-center font-black text-rose-500 border border-white/5 shadow-inner">
-                        {r.usuario?.nombre_usuario?.charAt(0).toUpperCase()}
+                        {r.nombre_usuario?.charAt(0).toUpperCase()}
                       </div>
                       <div>
-                        <p className="text-sm font-black text-white uppercase tracking-tighter truncate w-24">{r.usuario?.nombre_usuario}</p>
-                        <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Withdrawal ID: {r.id}</p>
+                        <p className="text-sm font-black text-white uppercase tracking-tighter truncate w-24">{r.nombre_usuario}</p>
+                        <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Withdrawal ID: {r.id.substring(0, 8)}...</p>
                       </div>
                     </div>
                     <span className={`px-4 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest border ${
@@ -181,16 +181,25 @@ export default function AdminRetirosV2() {
                   </div>
 
                   <div className="space-y-3">
-                    <div className="flex items-center gap-3 p-4 rounded-2xl bg-white/5 border border-white/5">
-                      <div className="p-2 rounded-xl bg-white/5 text-slate-400">
-                        <Phone size={14} />
-                      </div>
-                      <div>
-                        <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-0.5">Payment Method</p>
-                        <p className="text-xs font-black text-white uppercase tracking-tight italic">{r.metodo_pago || 'TIGO MONEY'}</p>
-                        <p className="text-[10px] font-black text-rose-500 tracking-widest">{r.telefono_pago}</p>
-                      </div>
-                    </div>
+                    {(() => {
+                      try {
+                        const db = typeof r.datos_bancarios === 'string' ? JSON.parse(r.datos_bancarios) : r.datos_bancarios;
+                        return (
+                          <div className="flex items-center gap-3 p-4 rounded-2xl bg-white/5 border border-white/5">
+                            <div className="p-2 rounded-xl bg-white/5 text-slate-400">
+                              <Banknote size={14} />
+                            </div>
+                            <div>
+                              <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-0.5">{db?.nombre_banco || 'BANCO'}</p>
+                              <p className="text-xs font-black text-white uppercase tracking-tight italic">{db?.nombre_titular || 'Sin Titular'}</p>
+                              <p className="text-[10px] font-black text-rose-500 tracking-widest">{db?.numero_cuenta || 'S/N'}</p>
+                            </div>
+                          </div>
+                        );
+                      } catch (e) {
+                        return <p className="text-[10px] text-rose-500">Error en datos bancarios</p>;
+                      }
+                    })()}
                   </div>
                 </div>
 

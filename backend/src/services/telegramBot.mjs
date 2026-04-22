@@ -51,7 +51,7 @@ export async function setupRetirosBot() {
 
 export async function setupSecretariaBot() {
   if (botSecretaria) return botSecretaria;
-  const token = process.env.TELEGRAM_BOT_TOKEN_SECRETARIA || '8252503149:AAHzPFtyO1QSpQ3VwObQ8gr1oEbXA21YkxM';
+  const token = process.env.TELEGRAM_BOT_TOKEN_SECRETARIA;
   if (!token || token === 'tu_token_aqui') return null;
 
   try {
@@ -65,7 +65,7 @@ export async function setupSecretariaBot() {
       if (!text) return;
 
       // Solo responder en el chat de secretaria configurado o si es comando /start
-      const targetSecretariaId = process.env.TELEGRAM_CHAT_SECRETARIA || '-1003900884989';
+      const targetSecretariaId = process.env.TELEGRAM_CHAT_SECRETARIA;
       
       // Permitir /start en cualquier lugar para obtener el ID si es necesario
       if (text === '/start' && chatId !== targetSecretariaId) {

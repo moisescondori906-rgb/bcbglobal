@@ -45,8 +45,12 @@ const DEFAULT_LEVELS = [
 export const boliviaTime = {
   now: (date = new Date()) => {
     const d = new Date(date);
-    const boliviaOffset = -4 * 60;
-    return new Date(d.getTime() + (boliviaOffset + d.getTimezoneOffset()) * 60000);
+    // Obtenemos el desplazamiento de Bolivia (-4 horas)
+    // Para que getUTC* devuelva la hora de Bolivia, restamos 4 horas al tiempo UTC real
+    const boliviaOffsetMs = -4 * 60 * 60000;
+    // El d.getTime() siempre es UTC. Le aplicamos el offset de Bolivia.
+    // Esto crea un objeto Date cuya representación UTC es la hora de Bolivia.
+    return new Date(d.getTime() + boliviaOffsetMs);
   },
   todayStr: () => {
     return boliviaTime.getDateString();
@@ -356,7 +360,7 @@ export async function canWithdraw(userId, dateStr = boliviaTime.todayStr()) {
       if (allowedDay === undefined && userLevel.orden >= 5) allowedDay = 6;
 
       if (allowedDay !== undefined && dayOfWeek !== allowedDay) {
-        const DAY_NAMES = { 2: 'Martes', 3: 'Miércoles', 4: 'Jueves', 5: 'Viernes', 6: 'Sábado' };
+        const DAY_NAMES = { 0: 'Domingo', 1: 'Lunes', 2: 'Martes', 3: 'Miércoles', 4: 'Jueves', 5: 'Viernes', 6: 'Sábado' };
         return { ok: false, message: `Tu nivel (${userLevel.nombre}) solo permite retirar los días ${DAY_NAMES[allowedDay]}.` };
       }
     }
@@ -706,14 +710,14 @@ export async function requestWithdrawal(userId, { monto, tipo_billetera, tarjeta
     const oldBalance = Number(user.balance);
     if (oldBalance < m) throw new Error('Saldo insuficiente para realizar el retiro');
 
-    // 2. BLINDAJE 1 RETIRO/DÍA: Validación estricta con CONVERT_TZ
-    // Comprobamos si existe algún retiro (pendiente, aprobado o pagado) para el día de hoy en Bolivia
+    // 2. BLINDAJE 1 RETIRO/DÍA: Validación estricta usando fecha_dia (Bolivia Time)
+    const todayBolivia = boliviaTime.todayStr();
     const [withdrawCount] = await conn.query(
       `SELECT COUNT(*) as total FROM retiros 
        WHERE usuario_id = ? 
-       AND DATE(CONVERT_TZ(created_at, '+00:00', '-04:00')) = DATE(CONVERT_TZ(NOW(), '+00:00', '-04:00'))
+       AND fecha_dia = ?
        AND estado IN ('pendiente', 'aprobado', 'pagado') FOR UPDATE`,
-      [userId]
+      [userId, todayBolivia]
     );
     
     if (withdrawCount[0].total > 0) {
@@ -738,7 +742,6 @@ export async function requestWithdrawal(userId, { monto, tipo_billetera, tarjeta
     if (tarjetas.length === 0) throw new Error('Tarjeta bancaria no válida o no pertenece al usuario');
 
     // fecha_dia se guarda en UTC pero la lógica de validación usa CONVERT_TZ
-    const todayBolivia = boliviaTime.todayStr(); 
     await conn.query(
       `INSERT INTO retiros (id, usuario_id, monto, monto_neto, comision_aplicada, tipo_billetera, estado, datos_bancarios, fecha_dia) 
        VALUES (?, ?, ?, ?, ?, ?, 'pendiente', ?, ?)`,
@@ -1235,7 +1238,7 @@ export async function getDashboardStats() {
   const [userCount, rechargeTotal, withdrawalTotal, activeTasks] = await Promise.all([
     queryOne(`SELECT COUNT(*) as total FROM usuarios WHERE rol = 'usuario'`),
     queryOne(`SELECT SUM(monto) as total FROM compras_nivel WHERE estado = 'completada'`),
-    queryOne(`SELECT SUM(monto) as total FROM retiros WHERE estado = 'completado'`),
+    queryOne(`SELECT SUM(monto) as total FROM retiros WHERE estado = 'pagado'`),
     queryOne(`SELECT COUNT(*) as total FROM actividad_tareas WHERE fecha_dia = ?`, [boliviaTime.todayStr()])
   ]);
 

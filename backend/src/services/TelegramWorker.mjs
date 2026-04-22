@@ -57,7 +57,12 @@ class TelegramWorker {
 
     try {
       await safeTelegram(async () => {
-        await job.bot.sendMessage(job.chatId, job.message, job.options);
+        if (job.options.photo) {
+          const { photo, ...otherOptions } = job.options;
+          await job.bot.sendPhoto(job.chatId, photo, { caption: job.message, ...otherOptions });
+        } else {
+          await job.bot.sendMessage(job.chatId, job.message, job.options);
+        }
       }, `Worker-Send-${job.chatId}`);
       this.activeBots.add(job.bot.token); // Marcar bot como activo
       logger.info(`[WORKER] OK: ${job.chatId}`);

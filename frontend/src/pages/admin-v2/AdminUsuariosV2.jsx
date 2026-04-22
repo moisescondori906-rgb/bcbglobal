@@ -23,7 +23,8 @@ import {
   Target,
   DollarSign,
   User,
-  ShieldAlert
+  ShieldAlert,
+  Smartphone
 } from 'lucide-react';
 import { api } from '../../lib/api';
 import { formatCurrency, formatDate } from '../../utils/format';

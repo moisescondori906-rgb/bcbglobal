@@ -4,8 +4,10 @@ import { authenticate } from '../../utils/middleware/auth.mjs';
 import { attachRequestUser } from '../../utils/middleware/requestContext.mjs';
 import { 
   getPremiosRuleta, createSorteoGanador, updateUser, 
-  getSorteosGanadores, getPublicContent, addUserEarnings 
+  getSorteosGanadores, getPublicContent, addUserEarnings,
+  transaction
 } from '../../services/dbService.mjs';
+import { queryOne } from '../../config/db.mjs';
 import { asyncHandler } from '../../utils/asyncHandler.mjs';
 
 const router = Router();

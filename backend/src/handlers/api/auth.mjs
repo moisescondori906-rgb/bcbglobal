@@ -89,12 +89,12 @@ router.post('/register', asyncHandler(async (req, res) => {
   await AuditService.log(req, 'USER_REGISTERED', 'user', user.id, { ip: req.ip, deviceId, fingerprint });
 
   const token = jwt.sign({ 
-     id: user.id, 
-       rol: user.rol, 
-       tenantId: user.tenant_id,
-       region: req.tenant?.region || 'global'
-     }, JWT_SECRET, { expiresIn: '7d' });
-    res.json({ user: sanitizeUser(user, levels), token });
+    id: user.id, 
+    rol: user.rol, 
+    tenantId: user.tenant_id,
+    region: req.tenant?.region || 'global'
+  }, JWT_SECRET, { expiresIn: '7d' });
+  res.json({ user: sanitizeUser(user, levels), token });
 }));
 
 router.post('/login', asyncHandler(async (req, res) => {

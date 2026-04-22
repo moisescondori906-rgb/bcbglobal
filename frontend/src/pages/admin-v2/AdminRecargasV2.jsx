@@ -71,7 +71,7 @@ export default function AdminRecargasV2() {
   };
 
   const filteredList = list.filter(r => {
-    const matchesSearch = r.usuario?.nombre_usuario?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    const matchesSearch = r.nombre_usuario?.toLowerCase().includes(searchTerm.toLowerCase()) || 
                           r.id.toString().includes(searchTerm);
     const matchesStatus = filterStatus === 'all' || r.estado === filterStatus;
     return matchesSearch && matchesStatus;
@@ -149,11 +149,11 @@ export default function AdminRecargasV2() {
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center font-black text-emerald-500 border border-white/5">
-                        {r.usuario?.nombre_usuario?.charAt(0).toUpperCase()}
+                        {r.nombre_usuario?.charAt(0).toUpperCase()}
                       </div>
                       <div>
-                        <p className="text-xs font-black text-white uppercase tracking-tighter truncate w-24">{r.usuario?.nombre_usuario}</p>
-                        <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">ID: {r.id}</p>
+                        <p className="text-xs font-black text-white uppercase tracking-tighter truncate w-24">{r.nombre_usuario}</p>
+                        <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">ID: {r.id.substring(0, 8)}...</p>
                       </div>
                     </div>
                     <span className={`px-3 py-1.5 rounded-xl text-[8px] font-black uppercase tracking-widest border ${

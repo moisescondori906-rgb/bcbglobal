@@ -43,7 +43,7 @@ async function request(url, options = {}, retries = 2) {
   const staticRoutes = [
     '/public-content', '/niveles', '/banners', '/withdrawals/montos',
     '/users/earnings', '/tasks', '/users/cuestionario',
-    '/users/status-castigo', '/users/team'
+    '/users/team'
   ];
   if (isGet && staticRoutes.includes(normalizedUrl)) {
     const cached = staticCache.get(cacheKey);
