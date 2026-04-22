@@ -2,6 +2,9 @@ import { v4 as uuidv4 } from 'uuid';
 import { query, queryOne, transaction } from '../config/db.mjs';
 import logger from '../utils/logger.mjs';
 
+// Re-exportar utilidades de base de datos para evitar SyntaxErrors en imports delegados
+export { query, queryOne, transaction };
+
 /**
  * @section AUDITORÍA SENIOR v8.1.0 - GESTIÓN DE ERRORES GLOBALES
  */

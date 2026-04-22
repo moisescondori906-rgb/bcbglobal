@@ -138,7 +138,8 @@ router.post('/login', asyncHandler(async (req, res) => {
 }));
 
 function sanitizeUser(u, levels) {
-  const level = levels.find(l => String(l.id) === String(u.nivel_id));
+  const safeLevels = Array.isArray(levels) ? levels : [];
+  const level = safeLevels.find(l => String(l.id) === String(u.nivel_id));
   return {
     id: u.id,
     telefono: u.telefono,

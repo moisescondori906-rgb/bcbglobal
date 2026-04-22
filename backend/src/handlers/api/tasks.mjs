@@ -141,7 +141,7 @@ router.post('/:id/responder', taskRateLimit, dynamicControlMiddleware('task_comp
   if (!task) return res.status(404).json({ error: 'Tarea no encontrada' });
   
   // Validar que la tarea esté activa (Gamificación Segura)
-  if (task.activo === 0 || task.activo === false) {
+  if (task.activa === 0 || task.activa === false) {
     return res.status(400).json({ error: 'Esta tarea ya no está disponible.' });
   }
 

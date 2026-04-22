@@ -17,7 +17,8 @@ router.use(authenticate);
 router.use(attachRequestUser);
 
 function sanitizeUser(u, levels) {
-  const level = levels.find(l => String(l.id) === String(u.nivel_id));
+  const safeLevels = Array.isArray(levels) ? levels : [];
+  const level = safeLevels.find(l => String(l.id) === String(u.nivel_id));
   return {
     id: u.id,
     telefono: u.telefono,
@@ -31,7 +32,7 @@ function sanitizeUser(u, levels) {
     saldo_comisiones: u.saldo_comisiones || 0,
     rol: u.rol,
     avatar_url: u.avatar_url,
-    tickets_ruleta: u.tickets_ruleta || 0,
+    tickets_ruleta: Number(u.tickets_ruleta) || 0,
     tiene_password_fondo: !!u.password_fondo_hash,
     last_device_id: u.last_device_id,
     security_alert: u.security_alert,

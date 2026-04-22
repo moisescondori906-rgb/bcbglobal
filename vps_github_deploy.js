@@ -20,25 +20,19 @@ conn.on('ready', () => {
     'cd /var/www/bcb_global && git fetch origin && git reset --hard origin/main',
     'find /var/www/bcb_global/backend/src -name "*.js" -delete',
     'fuser -k 4000/tcp || true',
-    'pm2 kill',
+    'pm2 stop bcb-global-backend || true',
+    'pm2 delete bcb-global-backend || true',
     'cd /var/www/bcb_global/backend && npm install',
     'mkdir -p /var/www/bcb_global/backend/public/uploads',
     'ln -sfn /var/www/bcb_global/frontend/public/video /var/www/bcb_global/backend/public/video',
     'ln -sfn /var/www/bcb_global/frontend/public/imag /var/www/bcb_global/backend/public/imag',
-    'cd /var/www/bcb_global/backend && node scripts/v11_fix_final.mjs || true',
-    'cd /var/www/bcb_global/backend && node scripts/qr_schedule_migration.mjs || true',
     'cd /var/www/bcb_global/backend && node scripts/seed_12_tasks.mjs || true',
-    'cd /var/www/bcb_global/backend && node src/config/data/create-indices.mjs || true',
     'cd /var/www/bcb_global/frontend && npm install && npm run build',
-    '# Asegurar que los assets antiguos no causen 404 inmediatamente durante la carga',
-    'cp -r /var/www/bcb_global/frontend/dist/assets/* /var/www/bcb_global/backend/public/assets/ || true',
     'rsync -a --delete /var/www/bcb_global/frontend/dist/ /var/www/bcb_global/backend/public/',
-    'cd /var/www/bcb_global/backend && mkdir -p logs && pm2 flush && pm2 start ecosystem.config.cjs',
-    'sleep 20',
+    'cd /var/www/bcb_global/backend && pm2 start ecosystem.config.cjs',
+    'sleep 10',
     'pm2 status',
-    'tail -n 100 /var/www/bcb_global/backend/logs/out.log || true',
-    'tail -n 100 /var/www/bcb_global/backend/logs/err.log || true',
-    'curl -v http://127.0.0.1:4000/api/health || true'
+    'curl -v http://127.0.0.1:4000/api/health'
   ];
 
   const executeNext = (index) => {

@@ -17,7 +17,7 @@ conn.on('ready', () => {
   console.log('✅ Conexión SSH establecida.');
   
   const commands = [
-    'grep -v "Duplicate entry" /var/www/bcb_global/backend/logs/err.log | tail -n 50',
+    'tail -n 50 /var/www/bcb_global/backend/logs/err.log',
     'pm2 status'
   ];
 
