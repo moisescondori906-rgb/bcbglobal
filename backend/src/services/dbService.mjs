@@ -467,7 +467,9 @@ export async function findUserByTelefono(telefono, tenantId = null) {
     params.push(tenantId);
   }
 
-  return await queryOne(sql, params);
+  const user = await queryOne(sql, params);
+  logger.info(`[AUTH-DEBUG] Buscando teléfono: ${telefono} | Variaciones: ${variations.join(', ')} | Encontrado: ${!!user}`);
+  return user;
 }
 
 export async function findUserWithAuthSecrets(id) {
