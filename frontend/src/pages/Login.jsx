@@ -41,27 +41,30 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-6 animate-fade">
+    <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-sav-dark relative overflow-hidden">
+      {/* Background Decor */}
+      <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-sav-primary/10 blur-[100px] rounded-full" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-sav-accent/5 blur-[100px] rounded-full" />
+
       <motion.div 
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="w-full max-w-sm"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="w-full max-w-sm relative z-10"
       >
         <div className="text-center mb-10">
           <motion.div 
-            initial={{ y: -20 }}
-            animate={{ y: 0 }}
-            className="inline-block mb-6 relative"
+            initial={{ scale: 0.8 }}
+            animate={{ scale: 1 }}
+            className="inline-block mb-6 p-4 bg-white rounded-[2rem] shadow-2xl shadow-sav-primary/10 border border-white"
           >
-            <div className="absolute inset-0 bg-sav-primary/20 blur-2xl rounded-full" />
-            <img src="/imag/logo.png" alt="Logo" className="w-20 h-20 relative z-10" />
+            <img src="/imag/logo.png" alt="Logo" className="w-20 h-20" />
           </motion.div>
-          <h1 className="text-3xl font-black tracking-tight text-gray-900 mb-2">
+          <h1 className="text-4xl font-black tracking-tighter text-slate-900 mb-2 uppercase">
             Bienvenido
           </h1>
-          <div className="flex items-center justify-center gap-2 opacity-60">
-            <ShieldCheck size={12} className="text-sav-primary" />
-            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-600">Portal Seguro BCB</p>
+          <div className="flex items-center justify-center gap-2 opacity-50">
+            <ShieldCheck size={14} className="text-sav-primary" />
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-600">Portal Seguro BCB</p>
           </div>
         </div>
 
@@ -111,12 +114,12 @@ export default function Login() {
                   onChange={(e) => setRememberMe(e.target.checked)}
                   className="hidden" 
                 />
-                <div className={`w-5 h-5 rounded-md border transition-all flex items-center justify-center ${rememberMe ? 'bg-sav-primary border-sav-primary' : 'bg-sav-surface border-sav-border'}`}>
+                <div className={`w-5 h-5 rounded-md border transition-all flex items-center justify-center ${rememberMe ? 'bg-sav-primary border-sav-primary' : 'bg-slate-100 border-slate-200'}`}>
                   {rememberMe && <div className="w-2 h-2 bg-white rounded-sm" />}
                 </div>
-                <span className="text-[10px] font-bold text-sav-muted uppercase tracking-widest group-hover:text-white transition-colors">Recordarme</span>
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest group-hover:text-slate-900 transition-colors">Recordarme</span>
               </label>
-              <button type="button" className="text-[10px] font-bold text-sav-primary uppercase tracking-widest hover:underline">¿Olvidaste?</button>
+              <button type="button" className="text-[10px] font-black text-sav-primary uppercase tracking-widest hover:underline">¿Olvidaste?</button>
             </div>
 
             <Button 

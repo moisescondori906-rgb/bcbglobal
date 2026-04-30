@@ -10,10 +10,10 @@ export function Card({
   ...props 
 }) {
   const variants = {
-    default: 'glass-card p-6 shadow-2xl',
-    flat: 'bg-sav-surface border border-sav-border rounded-3xl p-6',
-    outline: 'bg-transparent border border-sav-border rounded-3xl p-6',
-    premium: 'glass-card p-6 border-sav-primary/20 shadow-[0_0_40px_rgba(220,38,38,0.1)]'
+    default: 'bg-white border border-sav-border/50 rounded-[2.5rem] p-6 shadow-[0_15px_45px_-12px_rgba(0,0,0,0.04)]',
+    flat: 'bg-slate-50 border border-sav-border/40 rounded-[2rem] p-6',
+    outline: 'bg-transparent border border-sav-border/60 rounded-[2rem] p-6',
+    premium: 'bg-white border border-sav-primary/10 rounded-[2.5rem] p-6 shadow-sav-glow'
   };
 
   const Component = animate ? motion.div : 'div';

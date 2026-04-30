@@ -1,19 +1,19 @@
 @import "tailwindcss";
 
 @theme {
-  --color-sav-primary: #DC2626;
-  --color-sav-dark: #F8F9FA;
+  --color-sav-primary: #4F46E5; /* Indigo Premium */
+  --color-sav-dark: #F8FAFC;    /* Slate 50 (Fondo ultra limpio) */
   --color-sav-card: #FFFFFF;
-  --color-sav-surface: #F1F3F5;
-  --color-sav-accent: #EF4444;
-  --color-sav-accent-hot: #B91C1C;
-  --color-sav-muted: #6C757D;
+  --color-sav-surface: #FFFFFF;
+  --color-sav-accent: #06B6D4;  /* Cyan */
+  --color-sav-accent-hot: #3730A3;
+  --color-sav-muted: #64748B;   /* Slate 500 */
   --color-sav-success: #10B981;
-  --color-sav-error: #F43F5E;
-  --color-sav-border: rgba(0, 0, 0, 0.08);
+  --color-sav-error: #EF4444;
+  --color-sav-border: #E2E8F0;  /* Slate 200 */
 
-  --shadow-sav-glow: 0 0 52px -16px rgba(220, 38, 38, 0.25);
-  --shadow-sav-glow-strong: 0 0 84px -20px rgba(220, 38, 38, 0.3), 0 0 120px -44px rgba(249, 115, 22, 0.15), 0 30px 70px -20px rgba(0, 0, 0, 0.1);
+  --shadow-sav-glow: 0 0 40px -10px rgba(79, 70, 229, 0.2);
+  --shadow-sav-glow-strong: 0 0 60px -15px rgba(79, 70, 229, 0.3), 0 20px 40px -15px rgba(0, 0, 0, 0.05);
   
   --animate-marquee-slow: marquee 40s linear infinite;
 }
@@ -25,7 +25,7 @@
 
 @layer base {
   body {
-    @apply bg-sav-dark text-gray-900 font-sans antialiased select-none touch-manipulation overflow-x-hidden;
+    @apply bg-sav-dark text-slate-900 font-sans antialiased select-none touch-manipulation overflow-x-hidden;
     -webkit-tap-highlight-color: transparent;
   }
 
@@ -34,7 +34,7 @@
   }
 
   input, select, textarea {
-    @apply h-14 w-full px-5 rounded-2xl bg-white border border-sav-border text-gray-900 text-sm focus:border-sav-primary/50 focus:ring-4 focus:ring-sav-primary/10 transition-all outline-none placeholder:text-sav-muted;
+    @apply h-14 w-full px-5 rounded-2xl bg-white border border-sav-border text-slate-900 text-sm focus:border-sav-primary/50 focus:ring-4 focus:ring-sav-primary/10 transition-all outline-none placeholder:text-sav-muted shadow-sm;
   }
 
   button {
@@ -44,23 +44,23 @@
 
 @layer components {
   .app-container {
-    @apply min-h-screen w-full max-w-[430px] mx-auto flex flex-col relative bg-sav-dark shadow-2xl;
+    @apply min-h-screen w-full max-w-[430px] mx-auto flex flex-col relative bg-sav-dark shadow-[0_0_100px_-20px_rgba(0,0,0,0.1)];
   }
 
   .glass-card {
-    @apply bg-white/80 backdrop-blur-xl border border-sav-border rounded-3xl;
+    @apply bg-white/90 backdrop-blur-xl border border-white/40 rounded-[2rem] shadow-xl shadow-black/[0.03];
   }
 
   .btn-primary {
-    @apply h-14 w-full flex items-center justify-center gap-2 rounded-2xl bg-sav-primary text-white font-bold text-sm transition-all shadow-lg shadow-sav-primary/20;
+    @apply h-14 w-full flex items-center justify-center gap-2 rounded-2xl bg-sav-primary text-white font-bold text-sm transition-all shadow-lg shadow-sav-primary/30 hover:shadow-sav-primary/40 active:translate-y-0.5;
   }
 
   .btn-secondary {
-    @apply h-14 w-full flex items-center justify-center gap-2 rounded-2xl bg-white border border-sav-border text-gray-900 font-bold text-sm transition-all;
+    @apply h-14 w-full flex items-center justify-center gap-2 rounded-2xl bg-white border border-sav-border text-slate-900 font-bold text-sm transition-all shadow-sm hover:bg-slate-50;
   }
 
   .nav-blur {
-    @apply bg-white/90 backdrop-blur-2xl border-t border-sav-border;
+    @apply bg-white/80 backdrop-blur-2xl border-t border-sav-border/50;
   }
 
   .nav-item {
@@ -71,9 +71,9 @@
     @apply text-sav-primary;
   }
 
-  /* Legacy Utilities compatibility */
+  /* Premium Components */
   .sav-card {
-    @apply bg-white border border-sav-border rounded-3xl p-6 shadow-xl;
+    @apply bg-white border border-sav-border/50 rounded-[2.5rem] p-6 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.05)];
   }
 
   .sav-aurora {
@@ -81,7 +81,7 @@
   }
 
   .sav-input {
-    @apply h-14 w-full px-5 rounded-2xl bg-white border border-sav-border text-gray-900 text-sm focus:border-sav-primary/50 focus:ring-4 focus:ring-sav-primary/10 transition-all outline-none placeholder:text-sav-muted;
+    @apply h-14 w-full px-5 rounded-2xl bg-slate-50 border border-sav-border text-slate-900 text-sm focus:border-sav-primary/50 focus:ring-4 focus:ring-sav-primary/10 transition-all outline-none placeholder:text-sav-muted;
   }
 
   .no-scrollbar::-webkit-scrollbar {
@@ -95,11 +95,11 @@
 
 /* Custom Animations */
 .animate-in {
-  animation: fadeIn 0.4s ease-out forwards;
+  animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
+  from { opacity: 0; transform: translateY(20px); }
   to { opacity: 1; transform: translateY(0); }
 }
 

@@ -111,11 +111,11 @@ export default function Dashboard() {
     <Layout>
       <div className="fixed inset-0 bg-sav-dark -z-10" />
       {/* Dynamic Background Effects */}
-      <div className="fixed top-[-10%] left-[-10%] w-[50%] h-[50%] bg-sav-primary/20 blur-[120px] rounded-full -z-10 animate-pulse" />
-      <div className="fixed bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-rose-600/10 blur-[100px] rounded-full -z-10" />
-      <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-[radial-gradient(circle_at_center,rgba(220,38,38,0.05)_0%,transparent_70%)] -z-10" />
+      <div className="fixed top-[-10%] left-[-10%] w-[50%] h-[50%] bg-sav-primary/10 blur-[120px] rounded-full -z-10 animate-pulse" />
+      <div className="fixed bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-sav-accent/5 blur-[100px] rounded-full -z-10" />
+      <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-[radial-gradient(circle_at_center,rgba(79,70,229,0.03)_0%,transparent_70%)] -z-10" />
       
-      <main className="px-5 space-y-7 pb-12 pt-4">
+      <main className="px-5 space-y-7 pb-12 pt-4 animate-in">
         {/* Alerta de Seguridad */}
         <AnimatePresence>
           {securityAlert && (
@@ -201,39 +201,39 @@ export default function Dashboard() {
         <DownloadButton variant="intelligent" />
 
         {/* Main Wallet Card */}
-        <Card variant="premium" className="p-8 border-none bg-gradient-to-br from-sav-primary via-sav-primary to-rose-700 relative overflow-hidden group shadow-[0_30px_70px_-15px_rgba(220,38,38,0.5)] active:scale-[0.99] transition-transform duration-500">
-          <div className="absolute -bottom-20 -left-20 w-60 h-60 bg-sav-primary/10 blur-[80px] rounded-full transition-all group-hover:bg-sav-primary/20 duration-1000" />
-          <div className="absolute -top-20 -right-20 w-40 h-40 bg-sav-primary/5 blur-[60px] rounded-full" />
+        <Card variant="premium" className="p-8 border-none bg-gradient-to-br from-sav-primary via-indigo-600 to-indigo-800 relative overflow-hidden group shadow-[0_30px_70px_-15px_rgba(79,70,229,0.3)] active:scale-[0.99] transition-transform duration-500">
+          <div className="absolute -bottom-20 -left-20 w-60 h-60 bg-white/10 blur-[80px] rounded-full transition-all group-hover:bg-white/20 duration-1000" />
+          <div className="absolute -top-20 -right-20 w-40 h-40 bg-sav-accent/20 blur-[60px] rounded-full" />
           
           <div className="relative z-10 flex flex-col h-full justify-between">
             <div className="flex justify-between items-start">
               <div className="space-y-4">
                 <div className="space-y-1">
-                  <p className="text-[10px] font-black text-gray-900 uppercase tracking-[0.3em] drop-shadow-sm">Balance de Capital</p>
+                  <p className="text-[10px] font-black text-white/70 uppercase tracking-[0.3em] drop-shadow-sm">Balance de Capital</p>
                   <div className="flex items-baseline gap-2">
-                    <p className="text-5xl font-black text-gray-900 tracking-tighter">
+                    <p className="text-5xl font-black text-white tracking-tighter">
                       {(user?.saldo_principal || 0).toLocaleString()}
                     </p>
-                    <span className="text-xs font-black text-gray-400 uppercase tracking-widest">BOB</span>
+                    <span className="text-xs font-black text-white/50 uppercase tracking-widest">BOB</span>
                   </div>
                 </div>
                 
                 <div 
-                  className="bg-white/40 backdrop-blur-xl border border-black/5 px-4 py-2 rounded-2xl shadow-sm"
+                  className="bg-white/10 backdrop-blur-xl border border-white/20 px-4 py-2 rounded-2xl shadow-sm"
                 >
-                  <p className="text-[8px] font-black text-sav-muted uppercase tracking-[0.2em] text-center mb-0.5">Membresía</p>
-                  <p className="text-xs font-black text-gray-900 uppercase tracking-tighter text-center">{displayLevelCode(user?.nivel_codigo)}</p>
+                  <p className="text-[8px] font-black text-white/50 uppercase tracking-[0.2em] text-center mb-0.5">Membresía</p>
+                  <p className="text-xs font-black text-white uppercase tracking-tighter text-center">{displayLevelCode(user?.nivel_codigo)}</p>
                 </div>
               </div>
 
               <Link to="/recargar">
-                <Button variant="primary" className="w-14 h-14 rounded-2xl shadow-xl shadow-sav-primary/20" icon={PlusIcon} />
+                <Button variant="ghost" className="w-14 h-14 rounded-2xl bg-white/10 hover:bg-white/20 text-white border border-white/20 shadow-xl" icon={PlusIcon} />
               </Link>
             </div>
 
             <div className="flex gap-3 pt-4">
               <Link to="/retiro" className="flex-1">
-                <Button variant="secondary" className="w-full h-14 text-[11px] font-black tracking-[0.25em] bg-white border-black/5 text-gray-900 shadow-sm active:scale-[0.98] transition-all" icon={ArrowDownCircleIcon}>RETIRAR</Button>
+                <Button variant="secondary" className="w-full h-14 text-[11px] font-black tracking-[0.25em] bg-white/10 border-white/20 text-white hover:bg-white/20 backdrop-blur-md shadow-sm active:scale-[0.98] transition-all" icon={ArrowDownCircleIcon}>RETIRAR</Button>
               </Link>
             </div>
           </div>

@@ -226,6 +226,22 @@ export default function Withdrawal() {
         </div>
 
         <main className="px-6 py-8 space-y-10 pb-32 animate-fade">
+        {/* Balance Card */}
+        <Card variant="premium" className="relative overflow-hidden group bg-gradient-to-br from-sav-primary to-indigo-800 p-8 border-none shadow-sav-glow">
+          <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform">
+            <WalletIcon size={100} className="text-white" />
+          </div>
+          <div className="relative z-10 space-y-2">
+            <p className="text-[10px] font-black text-white/60 uppercase tracking-[0.3em]">Capital Disponible</p>
+            <div className="flex items-baseline gap-3">
+              <h2 className="text-4xl font-black text-white tracking-tighter">
+                {user?.saldo_principal?.toLocaleString()}
+              </h2>
+              <span className="text-xs font-black text-white/40 uppercase tracking-widest">BOB</span>
+            </div>
+          </div>
+        </Card>
+
         <AnimatePresence>
           {error && (
             <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
