@@ -417,48 +417,9 @@ export async function findUserById(id, tenantId = null) {
   return user;
 }
 
-/**
- * Normaliza el formato de teléfono para búsqueda flexible.
- * Acepta: 70000001, 59170000001, +59170000001
- * Retorna un array con las posibles variaciones para la base de datos.
- */
-export function normalizeTelefono(tel) {
-  if (!tel) return [];
-  // Eliminar todo lo que no sea número
-  const clean = String(tel).replace(/\D/g, '');
-  
-  const variations = new Set();
-  
-  // Caso 1: Formato 8 dígitos (ej: 70000001)
-  if (clean.length === 8) {
-    variations.add(clean);
-    variations.add(`591${clean}`);
-    variations.add(`+591${clean}`);
-  } 
-  // Caso 2: Formato con 591 (ej: 59170000001)
-  else if (clean.length === 11 && clean.startsWith('591')) {
-    const core = clean.substring(3);
-    variations.add(core);
-    variations.add(clean);
-    variations.add(`+${clean}`);
-  }
-  // Caso 3: Formato ya con +591 (aunque el replace lo quitó, lo reconstruimos)
-  // Si venía como +59170000001, el clean será 59170000001 (caso 2)
-  
-  // Si no encaja en los patrones comunes de Bolivia, devolver el original limpio
-  if (variations.size === 0) {
-    variations.add(clean);
-    if (tel.startsWith('+')) variations.add(tel);
-  }
-
-  return Array.from(variations);
-}
-
 export async function findUserByTelefono(telefono, tenantId = null) {
-  const variations = normalizeTelefono(telefono);
-  
-  let sql = `SELECT password_hash, ${USER_FIELDS} FROM usuarios WHERE telefono IN (?)`;
-  const params = [variations];
+  let sql = `SELECT password_hash, ${USER_FIELDS} FROM usuarios WHERE telefono = ?`;
+  const params = [telefono];
 
   if (tenantId) {
     sql += ` AND tenant_id = ?`;
