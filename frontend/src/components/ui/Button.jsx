@@ -12,7 +12,7 @@ export function Button({
   const variants = {
     primary: 'btn-primary',
     secondary: 'btn-secondary',
-    ghost: 'bg-transparent hover:bg-white/5 text-white',
+    ghost: 'bg-transparent hover:bg-black/5 text-gray-900',
     danger: 'bg-sav-error text-white shadow-lg shadow-sav-error/20'
   };
 
@@ -29,7 +29,7 @@ export function Button({
       {...props}
     >
       {loading ? (
-        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+        <div className="w-5 h-5 border-2 border-sav-primary/30 border-t-sav-primary rounded-full animate-spin" />
       ) : (
         <>
           {Icon && <Icon size={20} />}

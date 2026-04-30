@@ -48,7 +48,7 @@ export default function VIP() {
     <Layout>
       <header className="px-6 py-8 space-y-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-black text-white uppercase tracking-tighter leading-none">Inversiones GLOBAL</h1>
+          <h1 className="text-2xl font-black text-gray-900 uppercase tracking-tighter leading-none">Inversiones GLOBAL</h1>
           <Badge variant="info">OFICIAL</Badge>
         </div>
 
@@ -62,7 +62,7 @@ export default function VIP() {
               <Crown size={32} strokeWidth={2.5} />
             </div>
             <p className="text-[10px] font-black text-sav-muted uppercase tracking-[0.3em] mb-1">Tu Nivel Actual</p>
-            <h2 className="text-3xl font-black text-white uppercase tracking-tight">
+            <h2 className="text-3xl font-black text-gray-900 uppercase tracking-tight">
               {displayLevelCode(user?.nivel_codigo || 'Internar')}
             </h2>
           </div>
@@ -72,7 +72,7 @@ export default function VIP() {
       <main className="px-5 space-y-6 pb-10">
         <div className="flex items-center gap-2 px-1 mb-2">
           <Sparkles size={16} className="text-sav-primary" />
-          <h2 className="text-[11px] font-black text-white uppercase tracking-[0.2em]">Portafolio de Inversión</h2>
+          <h2 className="text-[11px] font-black text-gray-900 uppercase tracking-[0.2em]">Portafolio de Inversión</h2>
         </div>
 
         <div className="space-y-6">
@@ -100,7 +100,7 @@ export default function VIP() {
                       <TrendingUp size={28} />
                     </div>
                     <div>
-                      <h3 className="text-xl font-black text-white uppercase tracking-tighter leading-none">
+                      <h3 className="text-xl font-black text-gray-900 uppercase tracking-tighter leading-none">
                         {nivel.nombre}
                       </h3>
                       <div className="flex items-center gap-1.5 mt-1.5">
@@ -126,25 +126,25 @@ export default function VIP() {
                 <div className="grid grid-cols-1 gap-4">
                   {/* Depósito y Tareas */}
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-sav-dark/60 backdrop-blur-md rounded-2xl p-4 border border-white/5">
+                    <div className="bg-black/5 backdrop-blur-md rounded-2xl p-4 border border-black/5">
                       <p className="text-[8px] font-black text-sav-muted uppercase tracking-[0.2em] mb-1">Depósito</p>
-                      <p className="text-lg font-black text-white tracking-tighter">
+                      <p className="text-lg font-black text-gray-900 tracking-tighter">
                         {formatBOB(nivel.deposito)} <span className="text-[10px] font-bold text-sav-muted">BOB</span>
                       </p>
                     </div>
-                    <div className="bg-sav-dark/60 backdrop-blur-md rounded-2xl p-4 border border-white/5">
+                    <div className="bg-black/5 backdrop-blur-md rounded-2xl p-4 border border-black/5">
                       <p className="text-[8px] font-black text-sav-muted uppercase tracking-[0.2em] mb-1">Tareas Diarias</p>
-                      <p className="text-lg font-black text-white tracking-tighter">
+                      <p className="text-lg font-black text-gray-900 tracking-tighter">
                         {nivel.num_tareas_diarias} <span className="text-[10px] font-bold text-sav-muted">CUPOS</span>
                       </p>
                     </div>
                   </div>
 
                   {/* Comisiones y Rentas */}
-                  <div className="bg-sav-dark/40 rounded-2xl p-5 border border-white/5 space-y-4">
-                    <div className="flex justify-between items-center border-b border-white/5 pb-3">
+                  <div className="bg-black/5 rounded-2xl p-5 border border-black/5 space-y-4">
+                    <div className="flex justify-between items-center border-b border-black/5 pb-3">
                       <span className="text-[9px] font-black text-sav-muted uppercase tracking-widest">Pago por Tarea</span>
-                      <span className="text-xs font-black text-white">{formatBOB(nivel.ganancia_tarea)} BOB</span>
+                      <span className="text-xs font-black text-gray-900">{formatBOB(nivel.ganancia_tarea)} BOB</span>
                     </div>
                     
                     <div className="grid grid-cols-3 gap-2">
@@ -152,13 +152,13 @@ export default function VIP() {
                         <p className="text-[7px] font-black text-sav-muted uppercase tracking-widest">Diario</p>
                         <p className="text-sm font-black text-sav-success">+{formatBOB(nivel.ingreso_diario)}</p>
                       </div>
-                      <div className="text-center space-y-1 border-x border-white/5">
+                      <div className="text-center space-y-1 border-x border-black/5">
                         <p className="text-[7px] font-black text-sav-muted uppercase tracking-widest">Mensual</p>
-                        <p className="text-sm font-black text-white">{formatBOB(nivel.ingreso_mensual)}</p>
+                        <p className="text-sm font-black text-gray-900">{formatBOB(nivel.ingreso_mensual)}</p>
                       </div>
                       <div className="text-center space-y-1">
                         <p className="text-[7px] font-black text-sav-muted uppercase tracking-widest">Anual</p>
-                        <p className="text-sm font-black text-white">{formatBOB(nivel.ingreso_anual)}</p>
+                        <p className="text-sm font-black text-gray-900">{formatBOB(nivel.ingreso_anual)}</p>
                       </div>
                     </div>
                   </div>
@@ -172,7 +172,7 @@ export default function VIP() {
         <section className="space-y-4 pt-4">
           <div className="flex items-center gap-2 px-1 mb-2">
             <Users size={16} className="text-sav-primary" />
-            <h2 className="text-[11px] font-black text-white uppercase tracking-[0.2em]">Beneficios por Invitación</h2>
+            <h2 className="text-[11px] font-black text-gray-900 uppercase tracking-[0.2em]">Beneficios por Invitación</h2>
           </div>
           <Card variant="outline" className="p-6 border-dashed border-sav-primary/20 space-y-6">
             <div className="grid grid-cols-3 gap-3">
@@ -183,14 +183,14 @@ export default function VIP() {
               ].map((item, i) => (
                 <div key={i} className="text-center space-y-1">
                   <p className="text-[8px] font-black text-sav-muted uppercase tracking-widest">{item.label}</p>
-                  <p className="text-xl font-black text-white tracking-tighter">{item.val}</p>
+                  <p className="text-xl font-black text-gray-900 tracking-tighter">{item.val}</p>
                   <p className="text-[7px] font-bold text-sav-primary uppercase tracking-widest">{item.sub}</p>
                 </div>
               ))}
             </div>
-            <div className="pt-4 border-t border-sav-border">
-              <p className="text-[10px] text-sav-muted text-center leading-relaxed font-bold uppercase tracking-widest">
-                Multiplica tus ganancias construyendo un equipo sólido en BCB Global.
+            <div className="pt-6 border-t border-black/5">
+              <p className="text-[10px] font-medium text-sav-muted leading-relaxed text-center italic">
+                * Las comisiones se acreditan instantáneamente al saldo de equipo tras la validación de la tarea por parte de su referido.
               </p>
             </div>
           </Card>

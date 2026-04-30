@@ -3,8 +3,8 @@ export const APP_DISPLAY_NAME = 'BCB Global';
 export const APP_SHORT_TAGLINE = 'Gestión de Activos Virtuales';
 
 export const theme = {
-  bg: '#0A0A0A',
-  card: '#141414',
+  bg: '#F8F9FA',
+  card: '#FFFFFF',
   accent: '#DC2626',
-  text: '#FFFFFF',
+  text: '#1A1A1A',
 };

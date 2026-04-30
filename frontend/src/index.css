@@ -2,18 +2,18 @@
 
 @theme {
   --color-sav-primary: #DC2626;
-  --color-sav-dark: #0A0A0A;
-  --color-sav-card: #141414;
-  --color-sav-surface: #1F1F1F;
+  --color-sav-dark: #F8F9FA;
+  --color-sav-card: #FFFFFF;
+  --color-sav-surface: #F1F3F5;
   --color-sav-accent: #EF4444;
   --color-sav-accent-hot: #B91C1C;
-  --color-sav-muted: #737373;
+  --color-sav-muted: #6C757D;
   --color-sav-success: #10B981;
   --color-sav-error: #F43F5E;
-  --color-sav-border: rgba(255, 255, 255, 0.08);
+  --color-sav-border: rgba(0, 0, 0, 0.08);
 
-  --shadow-sav-glow: 0 0 52px -16px rgba(220, 38, 38, 0.55);
-  --shadow-sav-glow-strong: 0 0 84px -20px rgba(220, 38, 38, 0.62), 0 0 120px -44px rgba(249, 115, 22, 0.45), 0 30px 70px -20px rgba(0, 0, 0, 0.72);
+  --shadow-sav-glow: 0 0 52px -16px rgba(220, 38, 38, 0.25);
+  --shadow-sav-glow-strong: 0 0 84px -20px rgba(220, 38, 38, 0.3), 0 0 120px -44px rgba(249, 115, 22, 0.15), 0 30px 70px -20px rgba(0, 0, 0, 0.1);
   
   --animate-marquee-slow: marquee 40s linear infinite;
 }
@@ -25,7 +25,7 @@
 
 @layer base {
   body {
-    @apply bg-sav-dark text-white font-sans antialiased select-none touch-manipulation overflow-x-hidden;
+    @apply bg-sav-dark text-gray-900 font-sans antialiased select-none touch-manipulation overflow-x-hidden;
     -webkit-tap-highlight-color: transparent;
   }
 
@@ -34,7 +34,7 @@
   }
 
   input, select, textarea {
-    @apply h-14 w-full px-5 rounded-2xl bg-sav-surface border border-sav-border text-white text-sm focus:border-sav-primary/50 focus:ring-4 focus:ring-sav-primary/10 transition-all outline-none placeholder:text-sav-muted;
+    @apply h-14 w-full px-5 rounded-2xl bg-white border border-sav-border text-gray-900 text-sm focus:border-sav-primary/50 focus:ring-4 focus:ring-sav-primary/10 transition-all outline-none placeholder:text-sav-muted;
   }
 
   button {
@@ -48,7 +48,7 @@
   }
 
   .glass-card {
-    @apply bg-sav-card/60 backdrop-blur-xl border border-sav-border rounded-3xl;
+    @apply bg-white/80 backdrop-blur-xl border border-sav-border rounded-3xl;
   }
 
   .btn-primary {
@@ -56,11 +56,11 @@
   }
 
   .btn-secondary {
-    @apply h-14 w-full flex items-center justify-center gap-2 rounded-2xl bg-sav-surface border border-sav-border text-white font-bold text-sm transition-all;
+    @apply h-14 w-full flex items-center justify-center gap-2 rounded-2xl bg-white border border-sav-border text-gray-900 font-bold text-sm transition-all;
   }
 
   .nav-blur {
-    @apply bg-sav-dark/80 backdrop-blur-2xl border-t border-sav-border;
+    @apply bg-white/90 backdrop-blur-2xl border-t border-sav-border;
   }
 
   .nav-item {
@@ -73,7 +73,7 @@
 
   /* Legacy Utilities compatibility */
   .sav-card {
-    @apply bg-sav-card border border-sav-border rounded-3xl p-6 shadow-xl;
+    @apply bg-white border border-sav-border rounded-3xl p-6 shadow-xl;
   }
 
   .sav-aurora {
@@ -81,7 +81,7 @@
   }
 
   .sav-input {
-    @apply h-14 w-full px-5 rounded-2xl bg-sav-surface border border-sav-border text-white text-sm focus:border-sav-primary/50 focus:ring-4 focus:ring-sav-primary/10 transition-all outline-none placeholder:text-sav-muted;
+    @apply h-14 w-full px-5 rounded-2xl bg-white border border-sav-border text-gray-900 text-sm focus:border-sav-primary/50 focus:ring-4 focus:ring-sav-primary/10 transition-all outline-none placeholder:text-sav-muted;
   }
 
   .no-scrollbar::-webkit-scrollbar {

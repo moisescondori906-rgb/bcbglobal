@@ -56,12 +56,12 @@ export default function Login() {
             <div className="absolute inset-0 bg-sav-primary/20 blur-2xl rounded-full" />
             <img src="/imag/logo.png" alt="Logo" className="w-20 h-20 relative z-10" />
           </motion.div>
-          <h1 className="text-3xl font-black tracking-tight text-white mb-2">
+          <h1 className="text-3xl font-black tracking-tight text-gray-900 mb-2">
             Bienvenido
           </h1>
           <div className="flex items-center justify-center gap-2 opacity-60">
             <ShieldCheck size={12} className="text-sav-primary" />
-            <p className="text-[10px] font-bold uppercase tracking-widest">Portal Seguro BCB</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-600">Portal Seguro BCB</p>
           </div>
         </div>
 
@@ -138,7 +138,7 @@ export default function Login() {
           </p>
           <Link
             to="/register"
-            className="flex items-center justify-center gap-2 text-white font-bold uppercase tracking-widest text-xs hover:text-sav-primary transition-all group"
+            className="flex items-center justify-center gap-2 text-gray-900 font-bold uppercase tracking-widest text-xs hover:text-sav-primary transition-all group"
           >
             Crear cuenta VIP
             <ChevronRight size={16} className="transition-transform group-hover:translate-x-1" />

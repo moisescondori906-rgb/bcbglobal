@@ -58,7 +58,7 @@ export default function Layout({ children }) {
                 </div>
                 <span className={cn(
                   "text-[9px] font-black uppercase tracking-widest transition-all",
-                  isActive ? "text-white opacity-100" : "opacity-40"
+                  isActive ? "text-sav-primary opacity-100" : "opacity-40"
                 )}>
                   {item.label}
                 </span>

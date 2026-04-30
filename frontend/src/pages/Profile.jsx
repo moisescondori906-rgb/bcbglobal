@@ -79,7 +79,7 @@ export default function Profile() {
             </div>
           </div>
           <div className="space-y-1">
-            <h2 className="text-2xl font-black text-white uppercase tracking-tight leading-none">
+            <h2 className="text-2xl font-black text-gray-900 uppercase tracking-tight leading-none">
               {user?.nombre_usuario}
             </h2>
             <div className="flex items-center gap-2">

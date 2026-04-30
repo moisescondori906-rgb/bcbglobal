@@ -131,7 +131,7 @@ export default function Dashboard() {
                   <ShieldAlertIcon size={28} />
                 </div>
                 <div className="flex-1 space-y-2">
-                  <h3 className="text-base font-black text-white uppercase tracking-tight flex items-center gap-2">
+                  <h3 className="text-base font-black text-gray-900 uppercase tracking-tight flex items-center gap-2">
                     Aviso de Seguridad
                     <span className="w-1.5 h-1.5 rounded-full bg-sav-error animate-ping" />
                   </h3>
@@ -147,7 +147,7 @@ export default function Dashboard() {
                     </button>
                     <Link 
                       to="/soporte"
-                      className="px-4 py-2 rounded-xl bg-white/5 text-white text-[9px] font-black uppercase tracking-widest hover:bg-white/10 transition-all border border-white/5"
+                      className="px-4 py-2 rounded-xl bg-black/5 text-gray-900 text-[9px] font-black uppercase tracking-widest hover:bg-black/10 transition-all border border-black/5"
                     >
                       No reconozco esto
                     </Link>
@@ -174,7 +174,7 @@ export default function Dashboard() {
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <SparklesIcon size={14} className="text-sav-primary animate-pulse" />
-              <h2 className="text-2xl font-black text-white uppercase tracking-tighter drop-shadow-sm">Panel de Socio</h2>
+              <h2 className="text-2xl font-black text-gray-900 uppercase tracking-tighter drop-shadow-sm">Panel de Socio</h2>
             </div>
             <div className="flex items-center gap-2">
               <div className="relative w-1.5 h-1.5">
@@ -186,7 +186,7 @@ export default function Dashboard() {
           </div>
           <Link to="/mensajes" className="relative group">
             <div className="absolute -inset-3 bg-sav-primary/20 rounded-2xl blur-2xl opacity-0 group-hover:opacity-100 transition-all duration-500" />
-            <div className="relative w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-sav-muted hover:text-white transition-all duration-300 backdrop-blur-md group-hover:border-sav-primary/50 group-hover:bg-sav-primary/5">
+            <div className="relative w-12 h-12 rounded-2xl bg-black/5 border border-black/10 flex items-center justify-center text-sav-muted hover:text-gray-900 transition-all duration-300 backdrop-blur-md group-hover:border-sav-primary/50 group-hover:bg-sav-primary/5">
               <BellIcon size={22} className="group-hover:animate-bounce" />
               {/* Notif Badge */}
               <div className="absolute top-2.5 right-2.5 w-2 h-2 bg-sav-primary rounded-full border-2 border-sav-dark shadow-[0_0_10px_rgba(220,38,38,0.8)]" />
@@ -254,30 +254,30 @@ export default function Dashboard() {
         </Card>
 
         {/* Quick Stats Grid */}
-        <div className="glass-card shadow-[0_20px_50px_rgba(0,0,0,0.3)] p-7 space-y-7 border-white/5 relative overflow-hidden">
+        <div className="glass-card shadow-[0_20px_50px_rgba(0,0,0,0.05)] p-7 space-y-7 border-black/5 relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-sav-primary via-rose-500 to-sav-primary opacity-50" />
           <div className="flex items-center justify-between px-1">
             <div className="flex items-center gap-2">
               <div className="p-1.5 rounded-lg bg-sav-primary/10">
                 <TrophyIcon size={16} className="text-sav-primary" />
               </div>
-              <h3 className="text-[11px] font-black text-white uppercase tracking-[0.2em]">Resumen Financiero</h3>
+              <h3 className="text-[11px] font-black text-gray-900 uppercase tracking-[0.2em]">Resumen Financiero</h3>
             </div>
             <div className="px-2 py-0.5 rounded-full bg-sav-success/10 border border-sav-success/20">
               <span className="text-[8px] font-black text-sav-success uppercase tracking-widest">+12.5%</span>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-8 relative">
-            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-px h-10 bg-white/5" />
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-px h-10 bg-black/5" />
             <div className="space-y-1">
               <p className="text-[9px] font-black text-sav-muted uppercase tracking-widest">Ingresos Hoy</p>
-              <p className="text-2xl font-black text-sav-success drop-shadow-[0_0_15px_rgba(16,185,129,0.3)]">
+              <p className="text-2xl font-black text-sav-success drop-shadow-[0_0_15px_rgba(16,185,129,0.1)]">
                 +{(stats?.ingresos_hoy || 0).toLocaleString()} <span className="text-[10px] font-bold opacity-50">BOB</span>
               </p>
             </div>
             <div className="space-y-1 text-right">
               <p className="text-[9px] font-black text-sav-muted uppercase tracking-widest">Total Acumulado</p>
-              <p className="text-2xl font-black text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.1)]">
+              <p className="text-2xl font-black text-gray-900 drop-shadow-[0_0_15px_rgba(0,0,0,0.05)]">
                 {(stats?.total_acumulado || 0).toLocaleString()} <span className="text-[10px] font-bold opacity-50">BOB</span>
               </p>
             </div>
@@ -289,7 +289,7 @@ export default function Dashboard() {
           <div className="flex items-center justify-between px-1">
             <div className="flex items-center gap-2">
               <TrendingUpIcon size={16} className="text-sav-primary" />
-              <h3 className="text-[11px] font-black text-white uppercase tracking-[0.2em]">Planes de Inversión</h3>
+              <h3 className="text-[11px] font-black text-gray-900 uppercase tracking-[0.2em]">Planes de Inversión</h3>
             </div>
             <Link to="/vip" className="text-[9px] font-black text-sav-primary uppercase tracking-widest flex items-center gap-1">
               Ver Todos <ChevronRightIcon size={12} />
@@ -305,21 +305,21 @@ export default function Dashboard() {
                   to="/vip"
                   className={cn(
                     "min-w-[160px] p-5 rounded-[2rem] border transition-all snap-start relative overflow-hidden group",
-                    esActual ? "bg-sav-primary/10 border-sav-primary/30" : "bg-white/5 border-white/5"
+                    esActual ? "bg-sav-primary/10 border-sav-primary/30" : "bg-black/5 border-black/5"
                   )}
                 >
                   <div className="space-y-3 relative z-10">
                     <div className="flex justify-between items-start">
-                      <span className="text-[10px] font-black text-white/90 uppercase tracking-tighter">{n.nombre}</span>
+                      <span className="text-[10px] font-black text-gray-900 uppercase tracking-tighter">{n.nombre}</span>
                       {esActual && <div className="w-1.5 h-1.5 rounded-full bg-sav-success animate-pulse" />}
                     </div>
                     <div className="space-y-0.5">
                       <p className="text-[8px] font-black text-sav-muted uppercase tracking-widest leading-none">Ganancia Diaria</p>
-                      <p className="text-lg font-black text-white">+{Number(n.ingreso_diario || 0).toFixed(2)}</p>
+                      <p className="text-lg font-black text-gray-900">+{Number(n.ingreso_diario || 0).toFixed(2)}</p>
                     </div>
-                    <div className="pt-3 border-t border-white/5 flex justify-between items-center">
+                    <div className="pt-3 border-t border-black/5 flex justify-between items-center">
                       <span className="text-[8px] font-bold text-sav-muted uppercase">Inversión</span>
-                      <span className="text-[10px] font-black text-white">{Number(n.deposito).toLocaleString()} BOB</span>
+                      <span className="text-[10px] font-black text-gray-900">{Number(n.deposito).toLocaleString()} BOB</span>
                     </div>
                   </div>
                   {/* Decor */}
@@ -344,11 +344,13 @@ export default function Dashboard() {
         {/* Footer Brand */}
         <div className="pt-6 pb-4 space-y-4">
           <div className="flex items-center justify-center gap-4 opacity-30">
-            <div className="h-px w-12 bg-gradient-to-r from-transparent to-white" />
-            <ShieldCheckIcon size={16} className="text-white" />
-            <div className="h-px w-12 bg-gradient-to-l from-transparent to-white" />
+            <div className="h-px w-12 bg-gradient-to-r from-transparent to-gray-400" />
+            <ShieldCheckIcon size={16} className="text-gray-900" />
+            <div className="h-px w-12 bg-gradient-to-l from-transparent to-gray-400" />
           </div>
-          <p className="text-[9px] font-black text-sav-muted text-center uppercase tracking-[0.5em] drop-shadow-sm">BCB Global v7.0.0 Institutional — Colorado, USA</p>
+          <p className="text-[9px] font-black text-sav-muted text-center uppercase tracking-[0.4em] opacity-40">
+            Seguridad Institucional Garantizada
+          </p>
         </div>
       </main>
 
