@@ -147,7 +147,8 @@ const allowedOrigins = [
   'https://bcb-global.com',
   'https://www.bcb-global.com',
   'capacitor://localhost',
-  'http://localhost'
+  'http://localhost',
+  'http://173.249.55.143'
 ];
 
 app.use(cors({
