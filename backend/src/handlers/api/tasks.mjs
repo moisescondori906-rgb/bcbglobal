@@ -53,7 +53,7 @@ router.get('/', dynamicControlMiddleware('task_list'), asyncHandler(async (req, 
 
   // MODO DEMO: Bypass si el ID es el de demo
   if (user.id === DEMO_USER_ID) {
-    const levels = await getLevels();
+    const levels = (await getLevels()) || [];
     // El modo demo representa GLOBAL 1 (l2 en seed.js por defecto)
     const level = levels.find(l => String(l.codigo) === 'global1') || levels[1] || { nombre: 'GLOBAL 1', ganancia_tarea: 1.80, num_tareas_diarias: 4 };
     
