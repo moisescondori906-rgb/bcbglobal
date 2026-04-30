@@ -227,7 +227,7 @@ export default function Withdrawal() {
 
         <main className="px-6 py-8 space-y-10 pb-32 animate-fade">
         {/* Balance Card */}
-        <Card variant="premium" className="relative overflow-hidden group bg-gradient-to-br from-sav-primary to-indigo-800 p-8 border-none shadow-sav-glow">
+        <Card variant="premium" className="relative overflow-hidden group bg-gradient-to-br from-sav-primary-dark via-sav-primary to-sav-accent p-8 border-none shadow-sav-glow">
           <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform">
             <WalletIcon size={100} className="text-white" />
           </div>

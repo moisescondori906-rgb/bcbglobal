@@ -8,11 +8,11 @@ export function Badge({
   ...props 
 }) {
   const variants = {
-    success: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-    warning: 'bg-amber-50 text-amber-700 border-amber-200',
-    error: 'bg-red-50 text-red-700 border-red-200',
-    info: 'bg-sav-primary-soft text-sav-primary-dark border-sav-primary/20',
-    muted: 'bg-sav-surface text-sav-muted border-sav-border'
+    success: 'bg-emerald-50 text-emerald-600 border-emerald-100',
+    warning: 'bg-amber-50 text-amber-600 border-amber-100',
+    error: 'bg-red-50 text-red-600 border-red-100',
+    info: 'bg-indigo-50 text-indigo-600 border-indigo-100',
+    muted: 'bg-slate-50 text-slate-500 border-slate-200'
   };
 
   return (

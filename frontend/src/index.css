@@ -1,19 +1,22 @@
 @import "tailwindcss";
 
 @theme {
-  --color-sav-primary: #4F46E5; /* Indigo Premium */
-  --color-sav-dark: #F8FAFC;    /* Slate 50 (Fondo ultra limpio) */
+  --color-sav-primary: #009F7A;      /* Esmeralda Principal */
+  --color-sav-primary-dark: #006B55;
+  --color-sav-primary-soft: #DFFAF2;
+  --color-sav-dark: #061B16;         /* Verde Petróleo Muy Oscuro */
   --color-sav-card: #FFFFFF;
-  --color-sav-surface: #FFFFFF;
-  --color-sav-accent: #06B6D4;  /* Cyan */
-  --color-sav-accent-hot: #3730A3;
-  --color-sav-muted: #64748B;   /* Slate 500 */
+  --color-sav-surface: #F3FBF8;      /* Superficie Clara Verdosa */
+  --color-sav-accent: #00C2A8;       /* Teal Vibrante */
+  --color-sav-accent-hot: #F4B740;   /* Dorado Suave para VIP */
+  --color-sav-muted: #5B706A;        /* Gris Verdoso */
   --color-sav-success: #10B981;
   --color-sav-error: #EF4444;
-  --color-sav-border: #E2E8F0;  /* Slate 200 */
+  --color-sav-warning: #F59E0B;
+  --color-sav-border: #CFE8DF;       /* Borde Verde Suave */
 
-  --shadow-sav-glow: 0 0 40px -10px rgba(79, 70, 229, 0.2);
-  --shadow-sav-glow-strong: 0 0 60px -15px rgba(79, 70, 229, 0.3), 0 20px 40px -15px rgba(0, 0, 0, 0.05);
+  --shadow-sav-glow: 0 0 40px -10px rgba(0, 159, 122, 0.2);
+  --shadow-sav-glow-strong: 0 0 60px -15px rgba(0, 159, 122, 0.3), 0 20px 40px -15px rgba(0, 0, 0, 0.05);
   
   --animate-marquee-slow: marquee 40s linear infinite;
 }
@@ -25,7 +28,7 @@
 
 @layer base {
   body {
-    @apply bg-sav-dark text-slate-900 font-sans antialiased select-none touch-manipulation overflow-x-hidden;
+    @apply bg-sav-dark text-[#06261F] font-sans antialiased select-none touch-manipulation overflow-x-hidden;
     -webkit-tap-highlight-color: transparent;
   }
 
@@ -34,7 +37,7 @@
   }
 
   input, select, textarea {
-    @apply h-14 w-full px-5 rounded-2xl bg-white border border-sav-border text-slate-900 text-sm focus:border-sav-primary/50 focus:ring-4 focus:ring-sav-primary/10 transition-all outline-none placeholder:text-sav-muted shadow-sm;
+    @apply h-14 w-full px-5 rounded-2xl bg-white border border-sav-border text-[#06261F] text-sm focus:border-sav-primary/50 focus:ring-4 focus:ring-sav-primary/10 transition-all outline-none placeholder:text-sav-muted shadow-sm;
   }
 
   button {
@@ -44,23 +47,23 @@
 
 @layer components {
   .app-container {
-    @apply min-h-screen w-full max-w-[430px] mx-auto flex flex-col relative bg-sav-dark shadow-[0_0_100px_-20px_rgba(0,0,0,0.1)];
+    @apply min-h-screen w-full max-w-[430px] mx-auto flex flex-col relative bg-gradient-to-b from-[#061B16] to-[#0A2E26] shadow-[0_0_100px_-20px_rgba(0,0,0,0.5)];
   }
 
   .glass-card {
-    @apply bg-white/90 backdrop-blur-xl border border-white/40 rounded-[2rem] shadow-xl shadow-black/[0.03];
+    @apply bg-white/95 backdrop-blur-xl border border-white/40 rounded-[2rem] shadow-xl shadow-black/[0.03];
   }
 
   .btn-primary {
-    @apply h-14 w-full flex items-center justify-center gap-2 rounded-2xl bg-sav-primary text-white font-bold text-sm transition-all shadow-lg shadow-sav-primary/30 hover:shadow-sav-primary/40 active:translate-y-0.5;
+    @apply h-14 w-full flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-sav-primary to-sav-accent text-white font-bold text-sm transition-all shadow-lg shadow-sav-primary/30 hover:shadow-sav-primary/40 active:translate-y-0.5;
   }
 
   .btn-secondary {
-    @apply h-14 w-full flex items-center justify-center gap-2 rounded-2xl bg-white border border-sav-border text-slate-900 font-bold text-sm transition-all shadow-sm hover:bg-slate-50;
+    @apply h-14 w-full flex items-center justify-center gap-2 rounded-2xl bg-sav-primary-soft border border-sav-border text-sav-primary-dark font-bold text-sm transition-all shadow-sm hover:bg-sav-border;
   }
 
   .nav-blur {
-    @apply bg-white/80 backdrop-blur-2xl border-t border-sav-border/50;
+    @apply bg-white/90 backdrop-blur-2xl border-t border-sav-border/50;
   }
 
   .nav-item {
@@ -81,7 +84,7 @@
   }
 
   .sav-input {
-    @apply h-14 w-full px-5 rounded-2xl bg-slate-50 border border-sav-border text-slate-900 text-sm focus:border-sav-primary/50 focus:ring-4 focus:ring-sav-primary/10 transition-all outline-none placeholder:text-sav-muted;
+    @apply h-14 w-full px-5 rounded-2xl bg-sav-surface border border-sav-border text-[#06261F] text-sm focus:border-sav-primary/50 focus:ring-4 focus:ring-sav-primary/10 transition-all outline-none placeholder:text-sav-muted;
   }
 
   .no-scrollbar::-webkit-scrollbar {
