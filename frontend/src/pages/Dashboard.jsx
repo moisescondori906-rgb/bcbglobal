@@ -185,11 +185,11 @@ export default function Dashboard() {
             </div>
           </div>
           <Link to="/mensajes" className="relative group">
-            <div className="absolute -inset-3 bg-sav-primary/20 rounded-2xl blur-2xl opacity-0 group-hover:opacity-100 transition-all duration-500" />
-            <div className="relative w-12 h-12 rounded-2xl bg-black/5 border border-black/10 flex items-center justify-center text-sav-muted hover:text-gray-900 transition-all duration-300 backdrop-blur-md group-hover:border-sav-primary/50 group-hover:bg-sav-primary/5">
+            <div className="absolute -inset-3 bg-sav-primary/10 rounded-2xl blur-2xl opacity-0 group-hover:opacity-100 transition-all duration-500" />
+            <div className="relative w-12 h-12 rounded-2xl bg-white border border-black/5 flex items-center justify-center text-sav-muted hover:text-gray-900 transition-all duration-300 shadow-sm group-hover:border-sav-primary/30 group-hover:bg-sav-primary/5">
               <BellIcon size={22} className="group-hover:animate-bounce" />
               {/* Notif Badge */}
-              <div className="absolute top-2.5 right-2.5 w-2 h-2 bg-sav-primary rounded-full border-2 border-sav-dark shadow-[0_0_10px_rgba(220,38,38,0.8)]" />
+              <div className="absolute top-2.5 right-2.5 w-2 h-2 bg-sav-primary rounded-full border-2 border-white shadow-[0_0_10px_rgba(220,38,38,0.4)]" />
             </div>
           </Link>
         </header>
@@ -202,60 +202,46 @@ export default function Dashboard() {
 
         {/* Main Wallet Card */}
         <Card variant="premium" className="p-8 border-none bg-gradient-to-br from-sav-primary via-sav-primary to-rose-700 relative overflow-hidden group shadow-[0_30px_70px_-15px_rgba(220,38,38,0.5)] active:scale-[0.99] transition-transform duration-500">
-          {/* Decorative Elements */}
-          <div className="absolute top-0 right-0 w-80 h-80 bg-white/10 blur-[90px] rounded-full -mr-40 -mt-40 transition-all group-hover:bg-white/20 group-hover:scale-125 duration-1000" />
-          <div className="absolute -bottom-20 -left-20 w-60 h-60 bg-black/40 blur-[80px] rounded-full transition-all group-hover:bg-black/60 duration-1000" />
+          <div className="absolute -bottom-20 -left-20 w-60 h-60 bg-sav-primary/10 blur-[80px] rounded-full transition-all group-hover:bg-sav-primary/20 duration-1000" />
+          <div className="absolute -top-20 -right-20 w-40 h-40 bg-sav-primary/5 blur-[60px] rounded-full" />
           
-          {/* Animated Light Sweep */}
-          <motion.div 
-            animate={{ x: ['-200%', '200%'] }}
-            transition={{ repeat: Infinity, duration: 4, ease: "linear" }}
-            className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent skew-x-[35deg]"
-          />
-
-          <div className="absolute right-[-10px] top-[-10px] opacity-[0.08] rotate-12 group-hover:rotate-[20deg] group-hover:scale-110 transition-all duration-1000">
-            <WalletIcon size={180} />
-          </div>
-
-          <div className="relative z-10 space-y-10">
+          <div className="relative z-10 flex flex-col h-full justify-between">
             <div className="flex justify-between items-start">
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-lg bg-white/20 flex items-center justify-center backdrop-blur-md shadow-inner">
-                    <ZapIcon size={12} className="text-amber-300" />
+              <div className="space-y-4">
+                <div className="space-y-1">
+                  <p className="text-[10px] font-black text-gray-900 uppercase tracking-[0.3em] drop-shadow-sm">Balance de Capital</p>
+                  <div className="flex items-baseline gap-2">
+                    <p className="text-5xl font-black text-gray-900 tracking-tighter">
+                      {(user?.saldo_principal || 0).toLocaleString()}
+                    </p>
+                    <span className="text-xs font-black text-gray-400 uppercase tracking-widest">BOB</span>
                   </div>
-                  <p className="text-[10px] font-black text-white/90 uppercase tracking-[0.3em] drop-shadow-sm">Balance de Capital</p>
                 </div>
-                <div className="flex items-baseline gap-2">
-                  <p className="text-5xl font-black text-white tracking-tighter drop-shadow-[0_4px_12px_rgba(0,0,0,0.3)]">
-                    {(user?.saldo_principal || 0).toLocaleString()}
-                  </p>
-                  <span className="text-xs font-black text-white/60 uppercase tracking-widest">BOB</span>
+                
+                <div 
+                  className="bg-white/40 backdrop-blur-xl border border-black/5 px-4 py-2 rounded-2xl shadow-sm"
+                >
+                  <p className="text-[8px] font-black text-sav-muted uppercase tracking-[0.2em] text-center mb-0.5">Membresía</p>
+                  <p className="text-xs font-black text-gray-900 uppercase tracking-tighter text-center">{displayLevelCode(user?.nivel_codigo)}</p>
                 </div>
               </div>
-              <motion.div 
-                whileHover={{ scale: 1.05 }}
-                className="bg-black/20 backdrop-blur-xl border border-white/10 px-4 py-2 rounded-2xl shadow-xl"
-              >
-                <p className="text-[8px] font-black text-white/50 uppercase tracking-[0.2em] text-center mb-0.5">Membresía</p>
-                <p className="text-xs font-black text-white uppercase tracking-tighter text-center">{displayLevelCode(user?.nivel_codigo)}</p>
-              </motion.div>
+
+              <Link to="/recargar">
+                <Button variant="primary" className="w-14 h-14 rounded-2xl shadow-xl shadow-sav-primary/20" icon={PlusIcon} />
+              </Link>
             </div>
 
-            <div className="flex gap-4 pt-2">
-              <Link to="/recargar" className="w-full">
-                <Button variant="secondary" className="w-full h-14 text-[11px] font-black tracking-[0.25em] bg-white text-sav-primary border-none hover:bg-white/90 shadow-[0_10px_25px_-5px_rgba(255,255,255,0.4)] active:scale-[0.98] transition-all" icon={ArrowUpCircleIcon}>DEPOSITAR</Button>
-              </Link>
-              <Link to="/retiro" className="w-full">
-                <Button variant="secondary" className="w-full h-14 text-[11px] font-black tracking-[0.25em] bg-black/20 hover:bg-black/30 border-white/10 text-white backdrop-blur-md active:scale-[0.98] transition-all" icon={ArrowDownCircleIcon}>RETIRAR</Button>
+            <div className="flex gap-3 pt-4">
+              <Link to="/retiro" className="flex-1">
+                <Button variant="secondary" className="w-full h-14 text-[11px] font-black tracking-[0.25em] bg-white border-black/5 text-gray-900 shadow-sm active:scale-[0.98] transition-all" icon={ArrowDownCircleIcon}>RETIRAR</Button>
               </Link>
             </div>
           </div>
         </Card>
 
         {/* Quick Stats Grid */}
-        <div className="glass-card shadow-[0_20px_50px_rgba(0,0,0,0.05)] p-7 space-y-7 border-black/5 relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-sav-primary via-rose-500 to-sav-primary opacity-50" />
+        <div className="bg-white rounded-[2rem] shadow-xl shadow-black/5 p-7 space-y-7 border border-black/5 relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-sav-primary via-rose-500 to-sav-primary opacity-30" />
           <div className="flex items-center justify-between px-1">
             <div className="flex items-center gap-2">
               <div className="p-1.5 rounded-lg bg-sav-primary/10">
@@ -271,13 +257,13 @@ export default function Dashboard() {
             <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-px h-10 bg-black/5" />
             <div className="space-y-1">
               <p className="text-[9px] font-black text-sav-muted uppercase tracking-widest">Ingresos Hoy</p>
-              <p className="text-2xl font-black text-sav-success drop-shadow-[0_0_15px_rgba(16,185,129,0.1)]">
+              <p className="text-2xl font-black text-sav-success drop-shadow-sm">
                 +{(stats?.ingresos_hoy || 0).toLocaleString()} <span className="text-[10px] font-bold opacity-50">BOB</span>
               </p>
             </div>
             <div className="space-y-1 text-right">
               <p className="text-[9px] font-black text-sav-muted uppercase tracking-widest">Total Acumulado</p>
-              <p className="text-2xl font-black text-gray-900 drop-shadow-[0_0_15px_rgba(0,0,0,0.05)]">
+              <p className="text-2xl font-black text-gray-900 drop-shadow-sm">
                 {(stats?.total_acumulado || 0).toLocaleString()} <span className="text-[10px] font-bold opacity-50">BOB</span>
               </p>
             </div>
@@ -305,7 +291,7 @@ export default function Dashboard() {
                   to="/vip"
                   className={cn(
                     "min-w-[160px] p-5 rounded-[2rem] border transition-all snap-start relative overflow-hidden group",
-                    esActual ? "bg-sav-primary/10 border-sav-primary/30" : "bg-black/5 border-black/5"
+                    esActual ? "bg-sav-primary/10 border-sav-primary/30" : "bg-white border-black/5 shadow-sm"
                   )}
                 >
                   <div className="space-y-3 relative z-10">
@@ -323,7 +309,7 @@ export default function Dashboard() {
                     </div>
                   </div>
                   {/* Decor */}
-                  <div className="absolute right-[-10px] bottom-[-10px] opacity-[0.05] rotate-12 group-hover:rotate-[25deg] transition-transform duration-700">
+                  <div className="absolute right-[-10px] bottom-[-10px] opacity-[0.05] rotate-12 group-hover:rotate-[25deg] transition-transform duration-700 text-gray-900">
                     <TrendingUpIcon size={60} />
                   </div>
                 </Link>
@@ -385,7 +371,7 @@ export default function Dashboard() {
                 rel="noopener noreferrer"
                 className="flex items-center gap-3 group active:scale-95 transition-transform"
               >
-                <span className="bg-sav-dark/95 backdrop-blur-md border border-white/10 px-4 py-2 rounded-xl text-[9px] font-black text-white uppercase tracking-widest shadow-xl">
+                <span className="bg-white border border-black/5 px-4 py-2 rounded-xl text-[9px] font-black text-gray-900 uppercase tracking-widest shadow-xl">
                   Canal Oficial
                 </span>
                 <div className="w-12 h-12 rounded-2xl bg-sav-primary flex items-center justify-center text-white border border-white/10 shadow-xl">
@@ -398,7 +384,7 @@ export default function Dashboard() {
                 rel="noopener noreferrer"
                 className="flex items-center gap-3 group active:scale-95 transition-transform"
               >
-                <span className="bg-sav-dark/95 backdrop-blur-md border border-white/10 px-4 py-2 rounded-xl text-[9px] font-black text-white uppercase tracking-widest shadow-xl">
+                <span className="bg-white border border-black/5 px-4 py-2 rounded-xl text-[9px] font-black text-gray-900 uppercase tracking-widest shadow-xl">
                   Soporte VIP
                 </span>
                 <div className="w-12 h-12 rounded-2xl bg-emerald-500 flex items-center justify-center text-white border border-white/10 shadow-xl">
@@ -416,7 +402,7 @@ export default function Dashboard() {
           className={cn(
             "w-14 h-14 rounded-2xl flex items-center justify-center text-white transition-all duration-300 border-2 z-10 shadow-2xl",
             showSupportMenu 
-              ? "bg-sav-dark border-white/20 rotate-45" 
+              ? "bg-white border-black/10 text-gray-900 rotate-45" 
               : "bg-gradient-to-br from-sav-primary to-rose-700 border-white/20"
           )}
         >
@@ -424,7 +410,7 @@ export default function Dashboard() {
           
           {/* Notification Dot */}
           {!showSupportMenu && (
-            <div className="absolute -top-1 -right-1 w-4 h-4 bg-sav-error rounded-full border-2 border-sav-dark flex items-center justify-center">
+            <div className="absolute -top-1 -right-1 w-4 h-4 bg-sav-error rounded-full border-2 border-white flex items-center justify-center">
               <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
             </div>
           )}

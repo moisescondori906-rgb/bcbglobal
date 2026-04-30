@@ -13,11 +13,11 @@ import { cn } from '../lib/utils/cn';
 const GlobalLoader = () => (
   <div className="min-h-screen flex flex-col items-center justify-center bg-sav-dark space-y-6">
     <div className="relative">
-      <div className="w-16 h-16 border-4 border-white/5 border-t-sav-primary rounded-full animate-spin"></div>
-      <div className="absolute inset-0 bg-sav-primary/20 blur-xl rounded-full animate-pulse"></div>
+      <div className="w-16 h-16 border-4 border-black/5 border-t-sav-primary rounded-full animate-spin"></div>
+      <div className="absolute inset-0 bg-sav-primary/10 blur-xl rounded-full animate-pulse"></div>
     </div>
     <div className="text-center">
-      <p className="text-white font-black uppercase tracking-[0.3em] text-[10px] animate-pulse">Cargando BCB Global</p>
+      <p className="text-gray-900 font-black uppercase tracking-[0.3em] text-[10px] animate-pulse">Cargando BCB Global</p>
       <p className="text-sav-muted text-[8px] uppercase tracking-widest mt-2">Institutional Grade Platform</p>
     </div>
   </div>
@@ -76,7 +76,7 @@ export default function Invite() {
             <AlertCircle size={48} strokeWidth={1.5} />
           </div>
           <div className="space-y-3">
-            <h2 className="text-3xl font-black text-white uppercase tracking-tighter">Acceso Restringido</h2>
+            <h2 className="text-3xl font-black text-gray-900 uppercase tracking-tighter">Acceso Restringido</h2>
             <p className="text-sm text-sav-muted font-bold leading-relaxed max-w-xs mx-auto">
               Tu acceso a invitaciones ha sido <span className="text-sav-error uppercase">bloqueado temporalmente</span> como sanción por incumplimiento de tareas obligatorias.
             </p>
@@ -91,7 +91,7 @@ export default function Invite() {
             </p>
           </Card>
           <Link to="/" className="w-full">
-            <Button variant="secondary" className="w-full h-14 rounded-2xl text-[10px] font-black tracking-widest">
+            <Button variant="secondary" className="w-full h-14 rounded-2xl text-[10px] font-black tracking-widest bg-white border-black/5 text-gray-900 shadow-sm">
               VOLVER AL PANEL
             </Button>
           </Link>
@@ -107,33 +107,33 @@ export default function Invite() {
       <Header title="Código de invitación" />
       
       <div className="p-6 space-y-8 pb-32 animate-fade">
-        {/* Banner Principal Hero - Dark Premium */}
-        <Card variant="premium" className="relative overflow-hidden p-10 text-center border-none shadow-[0_30px_60px_-15px_rgba(220,38,38,0.3)]">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 blur-3xl opacity-50" />
+        {/* Banner Principal Hero - Premium Light */}
+        <Card className="relative overflow-hidden p-10 text-center border-black/5 bg-white shadow-xl shadow-black/5 rounded-[3rem]">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-sav-primary/5 rounded-full -mr-16 -mt-16 blur-3xl opacity-50" />
           <div className="relative z-10 flex flex-col items-center space-y-6">
             <div className="relative">
-              <div className="absolute -inset-2 bg-white/20 blur-md rounded-full animate-pulse" />
-              <div className="relative w-20 h-20 bg-white rounded-[2rem] flex items-center justify-center shadow-2xl border-2 border-white/20">
+              <div className="absolute -inset-2 bg-sav-primary/10 blur-md rounded-full animate-pulse" />
+              <div className="relative w-20 h-20 bg-white rounded-[2rem] flex items-center justify-center shadow-xl border border-black/5">
                 <Users size={32} className="text-sav-primary" />
               </div>
             </div>
             <div className="space-y-2">
-              <h2 className="text-3xl font-black uppercase tracking-tighter text-white">¡Invita y Gana!</h2>
-              <div className="h-1 w-12 bg-white/30 rounded-full mx-auto" />
-              <p className="text-[10px] text-white/60 font-black uppercase tracking-[0.4em] mt-3">Construye tu equipo hoy</p>
+              <h2 className="text-3xl font-black uppercase tracking-tighter text-gray-900">¡Invita y Gana!</h2>
+              <div className="h-1 w-12 bg-sav-primary/20 rounded-full mx-auto" />
+              <p className="text-[10px] text-sav-muted font-black uppercase tracking-[0.4em] mt-3">Construye tu equipo hoy</p>
             </div>
           </div>
         </Card>
 
-        {/* Card de Información de Invitación - Dark Style */}
-        <Card className="p-8 space-y-8 bg-white/[0.02] border-white/5 shadow-2xl">
+        {/* Card de Información de Invitación - Light Style */}
+        <Card className="p-8 space-y-8 bg-white border-black/5 shadow-xl shadow-black/5 rounded-[2.5rem]">
           <div className="space-y-8">
             {/* Código de Invitación */}
             <div className="flex flex-col items-center space-y-4">
               <span className="text-[10px] font-black text-sav-muted uppercase tracking-[0.3em]">Tu código exclusivo</span>
               <div className="flex items-center gap-4 w-full">
-                <div className="flex-1 bg-white/5 py-5 rounded-[1.5rem] border border-white/5 text-center shadow-inner group hover:border-sav-primary/30 transition-all">
-                  <span className="text-4xl font-black text-white tracking-[0.3em] drop-shadow-glow">
+                <div className="flex-1 bg-black/5 py-5 rounded-[1.5rem] border border-black/5 text-center shadow-inner group hover:border-sav-primary/30 transition-all">
+                  <span className="text-4xl font-black text-gray-900 tracking-[0.3em]">
                     {user?.codigo_invitacion || '------'}
                   </span>
                 </div>
@@ -149,14 +149,14 @@ export default function Invite() {
               </div>
             </div>
 
-            <div className="h-px bg-gradient-to-r from-transparent via-white/5 to-transparent w-full" />
+            <div className="h-px bg-gradient-to-r from-transparent via-black/5 to-transparent w-full" />
 
             {/* Enlace de Invitación */}
             <div className="flex flex-col items-center space-y-4">
               <span className="text-[10px] font-black text-sav-muted uppercase tracking-[0.3em]">Enlace de acceso directo</span>
-              <div className="flex items-center gap-3 w-full bg-white/5 p-2 rounded-2xl border border-white/5 shadow-inner">
+              <div className="flex items-center gap-3 w-full bg-black/5 p-2 rounded-2xl border border-black/5 shadow-inner">
                 <div className="flex-1 truncate px-4">
-                  <span className="text-[10px] font-bold text-sav-muted/60 tracking-tight">
+                  <span className="text-[10px] font-bold text-sav-muted tracking-tight">
                     {inviteLink}
                   </span>
                 </div>
@@ -164,7 +164,7 @@ export default function Invite() {
                   onClick={handleCopyLink}
                   className={cn(
                     "h-12 px-6 rounded-xl text-[10px] font-black tracking-widest uppercase transition-all shadow-lg",
-                    copiedLink ? "bg-emerald-500" : "bg-sav-dark border border-white/10"
+                    copiedLink ? "bg-emerald-500" : "bg-white border border-black/5 text-gray-900"
                   )}
                 >
                   {copiedLink ? <Check size={14} className="mr-2" /> : <Share2 size={14} className="mr-2" />}
@@ -177,21 +177,21 @@ export default function Invite() {
 
         {/* Beneficios - Premium List */}
         <div className="space-y-4">
-          <h3 className="text-[11px] font-black text-white/40 uppercase tracking-[0.3em] px-1 flex items-center gap-2">
+          <h3 className="text-[11px] font-black text-gray-900/40 uppercase tracking-[0.3em] px-1 flex items-center gap-2">
             <Zap size={14} className="text-sav-primary" /> Beneficios de Red
           </h3>
           <div className="grid grid-cols-1 gap-4">
             {[
               { icon: Gift, title: 'Bono de Invitación (10%)', desc: 'Gana el 10% de la inversión inicial de tus invitados directos.', color: 'text-sav-primary', bg: 'bg-sav-primary/10' },
-              { icon: TrendingUp, title: 'Crecimiento de Red', desc: 'Comisiones del 3% y 1% por referidos de segundo y tercer nivel.', color: 'text-blue-400', bg: 'bg-blue-400/10' },
-              { icon: ShieldCheck, title: 'Crecimiento Seguro', desc: 'Sistema de red transparente y retiro garantizado.', color: 'text-emerald-400', bg: 'bg-emerald-400/10' }
+              { icon: TrendingUp, title: 'Crecimiento de Red', desc: 'Comisiones del 3% y 1% por referidos de segundo y tercer nivel.', color: 'text-blue-500', bg: 'bg-blue-500/10' },
+              { icon: ShieldCheck, title: 'Crecimiento Seguro', desc: 'Sistema de red transparente y retiro garantizado.', color: 'text-emerald-500', bg: 'bg-emerald-500/10' }
             ].map((b, i) => (
-              <Card key={i} className="flex items-center gap-5 p-5 bg-white/[0.02] border-white/5 group hover:border-white/10 transition-all duration-500">
-                <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-inner border border-white/5 transition-transform group-hover:scale-110", b.bg, b.color)}>
+              <Card key={i} className="flex items-center gap-5 p-5 bg-white border-black/5 group hover:border-sav-primary/20 transition-all duration-500 shadow-xl shadow-black/5 rounded-[2rem]">
+                <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-inner border border-black/5 transition-transform group-hover:scale-110", b.bg, b.color)}>
                   <b.icon size={28} />
                 </div>
                 <div>
-                  <h4 className="text-sm font-black text-white uppercase tracking-wider">{b.title}</h4>
+                  <h4 className="text-sm font-black text-gray-900 uppercase tracking-wider">{b.title}</h4>
                   <p className="text-[10px] text-sav-muted font-bold leading-relaxed mt-1 uppercase tracking-wide">{b.desc}</p>
                 </div>
               </Card>
@@ -200,14 +200,14 @@ export default function Invite() {
         </div>
 
         {isPasante && (
-          <Card className="p-6 bg-sav-primary/10 border-sav-primary/30 shadow-2xl animate-pulse">
+          <Card className="p-6 bg-sav-primary/10 border-sav-primary/20 shadow-xl shadow-sav-primary/5 rounded-[2rem] animate-pulse">
             <div className="flex items-start gap-4">
               <div className="w-12 h-12 rounded-2xl bg-sav-primary/20 flex items-center justify-center text-sav-primary shrink-0">
                 <Star size={24} fill="currentColor" />
               </div>
               <div className="space-y-2">
-                <h4 className="text-sm font-black text-white uppercase tracking-widest">Aviso para Pasantes</h4>
-                <p className="text-[10px] text-white/70 font-bold uppercase tracking-widest leading-relaxed">
+                <h4 className="text-sm font-black text-gray-900 uppercase tracking-widest">Aviso para Pasantes</h4>
+                <p className="text-[10px] text-sav-muted font-bold uppercase tracking-widest leading-relaxed">
                   Puedes invitar amigos ahora, pero <span className="text-sav-primary">no recibirás comisiones</span> hasta que subas a un nivel VIP. ¡Sube de nivel para empezar a ganar!
                 </p>
                 <Link to="/vip" className="inline-block pt-2">

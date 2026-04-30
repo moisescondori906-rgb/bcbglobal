@@ -265,7 +265,7 @@ export default function Withdrawal() {
                 <h3 className="text-xs font-black uppercase tracking-widest">Día no asignado</h3>
               </div>
               <p className="text-[10px] text-sav-muted font-bold uppercase tracking-widest leading-relaxed">
-                Tu nivel <span className="text-white">{userLevel.nombre}</span> tiene asignado el día <span className="text-amber-500">{assignedDayName}</span> para retiros.
+                Tu nivel <span className="text-gray-900">{userLevel.nombre}</span> tiene asignado el día <span className="text-amber-500">{assignedDayName}</span> para retiros.
                 <br/>Por favor, regresa el {assignedDayName.toLowerCase()} para procesar tu solicitud.
               </p>
             </Card>
@@ -279,9 +279,9 @@ export default function Withdrawal() {
                 <LockIcon size={32} />
               </div>
               <div className="space-y-2">
-                <h3 className="text-sm font-black text-white uppercase tracking-widest">Nivel Insuficiente</h3>
+                <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest">Nivel Insuficiente</h3>
                 <p className="text-[10px] font-bold text-sav-muted uppercase tracking-widest leading-relaxed">
-                  Los usuarios <span className="text-white">Internares</span> no pueden realizar retiros.<br/>
+                  Los usuarios <span className="text-gray-900">Internares</span> no pueden realizar retiros.<br/>
                   Sube a <span className="text-sav-primary">GLOBAL 1</span> para desbloquear esta función.
                 </p>
               </div>
@@ -297,7 +297,7 @@ export default function Withdrawal() {
               <div className="w-8 h-8 rounded-xl bg-sav-primary/10 flex items-center justify-center text-sav-primary border border-sav-primary/20 shadow-lg">
                 <WalletIcon size={16} />
               </div>
-              <h2 className="text-[11px] font-black text-white uppercase tracking-[0.3em]">1. Origen de Fondos</h2>
+              <h2 className="text-[11px] font-black text-gray-900 uppercase tracking-[0.3em]">1. Origen de Fondos</h2>
             </div>
             
             <div className="grid grid-cols-1 gap-4">
@@ -312,7 +312,7 @@ export default function Withdrawal() {
                     variant={tipoBilletera === b.id ? 'premium' : 'flat'}
                     className={cn(
                       "p-6 flex items-center justify-between cursor-pointer border transition-all duration-500",
-                      tipoBilletera === b.id ? "border-sav-primary/40 bg-sav-primary/10 scale-[1.02] shadow-2xl" : "border-white/5 bg-white/[0.02] hover:bg-white/5"
+                      tipoBilletera === b.id ? "border-sav-primary/40 bg-sav-primary/10 scale-[1.02] shadow-2xl" : "border-black/5 bg-white shadow-sm hover:bg-black/5"
                     )}
                     onClick={() => setTipoBilletera(b.id)}
                   >
@@ -325,12 +325,12 @@ export default function Withdrawal() {
                       </div>
                       <div className="space-y-1">
                         <p className={cn("text-[9px] font-black uppercase tracking-widest", tipoBilletera === b.id ? "text-white/60" : "text-sav-muted")}>{b.label}</p>
-                        <p className="text-2xl font-black text-white tracking-tighter">{b.val.toLocaleString()} <span className="text-[10px] text-white/40 uppercase">BOB</span></p>
+                        <p className="text-2xl font-black text-gray-900 tracking-tighter">{b.val.toLocaleString()} <span className="text-[10px] text-gray-400 uppercase">BOB</span></p>
                       </div>
                     </div>
                     <div className={cn(
                       "w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all", 
-                      tipoBilletera === b.id ? "border-white bg-white text-sav-primary" : "border-white/10"
+                      tipoBilletera === b.id ? "border-white bg-white text-sav-primary" : "border-black/10"
                     )}>
                       {tipoBilletera === b.id && <CheckIcon size={14} strokeWidth={4} />}
                     </div>
@@ -347,7 +347,7 @@ export default function Withdrawal() {
                 <div className="w-8 h-8 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-500 border border-amber-500/20 shadow-lg">
                   <TrendingUpIcon size={16} />
                 </div>
-                <h2 className="text-[11px] font-black text-white uppercase tracking-[0.3em]">¿Prefieres Reinvertir?</h2>
+                <h2 className="text-[11px] font-black text-gray-900 uppercase tracking-[0.3em]">¿Prefieres Reinvertir?</h2>
               </div>
               <Link to="/vip" className="text-[9px] font-black text-sav-primary uppercase tracking-widest flex items-center gap-1">
                 Ver Opciones <ChevronRightIcon size={12} />
@@ -368,17 +368,17 @@ export default function Withdrawal() {
                     onClick={() => navigate('/vip')}
                     className={cn(
                       "min-w-[140px] p-4 rounded-3xl border transition-all snap-start relative overflow-hidden group cursor-pointer",
-                      esActual ? "bg-sav-primary/10 border-sav-primary/20" : "bg-white/5 border-white/5"
+                      esActual ? "bg-sav-primary/10 border-sav-primary/20" : "bg-black/5 border-black/5"
                     )}
                   >
                     <div className="space-y-2 relative z-10">
-                      <p className="text-[9px] font-black text-white/80 uppercase tracking-tighter truncate">{n.nombre}</p>
+                      <p className="text-[9px] font-black text-gray-900 uppercase tracking-tighter truncate">{n.nombre}</p>
                       <div className="space-y-0.5">
                         <p className="text-[7px] font-black text-sav-muted uppercase tracking-widest leading-none">Renta Diaria</p>
                         <p className="text-sm font-black text-sav-success">+{Number(n.ingreso_diario || (Number(n.num_tareas_diarias || 0) * Number(n.ganancia_tarea || 0))).toFixed(2)} BOB</p>
                       </div>
                     </div>
-                    <div className="absolute right-[-5px] bottom-[-5px] opacity-[0.05] rotate-12 group-hover:rotate-[25deg] transition-transform duration-700">
+                    <div className="absolute right-[-5px] bottom-[-5px] opacity-[0.05] rotate-12 group-hover:rotate-[25deg] transition-transform duration-700 text-gray-900">
                       <PlusIcon size={40} />
                     </div>
                   </motion.div>
@@ -394,9 +394,9 @@ export default function Withdrawal() {
                 <div className="w-8 h-8 rounded-xl bg-sav-accent/10 flex items-center justify-center text-sav-accent border border-sav-accent/20 shadow-lg">
                   <BanknoteIcon size={16} />
                 </div>
-                <h2 className="text-[11px] font-black text-white uppercase tracking-[0.3em]">2. Monto a Retirar</h2>
+                <h2 className="text-[11px] font-black text-gray-900 uppercase tracking-[0.3em]">2. Monto a Retirar</h2>
               </div>
-              <Badge variant="info" className="bg-white/5 border-white/10 text-[10px] font-black tracking-widest px-3">BOB</Badge>
+              <Badge variant="info" className="bg-black/5 border-black/10 text-[10px] font-black tracking-widest px-3">BOB</Badge>
             </div>
             
             <div className="grid grid-cols-3 gap-3">
@@ -409,7 +409,7 @@ export default function Withdrawal() {
                     "h-16 rounded-[1.5rem] border text-[11px] font-black uppercase tracking-widest transition-all duration-300",
                     monto === m 
                       ? "bg-sav-primary border-sav-primary text-white shadow-[0_15px_30px_rgba(220,38,38,0.2)] scale-[1.05]" 
-                      : "bg-white/[0.02] border-white/5 text-sav-muted hover:bg-white/5 hover:border-white/10"
+                      : "bg-white border-black/5 text-sav-muted hover:bg-black/5 hover:border-black/10 shadow-sm"
                   )}
                 >
                   {m}
@@ -424,14 +424,14 @@ export default function Withdrawal() {
               <div className="w-8 h-8 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500 border border-emerald-500/20 shadow-lg">
                 <QrCodeIcon size={16} />
               </div>
-              <h2 className="text-[11px] font-black text-white uppercase tracking-[0.2em]">3. Verificación QR</h2>
+              <h2 className="text-[11px] font-black text-gray-900 uppercase tracking-[0.2em]">3. Verificación QR</h2>
             </div>
             
             <Card 
               variant="outline" 
               className={cn(
                 "p-10 border-2 border-dashed flex flex-col items-center justify-center text-center gap-5 relative overflow-hidden group transition-all duration-500 cursor-pointer shadow-2xl",
-                qrImage ? "border-emerald-500/40 bg-emerald-500/5" : "border-white/10 bg-white/[0.02] hover:border-sav-primary/40 hover:bg-sav-primary/5"
+                qrImage ? "border-emerald-500/40 bg-emerald-500/5" : "border-black/10 bg-white hover:border-sav-primary/40 hover:bg-sav-primary/5 shadow-xl shadow-black/5"
               )}
               onClick={() => fileRef.current?.click()}
             >
@@ -443,18 +443,18 @@ export default function Withdrawal() {
                     <img src={qrImage} className="w-full h-full object-cover" />
                   </div>
                   <div className="relative z-10 space-y-1">
-                    <p className="text-sm font-black text-white uppercase tracking-widest">Código Detectado</p>
+                    <p className="text-sm font-black text-gray-900 uppercase tracking-widest">Código Detectado</p>
                     <p className="text-[9px] text-emerald-400 font-bold uppercase tracking-[0.2em] bg-emerald-500/10 px-4 py-1 rounded-full">Toca para reemplazar</p>
                   </div>
                 </>
               ) : (
                 <>
-                  <div className="w-20 h-20 rounded-3xl bg-white/5 flex items-center justify-center text-sav-muted group-hover:bg-sav-primary group-hover:text-white transition-all duration-500 shadow-inner border border-white/5">
+                  <div className="w-20 h-20 rounded-3xl bg-black/5 flex items-center justify-center text-sav-muted group-hover:bg-sav-primary group-hover:text-white transition-all duration-500 shadow-inner border border-black/5">
                     {isOptimizing ? <LoaderIcon size={32} className="animate-spin" /> : <UploadIcon size={32} />}
                   </div>
                   <div className="space-y-2">
-                    <p className="text-xs font-black text-sav-muted uppercase tracking-[0.2em] group-hover:text-white transition-colors">Sube tu código de cobro</p>
-                    <p className="text-[9px] text-white/10 font-bold uppercase tracking-[0.3em]">Soporta Yape, Bancos, QR</p>
+                    <p className="text-xs font-black text-sav-muted uppercase tracking-[0.2em] group-hover:text-sav-primary transition-colors">Sube tu código de cobro</p>
+                    <p className="text-[9px] text-gray-300 font-bold uppercase tracking-[0.3em]">Soporta Yape, Bancos, QR</p>
                   </div>
                 </>
               )}
@@ -467,7 +467,7 @@ export default function Withdrawal() {
               <div className="w-8 h-8 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-500 border border-amber-500/20 shadow-lg">
                 <LockIcon size={16} />
               </div>
-              <h2 className="text-[11px] font-black text-white uppercase tracking-[0.3em]">4. Confirmación Segura</h2>
+              <h2 className="text-[11px] font-black text-gray-900 uppercase tracking-[0.3em]">4. Confirmación Segura</h2>
             </div>
             
             <div className="space-y-4">
@@ -478,18 +478,18 @@ export default function Withdrawal() {
                 onChange={e => setPassword(e.target.value)}
                 showPasswordToggle
                 icon={ShieldCheckIcon}
-                className="h-16 rounded-2xl bg-white/[0.02] border-white/5"
+                className="h-16 rounded-2xl bg-white border-black/5 shadow-sm"
               />
 
               <div className="px-1 flex items-start gap-3 group cursor-pointer" onClick={() => setHasSignature(!hasSignature)}>
                 <div className={cn(
                   "w-5 h-5 rounded border-2 flex items-center justify-center transition-all mt-0.5 shrink-0",
-                  hasSignature ? "bg-sav-primary border-sav-primary text-white" : "border-white/10"
+                  hasSignature ? "bg-sav-primary border-sav-primary text-white" : "border-black/10 bg-white"
                 )}>
                   {hasSignature && <CheckIcon size={12} strokeWidth={4} />}
                 </div>
                 <div className="space-y-1">
-                  <p className="text-[10px] font-black text-white uppercase tracking-widest group-hover:text-sav-primary transition-colors">Acepto la Firma Digital de Retiro</p>
+                  <p className="text-[10px] font-black text-gray-900 uppercase tracking-widest group-hover:text-sav-primary transition-colors">Acepto la Firma Digital de Retiro</p>
                   <p className="text-[8px] text-sav-muted font-medium uppercase tracking-widest leading-relaxed">Confirmo que los datos son correctos y autorizo el procesamiento de este retiro institucional.</p>
                 </div>
               </div>

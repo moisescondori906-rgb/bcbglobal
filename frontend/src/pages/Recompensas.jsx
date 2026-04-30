@@ -272,7 +272,7 @@ export default function Recompensas() {
                 </div>
               )}
               
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 rounded-full bg-[#1a1f36] border-4 border-white shadow-2xl flex items-center justify-center z-20">
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 rounded-full bg-white border-4 border-sav-dark shadow-2xl flex items-center justify-center z-20">
                 <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-500 to-rose-500 animate-pulse flex items-center justify-center">
                   <Coins className="text-white" size={20} />
                 </div>
@@ -288,7 +288,7 @@ export default function Recompensas() {
                   w-full py-5 rounded-2xl font-black uppercase tracking-[0.2em] transition-all duration-300
                   ${spinning || premios.length === 0 || (Number(user?.tickets_ruleta) || 0) < 1 || isInternar
                     ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                    : 'bg-[#1a1f36] text-white shadow-[0_20px_40px_rgba(26,31,54,0.3)] hover:scale-[1.02] active:scale-[0.98]'
+                    : 'bg-sav-primary text-white shadow-[0_20px_40px_rgba(220,38,38,0.2)] hover:scale-[1.02] active:scale-[0.98]'
                   }
                 `}
               >
@@ -300,7 +300,7 @@ export default function Recompensas() {
                   <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Costo</p>
                   <div className="flex items-center gap-1.5 justify-center">
                     <Trophy size={14} className="text-amber-500" />
-                    <span className="text-sm font-black text-[#1a1f36]">1 Ticket</span>
+                    <span className="text-sm font-black text-gray-900">1 Ticket</span>
                   </div>
                 </div>
                 <div className="w-px h-8 bg-gray-200" />
@@ -308,7 +308,7 @@ export default function Recompensas() {
                   <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Tus Tickets</p>
                   <div className="flex items-center gap-1.5 justify-center">
                     <Sparkles size={14} className="text-indigo-500" />
-                    <span className="text-sm font-black text-[#1a1f36]">{user?.tickets_ruleta || 0}</span>
+                    <span className="text-sm font-black text-gray-900">{user?.tickets_ruleta || 0}</span>
                   </div>
                 </div>
               </div>
@@ -330,7 +330,7 @@ export default function Recompensas() {
               </div>
               <div>
                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Tus Tickets de Ruleta</p>
-                <p className="text-2xl font-black text-[#1a1f36]">
+                <p className="text-2xl font-black text-gray-900">
                   {user?.tickets_ruleta || 0}
                   <span className="text-xs font-bold text-gray-400 ml-2 uppercase tracking-tighter">Tickets</span>
                 </p>
@@ -338,7 +338,7 @@ export default function Recompensas() {
             </div>
             <div className="text-right">
               <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Saldo Total</p>
-              <p className="text-sm font-black text-[#1a1f36]">
+              <p className="text-sm font-black text-gray-900">
                 {((Number(user?.saldo_comisiones) || 0) + (Number(user?.saldo_principal) || 0)).toFixed(2)} BOB
               </p>
             </div>
@@ -346,7 +346,7 @@ export default function Recompensas() {
 
           {/* Desafíos Especiales */}
           <div className="space-y-4">
-            <h2 className="text-xs font-black text-[#1a1f36] uppercase tracking-[0.2em] px-2">Desafíos Especiales</h2>
+            <h2 className="text-xs font-black text-gray-900 uppercase tracking-[0.2em] px-2">Desafíos Especiales</h2>
             
             <div className="grid grid-cols-1 gap-4">
               {/* Reto de Invitados (Dinámico) */}
@@ -358,14 +358,14 @@ export default function Recompensas() {
                         <UserPlus size={28} />
                       </div>
                       <div>
-                        <h3 className="font-black text-[#1a1f36] uppercase tracking-tight text-base mb-1">Invitado Estrella</h3>
+                        <h3 className="font-black text-gray-900 uppercase tracking-tight text-base mb-1">Invitado Estrella</h3>
                         <p className="text-xs text-gray-400 font-medium leading-relaxed max-w-[200px] uppercase tracking-wide">
                           Invita a {amigosRequeridos} amigos (Nivel {nivelMinimoAmigosLabel}+) para un Giro Gratis Especial.
                         </p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <span className="text-xl font-black block leading-none text-[#1a1f36]">{totalAmigosA}/{amigosRequeridos}</span>
+                      <span className="text-xl font-black block leading-none text-gray-900">{totalAmigosA}/{amigosRequeridos}</span>
                       <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Amigos</span>
                     </div>
                   </div>
@@ -386,7 +386,7 @@ export default function Recompensas() {
                     {retoAmigosHabilitado ? (
                       <button 
                         onClick={spinWheel}
-                        className="flex items-center gap-2 bg-[#1a1f36] text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-600 transition-colors group/btn"
+                        className="flex items-center gap-2 bg-sav-dark text-gray-900 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-gray-200 transition-colors group/btn"
                       >
                         Girar Ahora
                         <ArrowRight size={14} className="group-hover/btn:translate-x-1 transition-transform" />
@@ -418,14 +418,14 @@ export default function Recompensas() {
                 <div className="flex items-center gap-3">
                   <div className="w-2 h-6 bg-gradient-to-b from-emerald-400 to-teal-600 rounded-full shadow-[0_0_15px_rgba(16,185,129,0.5)]" />
                   <div>
-                    <h3 className="text-sm font-black text-[#1a1f36] uppercase tracking-[0.25em] leading-none mb-1">Ganadores en Vivo</h3>
+                    <h3 className="text-sm font-black text-gray-900 uppercase tracking-[0.25em] leading-none mb-1">Ganadores en Vivo</h3>
                     <div className="flex items-center gap-1.5">
                       <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
                       <span className="text-[8px] font-black text-emerald-500 uppercase tracking-widest">Actividad en tiempo real</span>
                     </div>
                   </div>
                 </div>
-                <div className="px-3 py-1.5 rounded-xl bg-[#1a1f36] text-white text-[8px] font-black uppercase tracking-[0.2em] shadow-lg">
+                <div className="px-3 py-1.5 rounded-xl bg-sav-dark text-gray-900 border border-sav-border text-[8px] font-black uppercase tracking-[0.2em] shadow-lg">
                   LIVE FEED
                 </div>
               </div>
@@ -442,7 +442,7 @@ export default function Recompensas() {
                         <Trophy size={20} strokeWidth={2.5} />
                       </div>
                       <div className="flex flex-col">
-                        <span className="text-xs font-black text-[#1a1f36] tracking-tighter uppercase mb-0.5">
+                        <span className="text-xs font-black text-gray-900 tracking-tighter uppercase mb-0.5">
                           {win.usuario?.nombre_usuario?.slice(0, 3)}***{win.usuario?.nombre_usuario?.slice(-2)}
                         </span>
                         <div className="flex items-center gap-1.5">
@@ -477,7 +477,7 @@ export default function Recompensas() {
 
         {/* Win Modal */}
         {result && !spinning && (
-          <div className="fixed inset-0 z-50 bg-[#1a1f36]/90 backdrop-blur-xl flex items-center justify-center p-6 animate-fade-in">
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-6 animate-fade-in">
             <div className="w-full max-w-sm bg-white rounded-[3rem] shadow-2xl p-10 text-center animate-scale-in relative overflow-hidden">
               <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-indigo-500 to-rose-500" />
               
@@ -487,14 +487,14 @@ export default function Recompensas() {
               </div>
               
               <h3 className="text-xs font-black text-gray-400 uppercase tracking-[0.3em] mb-2">¡Felicidades!</h3>
-              <h2 className="text-3xl font-black text-[#1a1f36] uppercase tracking-tighter mb-6 leading-none">
+              <h2 className="text-3xl font-black text-gray-900 uppercase tracking-tighter mb-6 leading-none">
                 Has Ganado <span className="text-emerald-500">{result.valor} BOB</span>
               </h2>
               
               <button
                 type="button"
                 onClick={() => setResult(null)}
-                className="w-full py-5 rounded-2xl bg-[#1a1f36] text-white font-black uppercase tracking-[0.2em] text-xs shadow-xl active:scale-95 transition-all"
+                className="w-full py-5 rounded-2xl bg-sav-primary text-white font-black uppercase tracking-[0.2em] text-xs shadow-xl active:scale-95 transition-all"
               >
                 Continuar Jugando
               </button>

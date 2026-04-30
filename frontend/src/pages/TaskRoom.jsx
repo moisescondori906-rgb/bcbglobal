@@ -161,14 +161,14 @@ export default function TaskRoom() {
               <ShieldCheck size={48} />
             </div>
             <div className="space-y-2">
-              <h2 className="text-2xl font-black uppercase tracking-tight text-white leading-none">
+              <h2 className="text-2xl font-black uppercase tracking-tight text-gray-900 leading-none">
                 {displayTitle}
               </h2>
               <p className="text-[10px] font-bold text-sav-muted uppercase tracking-widest leading-relaxed max-w-[250px]">
                 {error || data?.mensaje || (isLevelBlocked ? 'Tu nivel actual no tiene tareas disponibles. Adquiere un nivel GLOBAL para comenzar.' : 'Las tareas no están disponibles en este momento.')}
               </p>
             </div>
-            <Button onClick={() => navigate('/')} variant="outline" className="border-white/10 text-[10px] h-12 uppercase tracking-widest">Volver al Inicio</Button>
+            <Button onClick={() => navigate('/')} variant="outline" className="border-black/5 text-[10px] h-12 uppercase tracking-widest">Volver al Inicio</Button>
           </Card>
           
           {(data?.bloqueado || isLevelBlocked) && (
@@ -188,12 +188,12 @@ export default function TaskRoom() {
       <Layout>
         <div className="min-h-screen bg-sav-dark flex flex-col animate-fade pb-10">
           <header className="px-6 py-6 flex items-center justify-between sticky top-0 z-50 nav-blur">
-            <button onClick={() => setActiveTask(null)} className="p-2 bg-sav-surface rounded-xl border border-sav-border text-white">
+            <button onClick={() => setActiveTask(null)} className="p-2 bg-white rounded-xl border border-sav-border text-gray-900">
               <X size={20} />
             </button>
             <div className="text-center">
               <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-sav-muted leading-none mb-1">Campaña Activa</h2>
-              <p className="text-xs font-black text-white uppercase tracking-tight">{activeTask.nombre}</p>
+              <p className="text-xs font-black text-gray-900 uppercase tracking-tight">{activeTask.nombre}</p>
             </div>
             <div className="w-10" />
           </header>
@@ -227,7 +227,7 @@ export default function TaskRoom() {
                     {isCorrect ? <Trophy size={40} /> : <AlertCircle size={40} />}
                   </div>
                   <div className="space-y-2">
-                    <h3 className="text-2xl font-black uppercase tracking-tight text-white">
+                    <h3 className="text-2xl font-black uppercase tracking-tight text-gray-900">
                       {isCorrect ? '¡Felicidades!' : 'Reintenta'}
                     </h3>
                     <p className="text-[10px] font-bold text-sav-muted uppercase tracking-widest">
@@ -243,7 +243,7 @@ export default function TaskRoom() {
                       <Sparkles size={32} />
                     </div>
                     <div className="space-y-2">
-                      <h3 className="text-xl font-black text-white uppercase tracking-tight leading-tight">
+                      <h3 className="text-xl font-black text-gray-900 uppercase tracking-tight leading-tight">
                         Tarea Finalizada
                       </h3>
                       <p className="text-[10px] font-bold text-sav-muted uppercase tracking-widest">
@@ -267,7 +267,7 @@ export default function TaskRoom() {
                   </div>
                   <div className="flex-1">
                     <p className="text-[10px] font-black text-sav-muted uppercase tracking-widest">Analizando contenido...</p>
-                    <p className="text-xs font-black text-white uppercase tracking-tight mt-1">Espera {timer} segundos</p>
+                    <p className="text-xs font-black text-gray-900 uppercase tracking-tight mt-1">Espera {timer} segundos</p>
                   </div>
                 </Card>
               )}
@@ -301,26 +301,26 @@ export default function TaskRoom() {
     <Layout>
       <header className="px-6 py-8 space-y-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-black text-white uppercase tracking-tighter leading-none">Tareas</h1>
+          <h1 className="text-2xl font-black text-gray-900 uppercase tracking-tighter leading-none">Tareas</h1>
           <Badge variant="info">{data?.nivel || 'Cargando...'}</Badge>
         </div>
         
-        <Card variant="flat" className="p-6 space-y-4 border-sav-primary/10 bg-gradient-to-br from-sav-card to-sav-dark">
+        <Card variant="flat" className="p-6 space-y-4 border-black/5 bg-white shadow-xl shadow-black/5">
           <div className="flex justify-between items-end">
             <div className="space-y-1">
               <p className="text-[10px] font-black text-sav-muted uppercase tracking-widest">Progreso Diario</p>
               <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-black text-white">{tareasCompletadas}</span>
+                <span className="text-2xl font-black text-gray-900">{tareasCompletadas}</span>
                 <span className="text-xs font-bold text-sav-muted uppercase">/ {totalDiarias}</span>
               </div>
             </div>
             <span className="text-[10px] font-black text-sav-primary uppercase tracking-widest">{Math.round(progress)}%</span>
           </div>
-          <div className="h-2 bg-sav-surface rounded-full overflow-hidden border border-sav-border">
+          <div className="h-2 bg-black/5 rounded-full overflow-hidden border border-black/5">
             <motion.div 
               initial={{ width: 0 }}
               animate={{ width: `${progress}%` }}
-              className="h-full bg-sav-primary shadow-[0_0_10px_rgba(220,38,38,0.5)]" 
+              className="h-full bg-sav-primary shadow-[0_0_10px_rgba(220,38,38,0.2)]" 
             />
           </div>
         </Card>
@@ -329,7 +329,7 @@ export default function TaskRoom() {
       <main className="px-5 space-y-4 pb-10">
         <div className="flex items-center gap-2 px-1 mb-2">
           <Target size={16} className="text-sav-primary" />
-          <h2 className="text-[11px] font-black text-white uppercase tracking-[0.2em]">Disponibles Ahora</h2>
+          <h2 className="text-[11px] font-black text-gray-900 uppercase tracking-[0.2em]">Disponibles Ahora</h2>
         </div>
 
         <div className="grid grid-cols-1 gap-4">
@@ -338,13 +338,13 @@ export default function TaskRoom() {
               key={`${t.id}-${i}`} // Usar i para evitar problemas de key si hay pocos videos
               variant="outline" 
               className={cn(
-                "p-4 flex items-center gap-4 active:scale-[0.98] transition-all cursor-pointer group",
+                "p-4 flex items-center gap-4 active:scale-[0.98] transition-all cursor-pointer group bg-white border-black/5",
                 data.tareas_restantes <= 0 && "opacity-60 grayscale-[0.5]"
               )}
               onClick={() => startTask(t)}
               delay={i * 0.05}
             >
-              <div className="relative w-20 h-20 rounded-2xl overflow-hidden border border-sav-border shrink-0 bg-black">
+              <div className="relative w-20 h-20 rounded-2xl overflow-hidden border border-black/5 shrink-0 bg-black">
                 {/* Previsualización del video optimizada para Android v11.3.1 */}
                 <video 
                   src={`${t.video_url}#t=0.1`} 
@@ -358,7 +358,7 @@ export default function TaskRoom() {
                   }}
                   onMouseOut={(e) => e.target.pause()}
                 />
-                <div className="absolute inset-0 bg-sav-dark/20 flex items-center justify-center opacity-100 group-hover:opacity-0 transition-opacity pointer-events-none">
+                <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-100 group-hover:opacity-0 transition-opacity pointer-events-none">
                   <Play size={20} className="text-white fill-white/80" />
                 </div>
               </div>
@@ -367,7 +367,7 @@ export default function TaskRoom() {
                   <Badge className="px-2 py-0.5" variant="info">VIDEO</Badge>
                   <span className="text-sm font-black text-sav-success">+{(taskReward || 0).toFixed(2)} <span className="text-[9px]">BOB</span></span>
                 </div>
-                <h3 className="text-sm font-black text-white uppercase tracking-tight truncate">{t.nombre}</h3>
+                <h3 className="text-sm font-black text-gray-900 uppercase tracking-tight truncate">{t.nombre}</h3>
                 <p className="text-[10px] text-sav-muted font-bold uppercase tracking-widest flex items-center gap-1.5">
                   <Clock size={10} /> 10 segundos
                 </p>
@@ -378,8 +378,8 @@ export default function TaskRoom() {
           
           {(!data?.tareas || data.tareas.length === 0) && (
             <div className="py-20 flex flex-col items-center justify-center text-center space-y-4 opacity-40">
-              <ClipboardList size={48} />
-              <p className="text-[10px] font-black uppercase tracking-widest">No hay tareas pendientes</p>
+              <ClipboardList size={48} className="text-gray-400" />
+              <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">No hay tareas pendientes</p>
             </div>
           )}
         </div>
@@ -389,7 +389,7 @@ export default function TaskRoom() {
           <div className="flex items-center justify-between px-1">
             <div className="flex items-center gap-2">
               <TrendingUp size={16} className="text-sav-primary" />
-              <h3 className="text-[11px] font-black text-white uppercase tracking-[0.2em]">Sube de Nivel</h3>
+              <h3 className="text-[11px] font-black text-gray-900 uppercase tracking-[0.2em]">Sube de Nivel</h3>
             </div>
             <Link to="/vip" className="text-[9px] font-black text-sav-primary uppercase tracking-widest flex items-center gap-1">
               Ver VIP <ChevronRight size={12} />
@@ -405,20 +405,20 @@ export default function TaskRoom() {
                   to="/vip"
                   className={cn(
                     "min-w-[150px] p-5 rounded-[2rem] border transition-all snap-start relative overflow-hidden group",
-                    esActual ? "bg-sav-primary/10 border-sav-primary/30" : "bg-white/5 border-white/5"
+                    esActual ? "bg-sav-primary/10 border-sav-primary/30" : "bg-black/5 border-black/5"
                   )}
                 >
                   <div className="space-y-3 relative z-10">
                     <div className="flex justify-between items-start">
-                      <span className="text-[10px] font-black text-white/90 uppercase tracking-tighter">{n.nombre}</span>
+                      <span className="text-[10px] font-black text-gray-900 uppercase tracking-tighter">{n.nombre}</span>
                       {esActual && <div className="w-1.5 h-1.5 rounded-full bg-sav-success animate-pulse" />}
                     </div>
                     <div className="space-y-0.5">
                       <p className="text-[8px] font-black text-sav-muted uppercase tracking-widest leading-none">Ganancia Diaria</p>
-                      <p className="text-lg font-black text-white">+{Number(n.ingreso_diario || (Number(n.num_tareas_diarias || 0) * Number(n.ganancia_tarea || 0))).toFixed(2)} <span className="text-[9px] opacity-60">BOB</span></p>
+                      <p className="text-lg font-black text-gray-900">+{Number(n.ingreso_diario || (Number(n.num_tareas_diarias || 0) * Number(n.ganancia_tarea || 0))).toFixed(2)} <span className="text-[9px] opacity-60">BOB</span></p>
                     </div>
                   </div>
-                  <div className="absolute right-[-10px] bottom-[-10px] opacity-[0.05] rotate-12 group-hover:rotate-[25deg] transition-transform duration-700">
+                  <div className="absolute right-[-10px] bottom-[-10px] opacity-[0.05] rotate-12 group-hover:rotate-[25deg] transition-transform duration-700 text-gray-900">
                     <TrendingUp size={50} />
                   </div>
                 </Link>
