@@ -113,6 +113,7 @@ router.post('/login', asyncHandler(async (req, res) => {
     return res.status(401).json({ error: 'Credenciales inválidas' });
   }
   
+  logger.info(`[AUTH-DEBUG] Comparando contraseña para ${telefono}. Longitud recibida: ${password?.length}`);
   const passOk = await bcrypt.compare(password, user.password_hash);
   if (!passOk) {
     logger.warn(`[AUTH] Login fallido: Contraseña incorrecta para ${telefono}`);
