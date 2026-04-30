@@ -314,7 +314,7 @@ export default function Dashboard() {
                       {esActual && <div className="w-1.5 h-1.5 rounded-full bg-sav-success animate-pulse" />}
                     </div>
                     <div className="space-y-0.5">
-                      <p className="text-[8px] font-black text-sav-muted uppercase tracking-widest leading-none">Renta Diaria</p>
+                      <p className="text-[8px] font-black text-sav-muted uppercase tracking-widest leading-none">Ganancia Diaria</p>
                       <p className="text-lg font-black text-white">+{Number(n.ingreso_diario || 0).toFixed(2)}</p>
                     </div>
                     <div className="pt-3 border-t border-white/5 flex justify-between items-center">
