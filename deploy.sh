@@ -41,6 +41,6 @@ sudo nginx -t && sudo systemctl restart nginx || echo "⚠️ No se pudo reinici
 echo "🩺 Verificando salud del sistema..."
 sleep 5
 curl -f http://127.0.0.1:4000/api/health || { echo "❌ El backend no responde en /api/health"; exit 1; }
-curl -f http://173.249.55.143/api/health || { echo "❌ El servidor no es accesible externamente"; exit 1; }
+curl -f http://bcb-global.com/api/health || { echo "❌ El dominio bcb-global.com no responde correctamente"; exit 1; }
 
 echo "✅ DESPLIEGUE COMPLETADO CON ÉXITO"

@@ -63,7 +63,7 @@ El frontend se sirve desde la carpeta `dist`.
 ```nginx
 server {
     listen 80;
-    server_name bcb-global.com;
+    server_name bcb-global.com www.bcb-global.com;
     root /var/www/bcb_global/frontend/dist;
     index index.html;
 
@@ -84,7 +84,7 @@ server {
 
 ## Health Check
 Puedes verificar el estado del sistema en:
-`http://TU_IP/api/health`
+`http://bcb-global.com/api/health`
 
 ## Troubleshooting
 - **Error 401 en Login**: Verifica la normalización del teléfono. El sistema acepta formatos: `70000001`, `59170000001`, `+59170000001`.
