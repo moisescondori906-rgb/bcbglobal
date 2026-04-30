@@ -52,11 +52,20 @@ async function syncDatabase() {
       logger.info(`[DB-SYNC] Aplicando esquema: ${fileName}...`);
       const sql = fs.readFileSync(filePath, 'utf8');
       
-      // Dividimos por punto y coma, ignorando bloques complejos si fuera necesario
-      const queries = sql
+      // Limpieza robusta de SQL:
+      // 1. Quitar comentarios de bloque /* ... */
+      // 2. Quitar comentarios de línea -- o #
+      // 3. Dividir por ; pero ser cuidadoso con los que están dentro de strings (aunque para esquemas simples split funciona)
+      const cleanSql = sql
+        .replace(/\/\*[\s\S]*?\*\//g, '') // Quitar /* ... */
+        .replace(/^--.*$/gm, '')          // Quitar -- al inicio de línea
+        .replace(/^\s*#.*$/gm, '')        // Quitar # al inicio de línea
+        .replace(/\s+--.*$/gm, '');       // Quitar -- después de código
+
+      const queries = cleanSql
         .split(';')
         .map(q => q.trim())
-        .filter(q => q.length > 0 && !q.startsWith('--'));
+        .filter(q => q.length > 0);
 
       for (let q of queries) {
         try {

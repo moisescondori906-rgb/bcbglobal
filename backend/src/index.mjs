@@ -144,23 +144,34 @@ const __dirname = path.dirname(__filename);
 const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:3000',
+  'http://127.0.0.1:5173',
   'https://bcb-global.com',
   'https://www.bcb-global.com',
   'http://bcb-global.com',
   'http://www.bcb-global.com',
   'capacitor://localhost',
   'http://localhost',
-  'http://173.249.55.143'
+  'http://173.249.55.143',
+  'https://173.249.55.143'
 ];
 
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin) || origin.endsWith('.bcb-global.com') || process.env.NODE_ENV !== 'production') {
-      callback(null, true);
-    } else {
-      logger.warn(`[CORS-REJECTED] Origin: ${origin}`);
-      callback(new Error('CORS no permitido por política de seguridad.'));
+    // Permitir si no hay origen (como curl o apps móviles locales)
+    if (!origin) return callback(null, true);
+    
+    // Verificar si el origen está en la lista blanca o es un subdominio de bcb-global.com
+    if (allowedOrigins.includes(origin) || origin.endsWith('.bcb-global.com')) {
+      return callback(null, true);
     }
+    
+    // Permitir todo en desarrollo (opcional, pero siguiendo la lógica actual)
+    if (process.env.NODE_ENV !== 'production') {
+      return callback(null, true);
+    }
+
+    logger.warn(`[CORS-REJECTED] Origin: ${origin}`);
+    return callback(new Error('CORS no permitido por política de seguridad.'));
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],

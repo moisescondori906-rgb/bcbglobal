@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS niveles (
 -- 2. USUARIOS
 CREATE TABLE IF NOT EXISTS usuarios (
   id VARCHAR(36) PRIMARY KEY,
+  tenant_id VARCHAR(36) NOT NULL DEFAULT 'default-tenant-uuid',
   telefono VARCHAR(20) UNIQUE NOT NULL,
   nombre_usuario VARCHAR(100) NOT NULL,
   nombre_real VARCHAR(200),
@@ -32,7 +33,11 @@ CREATE TABLE IF NOT EXISTS usuarios (
   saldo_principal DECIMAL(20, 2) DEFAULT 0.00,
   saldo_comisiones DECIMAL(20, 2) DEFAULT 0.00,
   rol ENUM('usuario', 'admin') DEFAULT 'usuario',
+  status VARCHAR(50) DEFAULT 'active',
   bloqueado TINYINT(1) DEFAULT 0,
+  security_alert TEXT NULL,
+  telegram_user_id VARCHAR(50) NULL,
+  telegram_username VARCHAR(100) NULL,
   tickets_ruleta INT DEFAULT 0,
   primer_ascenso_completado TINYINT(1) DEFAULT 0,
   last_device_id TEXT,
@@ -42,7 +47,8 @@ CREATE TABLE IF NOT EXISTS usuarios (
   FOREIGN KEY (nivel_id) REFERENCES niveles(id) ON DELETE SET NULL,
   INDEX idx_usuarios_telefono (telefono),
   INDEX idx_usuarios_invitado_por (invitado_por),
-  INDEX idx_usuarios_codigo_inv (codigo_invitacion)
+  INDEX idx_usuarios_codigo_inv (codigo_invitacion),
+  INDEX idx_usuarios_tenant (tenant_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 3. TAREAS (Contenido Visual Global)
@@ -172,7 +178,7 @@ CREATE TABLE IF NOT EXISTS metodos_qr (
   activo TINYINT(1) DEFAULT 1,
   seleccionada TINYINT(1) DEFAULT 0,
   orden INT DEFAULT 0,
-  dias_semana TEXT DEFAULT '0,1,2,3,4,5,6',
+  dias_semana VARCHAR(20) DEFAULT '0,1,2,3,4,5,6',
   hora_inicio TIME DEFAULT '00:00:00',
   hora_fin TIME DEFAULT '23:59:59',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

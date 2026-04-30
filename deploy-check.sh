@@ -1,52 +1,54 @@
 #!/bin/bash
 
 # ==========================================
-# BCB GLOBAL - SCRIPT DE DEPLOY PROFESIONAL
+# BCB GLOBAL - SCRIPT DE VALIDACIÓN PRE-DEPLOY
 # ==========================================
 
-echo "🚀 Iniciando proceso de despliegue y validación..."
+echo "🔍 Iniciando validación técnica..."
 
 # 1. VALIDACIÓN DE BACKEND
-echo "🔍 Verificando integridad del Backend..."
-cd backend
-npm install
-node -c src/index.js
-if [ $? -ne 0 ]; then
-    echo "❌ ERROR: El código del Backend tiene errores de sintaxis."
+echo "⚙️ Verificando Backend..."
+cd backend || exit 1
+
+# Comprobar sintaxis de archivos críticos
+FILES_TO_CHECK=("src/index.mjs" "src/handlers/api/auth.mjs" "src/services/dbService.mjs" "src/config/db.mjs")
+
+for FILE in "${FILES_TO_CHECK[@]}"; do
+    node --check "$FILE"
+    if [ $? -ne 0 ]; then
+        echo "❌ ERROR: Error de sintaxis en $FILE"
+        exit 1
+    fi
+    echo "✅ $FILE: OK"
+done
+
+# Verificar ecosystem.config.cjs
+if [ ! -f "ecosystem.config.cjs" ]; then
+    echo "❌ ERROR: No se encuentra backend/ecosystem.config.cjs"
     exit 1
 fi
-echo "✅ Backend sintácticamente correcto."
 
-# 2. VALIDACIÓN DE FRONTEND (BUILD)
-echo "🏗️ Iniciando Build del Frontend..."
-cd ../frontend
+# 2. VALIDACIÓN DE FRONTEND
+echo "🖥️ Verificando Frontend..."
+cd ../frontend || exit 1
+
 npm install
 npm run build
 if [ $? -ne 0 ]; then
-    echo "❌ ERROR: Falló el build del Frontend. Revisa los logs arriba."
+    echo "❌ ERROR: Falló el build del Frontend"
     exit 1
 fi
-echo "✅ Frontend build exitoso."
 
-# 3. REINICIO DE PROCESOS (PM2)
-echo "🔄 Reiniciando servicios con PM2..."
+if [ ! -d "dist" ]; then
+    echo "❌ ERROR: La carpeta frontend/dist no existe tras el build"
+    exit 1
+fi
+echo "✅ Build del Frontend: OK"
+
+# 3. VERIFICACIÓN DE ESTRUCTURA RAÍZ
 cd ..
-pm2 restart bcb-global-backend || pm2 start backend/src/index.js --name bcb-global-backend
-pm2 save
-
-# 4. VERIFICACIÓN DE SALUD (HEALTH CHECK)
-echo "🩺 Verificando estado del servidor..."
-sleep 3 # Esperar a que el server levante
-curl -s http://localhost:4000/health | grep "ok"
-if [ $? -ne 0 ]; then
-    echo "❌ ERROR: El servidor no responde en el puerto 4000 o el health check falló."
-    pm2 logs bcb-global-backend --lines 50 --no-daemon & sleep 5 ; kill $!
-    exit 1
+if [ ! -f "README.md" ]; then
+    echo "⚠️ Advertencia: Falta README.md en la raíz"
 fi
-echo "✅ Servidor Online y Saludable."
 
-# 5. RESUMEN DE LOGS
-echo "📋 Últimos 20 logs del sistema:"
-pm2 logs bcb-global-backend --lines 20 --no-daemon & sleep 2 ; kill $!
-
-echo "🚀 DESPLIEGUE COMPLETADO CON ÉXITO v7.0.4"
+echo "✨ TODAS LAS PRUEBAS PASARON. El repositorio está listo para producción."

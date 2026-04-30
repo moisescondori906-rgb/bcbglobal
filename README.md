@@ -1,8 +1,6 @@
-# BCB Global Institutional (v7.0.4)
+# BCB Global Institutional (v11.4.2)
 
-🚀 **Actualización Premium**: Auditoría Técnica Total completada. Sistema unificado en MySQL, eliminación de dependencias de Supabase, y alineación total con la Tabla de Inversiones Global 1-9. Sincronización de seguridad y resiliencia v7.0.4.
-
-Plataforma profesional de Activos Virtuales con sistema de tareas por video, niveles VIP Institucionales, gestión financiera robusta y panel administrativo en tiempo real optimizado para alta concurrencia.
+🚀 **Actualización Premium**: Auditoría Técnica Total completada. Sistema unificado en MySQL, eliminación de dependencias de Supabase, y alineación total con la Tabla de Inversiones Global 1-9. Sincronización de seguridad y resiliencia v11.4.2.
 
 ## Tabla Oficial de Niveles
 
@@ -19,79 +17,85 @@ Plataforma profesional de Activos Virtuales con sistema de tareas por video, niv
 | GLOBAL 8 | 100,000 | 150 | 500.00 | 75,000.00 |
 | GLOBAL 9 | 200,000 | 200 | 1,000.00 | 200,000.00 |
 
-## Requisitos
+## Requisitos del Servidor (Ubuntu 22.04+)
 
-- Node.js 18+
-- MySQL 8.0+ (Optimizado para Contabo)
-- npm
+```bash
+# Instalación de dependencias básicas
+sudo apt update
+sudo apt install -y mysql-server redis-server git nginx unzip build-essential
 
-## Instalación
+# Instalación de Node.js 20
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt install -y nodejs
+```
 
-### 1. Backend
+## Instalación y Despliegue
 
+### 1. Clonar Repositorio
+```bash
+git clone https://github.com/moisescondori906-rgb/bcbglobal.git /var/www/bcb_global
+cd /var/www/bcb_global
+```
+
+### 2. Backend
 ```bash
 cd backend
 npm install
+cp .env.example .env
+# Editar .env con tus credenciales de MySQL y Redis
+node src/db-sync.mjs
+# Iniciar con PM2
+pm2 start ecosystem.config.cjs
+pm2 save
+pm2 startup
 ```
 
-Configurar archivo `.env`:
-
-```
-PORT=4000
-JWT_SECRET=tu_clave_secreta
-MYSQL_HOST=localhost
-MYSQL_USER=root
-MYSQL_PASSWORD=tu_password
-MYSQL_DATABASE=bcb_global
-```
-
-Sincronizar niveles y base de datos:
+### 3. Frontend
 ```bash
-node src/data/migrate.js
-```
-
-Iniciar:
-```bash
-npm run dev
-```
-
-### 2. Frontend
-
-```bash
-cd frontend
+cd ../frontend
 npm install
+# Asegúrate de configurar .env con la URL de tu API
+npm run build
 ```
 
-Configurar archivo `.env`:
-```
-VITE_API_URL=http://localhost:4000/api
-VITE_BACKEND_URL=http://localhost:4000
+### 4. Configuración de Nginx
+El frontend se sirve desde la carpeta `dist`.
+```nginx
+server {
+    listen 80;
+    server_name bcb-global.com;
+    root /var/www/bcb_global/frontend/dist;
+    index index.html;
+
+    location /api {
+        proxy_pass http://127.0.0.1:4000/api;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}
 ```
 
-Iniciar:
-```bash
-npm run dev
-```
+## Health Check
+Puedes verificar el estado del sistema en:
+`http://TU_IP/api/health`
+
+## Troubleshooting
+- **Error 401 en Login**: Verifica la normalización del teléfono. El sistema acepta formatos: `70000001`, `59170000001`, `+59170000001`.
+- **502 Bad Gateway**: Asegúrate de que el backend esté corriendo con PM2 (`pm2 list`).
+- **CORS Error**: Verifica que tu dominio o IP esté en `allowedOrigins` dentro de `backend/src/index.mjs`.
 
 ## Estructura del Proyecto
-
 ```
 bcb_global/
 ├── backend/          # API Node.js + Express + MySQL
 ├── frontend/         # React + Vite + Tailwind (App Android Capacitor)
-├── public/           # Recursos estáticos (Videos/Imágenes)
-└── DISENO-VISUAL-SAV.md
+├── deploy.sh         # Script de despliegue automático
+└── deploy-check.sh   # Script de validación técnica
 ```
-
-## Funcionalidades Clave
-
-- ✅ **Arquitectura MySQL**: Transacciones SQL para integridad financiera total.
-- ✅ **Idempotencia**: Protección contra doble acreditación de tareas y pagos.
-- ✅ **Sistema de Red**: Comisiones de 3 niveles (10%, 3%, 1%) con validación de jerarquía.
-- ✅ **Tickets de Ruleta**: Premios automáticos por ascenso de nivel.
-- ✅ **Modo Demo**: Sistema de respaldo para pruebas sin base de datos activa.
-- ✅ **Seguridad**: Encriptación robusta y protección de endpoints administrativos.
-
-## Observaciones
-
-Este proyecto es una plataforma institucional de alto rendimiento. Se recomienda una auditoría de seguridad adicional antes de despliegues en entornos financieros críticos.

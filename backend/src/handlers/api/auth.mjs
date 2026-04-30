@@ -2,7 +2,7 @@ import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
-import { findUserByTelefono, createUser, getLevels, updateUser } from '../../services/dbService.mjs';
+import { findUserByTelefono, createUser, getLevels, updateUser, getCanonicalTelefono } from '../../services/dbService.mjs';
 import { queryOne } from '../../config/db.mjs';
 import { sendToAdmin } from '../../services/telegramBot.mjs';
 import { BillingService } from '../../services/billingService.mjs';
@@ -51,9 +51,11 @@ router.post('/register', asyncHandler(async (req, res) => {
   
   // REGLA ACTUALIZADA: Los usuarios AHORA pueden invitar, pero no recibirán comisiones (manejado en distributeInvestmentCommissions)
   const codigo = Math.random().toString(36).slice(2, 10).toUpperCase();
+  const canonicalTelefono = getCanonicalTelefono(telefono);
+  
   const user = {
     id: uuidv4(),
-    telefono,
+    telefono: canonicalTelefono,
     nombre_usuario,
     nombre_real: nombre_usuario,
     password_hash: await bcrypt.hash(password, 10),
@@ -109,14 +111,16 @@ router.post('/login', asyncHandler(async (req, res) => {
 
   const user = await findUserByTelefono(telefono);
   if (!user) {
-    logger.warn(`[AUTH] Login fallido: Usuario no encontrado (${telefono})`);
+    logger.warn(`[AUTH-DEBUG] Login fallido: Usuario no encontrado para teléfono: [${telefono}]`);
     return res.status(401).json({ error: 'Credenciales inválidas' });
   }
   
-  logger.info(`[AUTH-DEBUG] Comparando contraseña para ${telefono}. Password recibida: [${password}]`);
-  const passOk = await bcrypt.compare(password, user.password_hash);
+  const trimmedPassword = String(password || '').trim();
+  logger.info(`[AUTH-DEBUG] Comparando contraseña para ${telefono}. Password recibida: [${trimmedPassword}] (Largo: ${trimmedPassword.length})`);
+  
+  const passOk = await bcrypt.compare(trimmedPassword, user.password_hash);
   if (!passOk) {
-    logger.warn(`[AUTH] Login fallido: Contraseña incorrecta para ${telefono}`);
+    logger.warn(`[AUTH-DEBUG] Login fallido: Contraseña incorrecta para ${telefono}. Hash en DB: ${user.password_hash.substring(0, 10)}...`);
     return res.status(401).json({ error: 'Credenciales inválidas' });
   }
 

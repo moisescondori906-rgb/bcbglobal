@@ -3,31 +3,31 @@
 
 SET FOREIGN_KEY_CHECKS = 0;
 
--- 1. MODIFICAR TABLAS EXISTENTES (Retiros y Recargas)
+-- 1. MODIFICAR TABLAS EXISTENTES (Retiros y Compras de Nivel)
 -- Agregar columnas operativas y de bloqueo
 ALTER TABLE retiros 
-ADD COLUMN IF NOT EXISTS tomado_por_telegram_user_id VARCHAR(100),
-ADD COLUMN IF NOT EXISTS tomado_por_nombre VARCHAR(100),
-ADD COLUMN IF NOT EXISTS tomado_en DATETIME,
-ADD COLUMN IF NOT EXISTS estado_operativo ENUM('pendiente', 'tomado', 'aceptado', 'rechazado') DEFAULT 'pendiente',
-ADD COLUMN IF NOT EXISTS resuelto_por_telegram_user_id VARCHAR(100),
-ADD COLUMN IF NOT EXISTS resuelto_por_nombre VARCHAR(100),
-ADD COLUMN IF NOT EXISTS resuelto_en DATETIME;
+ADD COLUMN tomado_por_telegram_user_id VARCHAR(100),
+ADD COLUMN tomado_por_nombre VARCHAR(100),
+ADD COLUMN tomado_en DATETIME,
+ADD COLUMN estado_operativo ENUM('pendiente', 'tomado', 'aceptado', 'rechazado') DEFAULT 'pendiente',
+ADD COLUMN resuelto_por_telegram_user_id VARCHAR(100),
+ADD COLUMN resuelto_por_nombre VARCHAR(100),
+ADD COLUMN resuelto_en DATETIME;
 
-ALTER TABLE recargas 
-ADD COLUMN IF NOT EXISTS tomado_por_telegram_user_id VARCHAR(100),
-ADD COLUMN IF NOT EXISTS tomado_por_nombre VARCHAR(100),
-ADD COLUMN IF NOT EXISTS tomado_en DATETIME,
-ADD COLUMN IF NOT EXISTS estado_operativo ENUM('pendiente', 'tomado', 'aceptado', 'rechazado') DEFAULT 'pendiente',
-ADD COLUMN IF NOT EXISTS resuelto_por_telegram_user_id VARCHAR(100),
-ADD COLUMN IF NOT EXISTS resuelto_por_nombre VARCHAR(100),
-ADD COLUMN IF NOT EXISTS resuelto_en DATETIME;
+ALTER TABLE compras_nivel 
+ADD COLUMN tomado_por_telegram_user_id VARCHAR(100),
+ADD COLUMN tomado_por_nombre VARCHAR(100),
+ADD COLUMN tomado_en DATETIME,
+ADD COLUMN estado_operativo ENUM('pendiente', 'tomado', 'aceptado', 'rechazado') DEFAULT 'pendiente',
+ADD COLUMN resuelto_por_telegram_user_id VARCHAR(100),
+ADD COLUMN resuelto_por_nombre VARCHAR(100),
+ADD COLUMN resuelto_en DATETIME;
 
 -- 2. ÍNDICES DE RENDIMIENTO
-CREATE INDEX IF NOT EXISTS idx_retiros_estado_operativo ON retiros(estado_operativo);
-CREATE INDEX IF NOT EXISTS idx_retiros_tomado ON retiros(tomado_por_telegram_user_id);
-CREATE INDEX IF NOT EXISTS idx_recargas_estado_operativo ON recargas(estado_operativo);
-CREATE INDEX IF NOT EXISTS idx_recargas_tomado ON recargas(tomado_por_telegram_user_id);
+CREATE INDEX idx_retiros_estado_operativo ON retiros(estado_operativo);
+CREATE INDEX idx_retiros_tomado ON retiros(tomado_por_telegram_user_id);
+CREATE INDEX idx_compras_nivel_estado_operativo ON compras_nivel(estado_operativo);
+CREATE INDEX idx_compras_nivel_tomado ON compras_nivel(tomado_por_telegram_user_id);
 
 -- 3. TABLA: EQUIPOS TELEGRAM
 CREATE TABLE IF NOT EXISTS telegram_equipos (

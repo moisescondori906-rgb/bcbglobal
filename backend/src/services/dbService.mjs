@@ -424,34 +424,55 @@ export async function findUserById(id, tenantId = null) {
  */
 export function normalizeTelefono(tel) {
   if (!tel) return [];
-  // Eliminar todo lo que no sea número
-  const clean = String(tel).replace(/\D/g, '');
-  
   const variations = new Set();
+  const raw = String(tel).trim();
   
-  // Caso 1: Formato 8 dígitos (ej: 70000001)
+  // 1. Agregar el original tal cual (trim)
+  variations.add(raw);
+  
+  // 2. Versión solo números
+  const clean = raw.replace(/\D/g, '');
+  if (!clean) return Array.from(variations);
+  variations.add(clean);
+  
+  // 3. Lógica específica para Bolivia (+591 o 591 o sin nada)
+  // Si tiene 8 dígitos, es el número base de Bolivia
   if (clean.length === 8) {
-    variations.add(clean);
     variations.add(`591${clean}`);
     variations.add(`+591${clean}`);
   } 
-  // Caso 2: Formato con 591 (ej: 59170000001)
+  // Si tiene 11 dígitos y empieza con 591
   else if (clean.length === 11 && clean.startsWith('591')) {
     const core = clean.substring(3);
     variations.add(core);
-    variations.add(clean);
     variations.add(`+${clean}`);
   }
-  // Caso 3: Formato ya con +591 (aunque el replace lo quitó, lo reconstruimos)
-  // Si venía como +59170000001, el clean será 59170000001 (caso 2)
-  
-  // Si no encaja en los patrones comunes de Bolivia, devolver el original limpio
-  if (variations.size === 0) {
+  // Si tiene 12 dígitos y empieza con +591
+  else if (raw.startsWith('+591') && clean.length === 11) {
+    const core = clean.substring(3);
+    variations.add(core);
     variations.add(clean);
-    if (tel.startsWith('+')) variations.add(tel);
+  }
+
+  // Asegurar que si empieza con +, también esté la versión sin + y viceversa
+  if (raw.startsWith('+')) {
+    variations.add(raw.substring(1));
+  } else if (/^\d+$/.test(raw)) {
+    variations.add('+' + raw);
   }
 
   return Array.from(variations);
+}
+
+/**
+ * Obtiene el formato canónico para guardar en DB (siempre +591XXXXXXXX)
+ */
+export function getCanonicalTelefono(tel) {
+  const clean = String(tel).replace(/\D/g, '');
+  if (clean.length === 8) return `+591${clean}`;
+  if (clean.length === 11 && clean.startsWith('591')) return `+${clean}`;
+  if (tel.startsWith('+')) return tel;
+  return `+${clean}`;
 }
 
 export async function findUserByTelefono(telefono, tenantId = null) {
@@ -468,7 +489,11 @@ export async function findUserByTelefono(telefono, tenantId = null) {
   }
 
   const user = await queryOne(sql, params);
-  logger.info(`[AUTH-DEBUG] Buscando teléfono: ${telefono} | Variaciones: ${variations.join(', ')} | Encontrado: ${!!user}`);
+  if (!user) {
+    logger.info(`[AUTH-DEBUG] No se encontró usuario con variaciones: ${variations.join(', ')}`);
+  } else {
+    logger.info(`[AUTH-DEBUG] Usuario encontrado: ${user.telefono} (ID: ${user.id})`);
+  }
   return user;
 }
 

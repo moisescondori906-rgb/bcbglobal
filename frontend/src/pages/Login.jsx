@@ -30,7 +30,7 @@ export default function Login() {
     setLoading(true);
     
     try {
-      const telefono = '+591' + numero.replace(/\D/g, '').trim();
+      const telefono = numero.trim();
       const user = await login(telefono, password);
       navigate(user?.rol === 'admin' ? '/admin' : '/');
     } catch (err) {
@@ -81,16 +81,14 @@ export default function Login() {
             </AnimatePresence>
 
             <div className="flex gap-2">
-              <div className="flex-none w-16 h-14 rounded-2xl bg-sav-surface border border-sav-border text-sav-primary font-bold text-sm flex items-center justify-center">
-                +591
-              </div>
               <Input
                 type="tel"
                 inputMode="numeric"
                 value={numero}
-                onChange={(e) => setNumero(e.target.value.replace(/\D/g, '').slice(0, 8))}
-                placeholder="Teléfono"
+                onChange={(e) => setNumero(e.target.value.replace(/[^\d+]/g, ''))}
+                placeholder="Teléfono (ej: 70000001)"
                 icon={Smartphone}
+                className="flex-1"
                 required
               />
             </div>

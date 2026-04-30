@@ -44,7 +44,7 @@ export default function Register() {
     setLoading(true);
     try {
       await register({
-        telefono: '+591' + data.telefono,
+        telefono: data.telefono.trim(),
         nombre_usuario: data.nombre_usuario,
         password: data.password,
         codigo_invitacion: data.codigo_invitacion,
@@ -73,7 +73,7 @@ export default function Register() {
             <div className="absolute inset-0 bg-sav-primary/20 blur-2xl rounded-full" />
             <img src="/imag/logo-carrusel.png" alt="Logo" className="w-20 h-20 relative z-10" />
           </motion.div>
-          <h1 className="text-3xl font-black tracking-tight text-white mb-2 uppercase">
+          <h1 className="text-3xl font-black tracking-tight text-gray-900 mb-2 uppercase">
             Únete a BCB
           </h1>
           <p className="text-[10px] font-bold tracking-[0.4em] text-sav-muted uppercase">Crea tu cuenta VIP</p>
@@ -95,15 +95,13 @@ export default function Register() {
             </AnimatePresence>
 
             <div className="flex gap-2">
-              <div className="flex-none w-16 h-14 rounded-2xl bg-sav-surface border border-sav-border text-sav-primary font-bold text-sm flex items-center justify-center">
-                +591
-              </div>
               <Input
                 type="tel"
                 value={data.telefono}
-                onChange={(e) => handleChange('telefono', e.target.value.replace(/\D/g, '').slice(0, 8))}
-                placeholder="Celular"
+                onChange={(e) => handleChange('telefono', e.target.value.replace(/[^\d+]/g, ''))}
+                placeholder="Celular (ej: 70000001)"
                 icon={Smartphone}
+                className="flex-1"
                 required
               />
             </div>
@@ -158,7 +156,7 @@ export default function Register() {
         <div className="mt-8 text-center">
           <Link
             to="/login"
-            className="inline-flex items-center gap-2 text-sav-muted font-bold uppercase tracking-widest text-[10px] hover:text-white transition-colors group"
+            className="inline-flex items-center gap-2 text-sav-muted font-bold uppercase tracking-widest text-[10px] hover:text-gray-900 transition-colors group"
           >
             <ChevronLeft size={16} className="transition-transform group-hover:-translate-x-1" />
             Ya tengo una cuenta
