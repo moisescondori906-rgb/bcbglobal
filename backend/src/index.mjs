@@ -146,6 +146,8 @@ const allowedOrigins = [
   'http://localhost:3000',
   'https://bcb-global.com',
   'https://www.bcb-global.com',
+  'http://bcb-global.com',
+  'http://www.bcb-global.com',
   'capacitor://localhost',
   'http://localhost',
   'http://173.249.55.143'
