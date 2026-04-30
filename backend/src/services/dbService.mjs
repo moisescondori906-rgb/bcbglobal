@@ -456,9 +456,11 @@ export function normalizeTelefono(tel) {
 
 export async function findUserByTelefono(telefono, tenantId = null) {
   const variations = normalizeTelefono(telefono);
-  
-  let sql = `SELECT password_hash, ${USER_FIELDS} FROM usuarios WHERE telefono IN (?)`;
-  const params = [variations];
+  if (variations.length === 0) return null;
+
+  const placeholders = variations.map(() => '?').join(',');
+  let sql = `SELECT password_hash, ${USER_FIELDS} FROM usuarios WHERE telefono IN (${placeholders})`;
+  const params = [...variations];
 
   if (tenantId) {
     sql += ` AND tenant_id = ?`;
