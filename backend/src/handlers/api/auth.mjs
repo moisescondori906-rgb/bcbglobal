@@ -108,10 +108,16 @@ router.post('/login', asyncHandler(async (req, res) => {
   }
 
   const user = await findUserByTelefono(telefono);
-  if (!user) return res.status(401).json({ error: 'Credenciales inválidas' });
+  if (!user) {
+    logger.warn(`[AUTH] Login fallido: Usuario no encontrado (${telefono})`);
+    return res.status(401).json({ error: 'Credenciales inválidas' });
+  }
   
   const passOk = await bcrypt.compare(password, user.password_hash);
-  if (!passOk) return res.status(401).json({ error: 'Credenciales inválidas' });
+  if (!passOk) {
+    logger.warn(`[AUTH] Login fallido: Contraseña incorrecta para ${telefono}`);
+    return res.status(401).json({ error: 'Credenciales inválidas' });
+  }
 
   if (user.bloqueado) return res.status(403).json({ error: 'Cuenta bloqueada temporalmente. Contacte a soporte.' });
 
