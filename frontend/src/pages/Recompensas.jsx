@@ -188,9 +188,9 @@ export default function Recompensas() {
           </div>
         )}
         {/* Header Section */}
-        <div className="bg-[#1a1f36] pt-12 pb-32 px-6 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-500/10 rounded-full -mr-48 -mt-48 blur-3xl" />
-          <div className="absolute bottom-0 left-0 w-64 h-64 bg-rose-500/10 rounded-full -ml-32 -mb-32 blur-3xl" />
+        <div className="bg-gray-950 pt-12 pb-32 px-6 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-96 h-96 bg-purple-500/10 rounded-full -mr-48 -mt-48 blur-3xl" />
+          <div className="absolute bottom-0 left-0 w-64 h-64 bg-emerald-500/10 rounded-full -ml-32 -mb-32 blur-3xl" />
           
           <div className="relative z-10 max-w-4xl mx-auto text-center">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 border border-white/20 backdrop-blur-md mb-6">
@@ -198,7 +198,7 @@ export default function Recompensas() {
               <span className="text-[10px] font-black text-white uppercase tracking-[0.3em]">Ruleta de la Suerte Premium</span>
             </div>
             <h1 className="text-5xl font-black text-white uppercase tracking-tighter mb-4 leading-none">
-              GIRA Y <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-rose-400">GANA</span>
+              GIRA Y <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-emerald-400">GANA</span>
             </h1>
             <p className="text-white/40 text-xs font-bold max-w-xs mx-auto uppercase tracking-widest leading-relaxed">
               Prueba tu suerte hoy. Cada giro es una oportunidad de multiplicar tus activos.
@@ -338,7 +338,7 @@ export default function Recompensas() {
                 <div className="text-center">
                   <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Tus Tickets</p>
                   <div className="flex items-center gap-1.5 justify-center">
-                    <Sparkles size={14} className="text-indigo-500" />
+                    <Sparkles size={14} className="text-amber-500" />
                     <span className="text-sm font-black text-gray-900">{user?.tickets_ruleta || 0}</span>
                   </div>
                 </div>
@@ -356,7 +356,7 @@ export default function Recompensas() {
           {/* User Stats Card */}
           <div className="bg-white rounded-[2.5rem] p-8 shadow-xl shadow-black/5 border border-gray-100 flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600 border border-indigo-100">
+              <div className="w-14 h-14 rounded-2xl bg-purple-50 flex items-center justify-center text-purple-600 border border-purple-100">
                 <Trophy size={28} />
               </div>
               <div>
@@ -382,10 +382,10 @@ export default function Recompensas() {
             <div className="grid grid-cols-1 gap-4">
               {/* Reto de Invitados (Dinámico) */}
               {config?.recompensa_amigos_activa && (
-                <div className={`group relative overflow-hidden bg-white rounded-[2rem] p-6 border transition-all duration-300 ${retoAmigosHabilitado ? 'border-indigo-100 ring-1 ring-indigo-50 hover:shadow-2xl' : 'opacity-60 grayscale'}`}>
+                <div className={`group relative overflow-hidden bg-white rounded-[2rem] p-6 border transition-all duration-300 ${retoAmigosHabilitado ? 'border-emerald-100 ring-1 ring-emerald-50 hover:shadow-2xl' : 'opacity-60 grayscale'}`}>
                   <div className="flex items-start justify-between relative z-10">
                     <div className="flex gap-4">
-                      <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 border transition-colors ${retoAmigosHabilitado ? 'bg-indigo-50 border-indigo-100 text-indigo-500' : 'bg-gray-50 border-gray-100 text-gray-400'}`}>
+                      <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 border transition-colors ${retoAmigosHabilitado ? 'bg-emerald-50 border-emerald-100 text-emerald-500' : 'bg-gray-50 border-gray-100 text-gray-400'}`}>
                         <UserPlus size={28} />
                       </div>
                       <div>
