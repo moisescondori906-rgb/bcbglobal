@@ -71,17 +71,17 @@ export function PhoneInputWithCountry({
           'flex w-full items-center overflow-hidden rounded-2xl border bg-white shadow-sm transition-all',
           error 
             ? 'border-red-400 bg-red-50/40'
-            : 'border-slate-200 focus-within:border-emerald-500 focus-within:ring-4 focus-within:ring-emerald-500/10'
+            : 'border-slate-200 focus-within:border-blue-500 focus-within:ring-4 focus-within:ring-blue-500/10'
         )}
       >
         <select 
           value={countryCode} 
           onChange={handleCountryChange} 
-          className="h-14 w-[132px] shrink-0 border-0 border-r border-slate-200 bg-slate-50 px-3 text-sm font-extrabold text-slate-900 outline-none"
+          className="h-14 w-[100px] shrink-0 border-0 border-r border-slate-200 bg-slate-50 px-3 text-sm font-extrabold text-slate-900 outline-none"
         > 
           {COUNTRIES.map((country) => ( 
             <option key={country.code} value={country.code}> 
-              {country.flag} {country.label} 
+              {country.flag} {country.dial} 
             </option> 
           ))} 
         </select> 
