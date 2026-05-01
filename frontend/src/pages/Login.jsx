@@ -2,9 +2,10 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/AuthContext.jsx';
-import { ShieldCheck, Smartphone, Lock, ArrowRight, ChevronRight } from 'lucide-react';
+import { ShieldCheck, Lock, ArrowRight, ChevronRight } from 'lucide-react';
 import { Button } from '../components/ui/Button.jsx';
 import { Input } from '../components/ui/Input.jsx';
+import { PhoneInputWithCountry } from '../components/ui/PhoneInputWithCountry.jsx';
 import { Card } from '../components/ui/Card.jsx';
 import { APP_DISPLAY_NAME } from '../theme/branding.js';
 
@@ -84,13 +85,10 @@ export default function Login() {
             </AnimatePresence>
 
             <div className="flex gap-2">
-              <Input
-                type="tel"
-                inputMode="numeric"
+              <PhoneInputWithCountry
                 value={numero}
-                onChange={(e) => setNumero(e.target.value.replace(/[^\d+]/g, ''))}
+                onChange={setNumero}
                 placeholder="Teléfono (ej: 70000001)"
-                icon={Smartphone}
                 className="flex-1"
                 required
               />

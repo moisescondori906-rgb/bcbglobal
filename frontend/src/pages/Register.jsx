@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { Smartphone, User, Lock, Key, ArrowRight, ChevronLeft } from 'lucide-react';
 import { Button } from '../components/ui/Button.jsx';
 import { Input } from '../components/ui/Input.jsx';
+import { PhoneInputWithCountry } from '../components/ui/PhoneInputWithCountry.jsx';
 import { Card } from '../components/ui/Card.jsx';
 
 export default function Register() {
@@ -96,12 +97,10 @@ export default function Register() {
             </AnimatePresence>
 
             <div className="flex gap-2">
-              <Input
-                type="tel"
+              <PhoneInputWithCountry
                 value={data.telefono}
-                onChange={(e) => handleChange('telefono', e.target.value.replace(/[^\d+]/g, ''))}
+                onChange={(value) => handleChange('telefono', value)}
                 placeholder="Celular (ej: 70000001)"
-                icon={Smartphone}
                 className="flex-1"
                 required
               />
