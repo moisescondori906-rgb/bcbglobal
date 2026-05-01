@@ -27,7 +27,7 @@ export function Input({
         <input
           type={finalType}
           className={cn(
-            "input-field",
+            "h-12 sm:h-14 w-full px-4 sm:px-5 rounded-xl sm:rounded-2xl bg-white border border-sav-border text-slate-900 text-base focus:border-sav-primary/50 focus:ring-4 focus:ring-sav-primary/10 transition-all outline-none placeholder:text-sav-muted shadow-sm",
             error && "border-sav-error/50 bg-sav-error/5",
             showPasswordToggle && "pr-14"
           )}

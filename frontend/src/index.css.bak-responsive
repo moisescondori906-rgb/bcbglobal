@@ -24,51 +24,27 @@
 }
 
 @layer base {
-  html, body {
-    @apply w-full overflow-x-hidden;
-    height: -webkit-fill-available;
-  }
-
   body {
-    @apply bg-sav-dark text-slate-900 font-sans antialiased select-none touch-manipulation;
+    @apply bg-sav-dark text-slate-900 font-sans antialiased select-none touch-manipulation overflow-x-hidden;
     -webkit-tap-highlight-color: transparent;
-    min-height: 100vh;
-    min-height: 100dvh;
   }
 
   #root {
-    @apply flex flex-col w-full mx-auto;
-    min-height: 100vh;
-    min-height: 100dvh;
-    max-width: 480px; /* Ancho máximo para que no se estire en tablets/desktop */
+    @apply min-h-screen flex flex-col;
   }
 
   input, select, textarea {
-    @apply h-14 w-full px-5 rounded-2xl bg-white border border-sav-border text-slate-900 text-base focus:border-sav-primary/50 focus:ring-4 focus:ring-sav-primary/10 transition-all outline-none placeholder:text-sav-muted shadow-sm;
-    /* text-base evita el zoom automático en iOS al enfocar inputs */
+    @apply h-14 w-full px-5 rounded-2xl bg-white border border-sav-border text-slate-900 text-sm focus:border-sav-primary/50 focus:ring-4 focus:ring-sav-primary/10 transition-all outline-none placeholder:text-sav-muted shadow-sm;
   }
 
   button {
-    @apply transition-all active:scale-[0.97] min-h-[44px];
-  }
-
-  img, video {
-    @apply max-w-full h-auto;
+    @apply transition-all active:scale-[0.97];
   }
 }
 
 @layer components {
   .app-container {
-    @apply min-h-screen min-h-[100dvh] w-full flex flex-col relative bg-sav-dark;
-    padding-bottom: calc(85px + env(safe-area-inset-bottom));
-  }
-
-  .safe-top {
-    padding-top: env(safe-area-inset-top);
-  }
-
-  .safe-bottom {
-    padding-bottom: env(safe-area-inset-bottom);
+    @apply min-h-screen w-full max-w-[430px] mx-auto flex flex-col relative bg-sav-dark shadow-[0_0_100px_-20px_rgba(0,0,0,0.1)];
   }
 
   .glass-card {
@@ -85,7 +61,6 @@
 
   .nav-blur {
     @apply bg-white/80 backdrop-blur-2xl border-t border-sav-border/50;
-    padding-bottom: env(safe-area-inset-bottom);
   }
 
   .nav-item {
@@ -98,7 +73,7 @@
 
   /* Premium Components */
   .sav-card {
-    @apply bg-white border border-sav-border/50 rounded-[2.5rem] p-4 sm:p-6 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.05)];
+    @apply bg-white border border-sav-border/50 rounded-[2.5rem] p-6 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.05)];
   }
 
   .sav-aurora {
@@ -106,7 +81,7 @@
   }
 
   .sav-input {
-    @apply h-14 w-full px-5 rounded-2xl bg-slate-50 border border-sav-border text-slate-900 text-base focus:border-sav-primary/50 focus:ring-4 focus:ring-sav-primary/10 transition-all outline-none placeholder:text-sav-muted;
+    @apply h-14 w-full px-5 rounded-2xl bg-slate-50 border border-sav-border text-slate-900 text-sm focus:border-sav-primary/50 focus:ring-4 focus:ring-sav-primary/10 transition-all outline-none placeholder:text-sav-muted;
   }
 
   .no-scrollbar::-webkit-scrollbar {
@@ -116,18 +91,6 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
-
-  .responsive-table-container {
-    @apply w-full overflow-x-auto -mx-4 px-4;
-  }
-}
-
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-.no-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
 }
 
 /* Custom Animations */

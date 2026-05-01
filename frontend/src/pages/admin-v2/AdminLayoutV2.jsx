@@ -174,23 +174,23 @@ export default function AdminLayoutV2() {
       <main className="flex-1 flex flex-col h-screen overflow-hidden relative">
         {/* Top Header Fixed */}
         <header className={`
-          z-50 h-20 px-8 flex items-center justify-between border-b border-white/5 transition-all duration-300
+          z-50 h-16 sm:h-20 px-4 sm:px-8 flex items-center justify-between border-b border-white/5 transition-all duration-300
           ${scrolled ? 'bg-[#0f111a]/80 backdrop-blur-xl shadow-xl' : 'bg-transparent'}
         `}>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 sm:gap-4">
             <button 
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="p-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all text-slate-400"
+              className="p-2 sm:p-2.5 rounded-lg sm:rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all text-slate-400 shrink-0"
             >
-              {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
+              {isSidebarOpen ? <X size={18} className="sm:w-[20px] sm:h-[20px]" /> : <Menu size={18} className="sm:w-[20px] sm:h-[20px]" />}
             </button>
-            <div className="hidden sm:flex flex-col">
-              <h2 className="text-sm font-black text-white uppercase tracking-tighter">Panel de Control</h2>
-              <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">BCB Global Institutional</p>
+            <div className="flex flex-col min-w-0">
+              <h2 className="text-xs sm:text-sm font-black text-white uppercase tracking-tighter truncate">Panel de Control</h2>
+              <p className="text-[8px] sm:text-[9px] font-bold text-slate-500 uppercase tracking-widest truncate">BCB Global Institutional</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 sm:gap-4 shrink-0">
             <div className="hidden md:flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/5">
               <Search size={16} className="text-slate-500" />
               <input 
@@ -200,14 +200,14 @@ export default function AdminLayoutV2() {
               />
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="text-[9px] font-black text-emerald-500 uppercase tracking-widest">Sistema Online</span>
+              <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="text-[8px] sm:text-[9px] font-black text-emerald-500 uppercase tracking-widest">Sistema Online</span>
             </div>
           </div>
         </header>
 
         {/* Content Container */}
-        <div className="flex-1 overflow-y-auto p-6 md:p-10 bg-[#0f111a] custom-scrollbar">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-10 bg-[#0f111a] custom-scrollbar">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}

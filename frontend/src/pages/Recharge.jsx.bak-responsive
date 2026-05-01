@@ -87,7 +87,7 @@ export default function Recharge() {
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[500px] bg-gradient-to-b from-sav-primary/5 to-transparent blur-[120px]" />
         </div>
 
-        <main className="px-4 sm:px-6 space-y-8 sm:space-y-10 pb-32 animate-fade pt-4">
+        <main className="p-6 space-y-10 pb-32 animate-fade">
           {/* Nivel Actual */}
           <section className="relative">
             <motion.div 
@@ -95,18 +95,18 @@ export default function Recharge() {
               animate={{ opacity: 1, y: 0 }}
               className="relative z-10"
             >
-              <Card variant="premium" className="relative overflow-hidden p-6 sm:p-8 text-center border-none shadow-[0_30px_60px_-15px_rgba(220,38,38,0.3)]">
+              <Card variant="premium" className="relative overflow-hidden p-8 text-center border-none shadow-[0_30px_60px_-15px_rgba(220,38,38,0.3)]">
                 <div className="relative z-10">
-                  <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1 sm:py-1.5 rounded-full bg-white/10 border border-white/20 mb-4 sm:mb-6 backdrop-blur-md">
+                  <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 mb-6 backdrop-blur-md">
                     <div className="w-1.5 h-1.5 bg-sav-primary rounded-full animate-pulse" />
-                    <span className="text-[9px] sm:text-[10px] font-black text-white uppercase tracking-[0.2em]">Socio Activo</span>
+                    <span className="text-[10px] font-black text-white uppercase tracking-[0.2em]">Socio Activo</span>
                   </div>
                   
-                  <h2 className="text-3xl sm:text-4xl font-black tracking-tighter text-white uppercase drop-shadow-2xl mb-1 sm:mb-2">
+                  <h2 className="text-4xl font-black tracking-tighter text-white uppercase drop-shadow-2xl mb-2">
                     {displayLevelCode(user?.nivel_codigo)}
                   </h2>
                   <div className="flex items-center justify-center gap-2">
-                    <span className="text-[9px] sm:text-[10px] font-bold text-white/40 uppercase tracking-widest">Nivel de Membresía</span>
+                    <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Nivel de Membresía</span>
                   </div>
                 </div>
               </Card>
@@ -115,31 +115,31 @@ export default function Recharge() {
 
           {isScheduleLocked && (
             <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
-              <Card className="p-4 sm:p-5 border-sav-error/30 bg-sav-error/5 flex items-start gap-3 sm:gap-4 shadow-xl">
-                <div className="p-2 sm:p-2.5 rounded-xl bg-sav-error/10 text-sav-error shadow-inner shrink-0">
-                  <Clock size={18} className="sm:w-[20px] sm:h-[20px]" />
+              <Card className="p-5 border-sav-error/30 bg-sav-error/5 flex items-start gap-4 shadow-xl">
+                <div className="p-2.5 rounded-xl bg-sav-error/10 text-sav-error shadow-inner">
+                  <Clock size={20} />
                 </div>
                 <div>
-                  <h4 className="text-[11px] sm:text-xs font-black text-sav-error uppercase tracking-widest mb-1">Horario Restringido</h4>
-                  <p className="text-[9px] sm:text-[10px] text-sav-error/70 font-bold uppercase leading-relaxed tracking-wide">{scheduleMsg}</p>
+                  <h4 className="text-xs font-black text-sav-error uppercase tracking-widest mb-1">Horario Restringido</h4>
+                  <p className="text-[10px] text-sav-error/70 font-bold uppercase leading-relaxed tracking-wide">{scheduleMsg}</p>
                 </div>
               </Card>
             </motion.div>
           )}
 
           {/* Step 1: Selection */}
-          <section className="space-y-5 sm:space-y-6">
+          <section className="space-y-6">
             <div className="flex items-center justify-between px-1">
-              <div className="flex items-center gap-2 sm:gap-3">
-                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-sav-primary/10 flex items-center justify-center text-sav-primary border border-sav-primary/20 shadow-lg shrink-0">
-                  <TrendingUp size={14} className="sm:w-[16px] sm:h-[16px]" />
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-sav-primary/10 flex items-center justify-center text-sav-primary border border-sav-primary/20 shadow-lg">
+                  <TrendingUp size={16} />
                 </div>
-                <h3 className="text-[10px] sm:text-[11px] font-black text-slate-900 uppercase tracking-[0.2em] sm:tracking-[0.3em]">1. Selecciona Nivel</h3>
+                <h3 className="text-[11px] font-black text-white uppercase tracking-[0.3em]">1. Escoge el nivel a comprar</h3>
               </div>
-              <Badge variant="info" className="bg-slate-100 border-slate-200 px-2 sm:px-3 py-1 text-[9px] sm:text-[10px] font-black text-slate-600">BCB GLOBAL</Badge>
+              <Badge variant="info" className="bg-white/5 border-white/10 px-3 py-1 text-[10px] font-black">BCB GLOBAL</Badge>
             </div>
 
-            <div className="grid grid-cols-1 gap-3 sm:gap-4">
+            <div className="grid grid-cols-1 gap-4">
               {niveles.filter(n => (n.deposito || n.costo) > 0).map((n, i) => {
                 const isSelected = selectedLevel?.id === n.id;
                 const isCurrent = n.id === user?.nivel_id;
@@ -154,39 +154,39 @@ export default function Recharge() {
                     transition={{ delay: i * 0.05 }}
                     onClick={() => handleLevelSelect(n)}
                     className={cn(
-                      "w-full text-left p-4 sm:p-5 rounded-2xl sm:rounded-[2rem] border transition-all duration-300 relative overflow-hidden group",
+                      "w-full text-left p-5 rounded-[2rem] border transition-all duration-300 relative overflow-hidden group",
                       isSelected 
-                        ? "bg-sav-primary border-sav-primary shadow-lg sm:shadow-[0_20px_40px_-10px_rgba(220,38,38,0.4)]" 
-                        : "bg-white border-black/5 hover:border-sav-primary/20 shadow-sm",
+                        ? "bg-sav-primary border-sav-primary shadow-[0_20px_40px_-10px_rgba(220,38,38,0.4)]" 
+                        : "bg-[#161926] border-white/5 hover:border-white/10",
                       (isCurrent || !isHigher) && "opacity-40 grayscale cursor-not-allowed"
                     )}
                   >
-                    <div className="flex justify-between items-center relative z-10 min-w-0">
-                      <div className="space-y-1 min-w-0">
+                    <div className="flex justify-between items-center relative z-10">
+                      <div className="space-y-1">
                         <div className="flex items-center gap-2">
                           <span className={cn(
-                            "text-[10px] sm:text-xs font-black uppercase tracking-widest truncate",
-                            isSelected ? "text-white" : "text-slate-900"
+                            "text-xs font-black uppercase tracking-widest",
+                            isSelected ? "text-white" : "text-white/90"
                           )}>
-                            {n.nombre}
+                            {displayLevelCode(n.nombre)}
                           </span>
                           {isCurrent && <Badge variant="success" className="text-[7px] py-0">ACTUAL</Badge>}
                         </div>
-                        <div className="flex items-baseline gap-1 overflow-hidden">
+                        <div className="flex items-baseline gap-1">
                           <span className={cn(
-                            "text-xl sm:text-2xl font-black tracking-tighter truncate",
-                            isSelected ? "text-white" : "text-slate-900"
+                            "text-2xl font-black tracking-tighter",
+                            isSelected ? "text-white" : "text-white"
                           )}>
                             {Number(n.deposito || n.costo).toLocaleString('es-BO')}
                           </span>
-                          <span className={cn("text-[9px] sm:text-[10px] font-bold shrink-0", isSelected ? "text-white/60" : "text-slate-400")}>BOB</span>
+                          <span className="text-[10px] font-bold opacity-60">BOB</span>
                         </div>
                       </div>
 
-                      <div className="text-right space-y-0.5 sm:space-y-1 shrink-0 ml-2">
-                        <p className={cn("text-[7px] sm:text-[8px] font-black uppercase tracking-widest", isSelected ? "text-white/60" : "text-sav-muted")}>Renta Diaria</p>
-                        <p className={cn("text-xs sm:text-sm font-black truncate", isSelected ? "text-white" : "text-sav-success")}>
-                          +{Number(n.ingreso_diario || (Number(n.num_tareas_diarias || 0) * Number(n.ganancia_tarea || 0))).toLocaleString('es-BO', { minimumFractionDigits: 2 })}
+                      <div className="text-right space-y-1">
+                        <p className={cn("text-[8px] font-black uppercase tracking-widest", isSelected ? "text-white/60" : "text-sav-muted")}>Renta Diaria</p>
+                        <p className={cn("text-sm font-black", isSelected ? "text-white" : "text-sav-success")}>
+                          +{Number(n.ingreso_diario || (Number(n.num_tareas_diarias || 0) * Number(n.ganancia_tarea || 0))).toLocaleString('es-BO', { minimumFractionDigits: 2 })} <span className="text-[8px]">BOB</span>
                         </p>
                       </div>
                     </div>
@@ -197,7 +197,7 @@ export default function Recharge() {
           </section>
 
           {/* Sticky Continue Button */}
-          <div className="h-20" /> {/* Spacer */}
+          <div className="h-24" /> {/* Spacer to allow scrolling past the button */}
           <AnimatePresence mode="wait">
             {selectedLevel && (
               <motion.div 
@@ -206,15 +206,15 @@ export default function Recharge() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 50 }}
                 transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                className="fixed bottom-[calc(95px+env(safe-area-inset-bottom))] left-0 right-0 p-4 sm:p-6 z-[100] flex justify-center pointer-events-none"
+                className="fixed bottom-24 left-0 right-0 p-6 z-[100] flex justify-center pointer-events-none"
               >
-                <div className="w-full max-w-[420px] pointer-events-auto px-4 sm:px-0">
+                <div className="w-full max-w-md pointer-events-auto">
                   <Button 
                     onClick={handleContinue}
-                    className="w-full h-14 sm:h-16 rounded-xl sm:rounded-[2rem] shadow-2xl flex items-center justify-center gap-3 group bg-sav-primary border-none"
+                    className="w-full h-16 rounded-[2rem] shadow-[0_20px_50px_-10px_rgba(220,38,38,0.5)] flex items-center justify-center gap-3 group bg-sav-primary hover:bg-sav-primary/90 transition-all border-none"
                   >
-                    <span className="text-[11px] sm:text-xs font-black uppercase tracking-[0.2em]">Continuar al Pago</span>
-                    <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform sm:w-[18px] sm:h-[18px]" />
+                    <span className="text-xs font-black uppercase tracking-[0.2em]">Continuar al Pago</span>
+                    <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
                   </Button>
                 </div>
               </motion.div>

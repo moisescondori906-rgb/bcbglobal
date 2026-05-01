@@ -10,10 +10,10 @@ export function Button({
   ...props 
 }) {
   const variants = {
-    primary: 'btn-primary bg-gradient-to-r from-sav-primary to-sav-accent-hot shadow-sav-glow',
-    secondary: 'btn-secondary border-2 border-sav-primary/20 text-sav-primary hover:bg-sav-primary/5',
-    ghost: 'bg-transparent hover:bg-sav-primary/5 text-sav-primary font-black',
-    danger: 'bg-sav-error text-white shadow-lg shadow-sav-error/30 hover:brightness-110 font-black'
+    primary: 'h-12 sm:h-14 w-full flex items-center justify-center gap-2 rounded-xl sm:rounded-2xl bg-gradient-to-r from-sav-primary to-sav-accent-hot text-white font-bold text-sm sm:text-base transition-all shadow-lg shadow-sav-primary/30 hover:shadow-sav-primary/40 active:translate-y-0.5 shadow-sav-glow',
+    secondary: 'h-12 sm:h-14 w-full flex items-center justify-center gap-2 rounded-xl sm:rounded-2xl bg-white border-2 border-sav-primary/20 text-sav-primary font-bold text-sm sm:text-base transition-all shadow-sm hover:bg-sav-primary/5',
+    ghost: 'bg-transparent hover:bg-sav-primary/5 text-sav-primary font-black px-4 py-2 text-sm sm:text-base',
+    danger: 'h-12 sm:h-14 w-full flex items-center justify-center gap-2 rounded-xl sm:rounded-2xl bg-sav-error text-white shadow-lg shadow-sav-error/30 hover:brightness-110 font-black text-sm sm:text-base'
   };
 
   return (
