@@ -132,6 +132,7 @@ export const PhoneInputWithCountry = forwardRef(({
           onChange={handleCountryChange}
           className="flex items-center pl-4 pr-2 bg-transparent text-slate-900 font-bold text-base outline-none cursor-pointer rounded-l-xl"
           aria-label="Seleccionar código de país"
+          style={{ paddingRight: '2.5rem' }} // Ensure space for custom arrow
         >
           {COUNTRIES.map((country) => (
             <option key={country.code} value={country.dial_code}>
@@ -148,7 +149,7 @@ export const PhoneInputWithCountry = forwardRef(({
           placeholder={placeholder}
           className={cn(
             "flex-1 px-4 py-2 bg-transparent text-slate-900 placeholder:text-sav-muted text-base outline-none rounded-r-xl",
-            "h-full" // Ensure input takes full height
+            "h-full"
           )}
           {...props}
         />
