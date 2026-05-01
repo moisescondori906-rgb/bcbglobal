@@ -84,16 +84,12 @@ export default function Login() {
               )}
             </AnimatePresence>
 
-            <div className="flex gap-2">
-              <PhoneInputWithCountry
-                value={numero}
-                onChange={setNumero}
-                placeholder="Teléfono (ej: 70000001)"
-                className="flex-1"
-                error={error}
-                required
-              />
-            </div>
+            <PhoneInputWithCountry
+              value={numero}
+              onChange={(telefono) => setNumero(telefono)}
+              error={error}
+              placeholder="Número de celular"
+            />
 
             <Input
               type="password"

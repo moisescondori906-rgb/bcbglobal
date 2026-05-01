@@ -96,16 +96,12 @@ export default function Register() {
               )}
             </AnimatePresence>
 
-            <div className="flex gap-2">
-              <PhoneInputWithCountry
-                value={data.telefono}
-                onChange={(value) => handleChange('telefono', value)}
-                placeholder="Celular (ej: 70000001)"
-                className="flex-1"
-                error={error}
-                required
-              />
-            </div>
+            <PhoneInputWithCountry
+              value={data.telefono}
+              onChange={(telefono) => handleChange('telefono', telefono)}
+              error={error}
+              placeholder="Número de celular"
+            />
 
             <Input
               value={data.nombre_usuario}
