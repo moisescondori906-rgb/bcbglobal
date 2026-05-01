@@ -54,9 +54,9 @@ export default function BannerCarousel({ banners = [] }) {
               }
             }}
           />
-          {/* Overlay gradiente más sofisticado */}
-          <div className="absolute inset-0 bg-gradient-to-t from-sav-dark via-sav-dark/20 to-transparent" />
-          <div className="absolute inset-0 bg-gradient-to-r from-sav-dark/40 via-transparent to-transparent" />
+          {/* Overlay gradiente más sofisticado y oscuro para legibilidad */}
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-slate-900/20 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-r from-slate-900/40 via-transparent to-transparent" />
           
           <div className="absolute bottom-8 left-8 right-8">
             <motion.div

@@ -97,12 +97,12 @@ export default function Dashboard() {
   }, []);
 
   const actionItems = [
-    { to: '/vip', icon: TrendingUpIcon, label: 'Membresía VIP', color: 'text-sav-primary', bg: 'bg-sav-primary/10' },
-    { to: '/invitar', icon: UsersIcon, label: 'Invitar', color: 'text-orange-400', bg: 'bg-orange-500/10' },
-    { to: '/premios', icon: RouletteIcon, label: 'Premios', color: 'text-amber-400', bg: 'bg-amber-500/10' },
-    { to: '/equipo', icon: UsersIcon, label: 'Mi Equipo', color: 'text-blue-400', bg: 'bg-blue-500/10' },
-    { to: '/movimientos', icon: FileTextIcon, label: 'Movimientos', color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
-    { to: '/acerca-de', icon: InfoIcon, label: 'Nosotros', color: 'text-cyan-400', bg: 'bg-cyan-500/10' },
+    { to: '/vip', icon: TrophyIcon, label: 'VIP', color: 'text-indigo-600', bg: 'bg-indigo-100' },
+    { to: '/invitar', icon: UsersIcon, label: 'Invitar', color: 'text-orange-600', bg: 'bg-orange-100' },
+    { to: '/premios', icon: RouletteIcon, label: 'Premios', color: 'text-amber-600', bg: 'bg-amber-100' },
+    { to: '/equipo', icon: UsersIcon, label: 'Mi Equipo', color: 'text-blue-600', bg: 'bg-blue-100' },
+    { to: '/movimientos', icon: FileTextIcon, label: 'Movimientos', color: 'text-emerald-600', bg: 'bg-emerald-100' },
+    { to: '/acerca-de', icon: InfoIcon, label: 'Nosotros', color: 'text-cyan-600', bg: 'bg-cyan-100' },
   ];
 
   if (loading) return <GlobalLoader />;
@@ -135,7 +135,7 @@ export default function Dashboard() {
                     Aviso de Seguridad
                     <span className="w-1.5 h-1.5 rounded-full bg-sav-error animate-ping" />
                   </h3>
-                  <p className="text-[10px] font-bold text-sav-muted uppercase tracking-widest leading-relaxed">
+                  <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest leading-relaxed">
                     {securityAlert}
                   </p>
                   <div className="flex items-center gap-3 pt-2">

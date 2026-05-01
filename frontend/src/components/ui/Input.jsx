@@ -37,7 +37,7 @@ export function Input({
           <button
             type="button"
             onClick={() => setShowPass(!showPass)}
-            className="absolute right-4 top-1/2 -translate-y-1/2 text-sav-muted hover:text-white transition-colors p-2"
+            className="absolute right-4 top-1/2 -translate-y-1/2 text-sav-muted hover:text-sav-primary transition-colors p-2"
           >
             {showPass ? <EyeOffIcon size={18} /> : <EyeIcon size={18} />}
           </button>

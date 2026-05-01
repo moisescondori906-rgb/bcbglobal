@@ -10,10 +10,10 @@ export function Button({
   ...props 
 }) {
   const variants = {
-    primary: 'btn-primary bg-gradient-to-r from-sav-primary to-sav-accent',
-    secondary: 'btn-secondary',
-    ghost: 'bg-transparent hover:bg-slate-100 text-slate-700',
-    danger: 'bg-sav-error text-white shadow-lg shadow-sav-error/20 hover:brightness-110'
+    primary: 'btn-primary bg-gradient-to-r from-sav-primary to-sav-accent-hot shadow-sav-glow',
+    secondary: 'btn-secondary border-2 border-sav-primary/20 text-sav-primary hover:bg-sav-primary/5',
+    ghost: 'bg-transparent hover:bg-sav-primary/5 text-sav-primary font-black',
+    danger: 'bg-sav-error text-white shadow-lg shadow-sav-error/30 hover:brightness-110 font-black'
   };
 
   return (

@@ -61,7 +61,7 @@ export default function VIP() {
             <div className="w-16 h-16 rounded-3xl bg-sav-primary/5 border border-sav-primary/10 flex items-center justify-center text-sav-primary mb-4 shadow-xl shadow-sav-primary/5">
               <Crown size={32} strokeWidth={2.5} />
             </div>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-1">Tu Nivel Actual</p>
+            <p className="text-[10px] font-black text-sav-muted uppercase tracking-[0.3em] mb-1">Tu Nivel Actual</p>
             <h2 className="text-3xl font-black text-slate-900 uppercase tracking-tight">
               {displayLevelCode(user?.nivel_codigo || 'Internar')}
             </h2>

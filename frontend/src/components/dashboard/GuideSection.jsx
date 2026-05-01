@@ -13,7 +13,7 @@ export default function GuideSection({ text }) {
         {[1, 2, 3, 4].map((i) => (
           <div key={i} className="flex items-center gap-3 px-4">
             <Sparkles size={12} className={i % 2 === 0 ? "text-sav-accent" : "text-sav-accentHot"} fill="currentColor" />
-            <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white/80">
+            <span className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-700">
               {text}
             </span>
           </div>

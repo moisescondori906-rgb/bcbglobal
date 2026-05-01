@@ -37,7 +37,7 @@ export default function ActionGrid({ items }) {
               <div className={cn("p-4 rounded-2xl shadow-inner transition-all duration-500 group-hover:scale-110 group-hover:shadow-glow", color || "text-sav-accent")}>
                 <Icon size={28} strokeWidth={2} />
               </div>
-              <span className="text-[8.5px] font-black uppercase tracking-[0.2em] text-slate-300 text-center leading-tight">
+              <span className="text-[10px] font-black uppercase tracking-[0.1em] text-slate-700 text-center leading-tight">
                 {label}
               </span>
               

@@ -18,10 +18,11 @@ export default function Layout({ children }) {
 
   return (
     <div className="app-container">
-      {/* Aurora Background Effect */}
+      {/* Aurora Background Effect - Más llamativo */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
-        <div className="absolute top-[-15%] -left-[10%] w-[80%] h-[50%] bg-sav-primary/5 rounded-full blur-[120px] animate-pulse" />
-        <div className="absolute bottom-[-10%] -right-[10%] w-[60%] h-[40%] bg-sav-accent/5 rounded-full blur-[100px] animate-pulse" style={{ animationDelay: '2s' }} />
+        <div className="absolute top-[-20%] -left-[20%] w-[100%] h-[70%] bg-sav-primary/10 rounded-full blur-[140px] animate-pulse" />
+        <div className="absolute bottom-[-15%] -right-[15%] w-[80%] h-[60%] bg-sav-accent/10 rounded-full blur-[120px] animate-pulse" style={{ animationDelay: '2s' }} />
+        <div className="absolute top-1/4 right-[-10%] w-[50%] h-[40%] bg-sav-accent-hot/10 rounded-full blur-[100px] animate-pulse" style={{ animationDelay: '4s' }} />
       </div>
 
       <div className="flex-1 relative z-10 overflow-x-hidden no-scrollbar pb-32">
@@ -31,7 +32,7 @@ export default function Layout({ children }) {
       <FloatingQuestionnaire />
 
       {!isAuthPage && (
-        <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[92%] max-w-[400px] bg-white/80 backdrop-blur-2xl py-3 px-6 z-50 flex items-center justify-around rounded-[2.5rem] border border-white/40 shadow-[0_20px_50px_-15px_rgba(0,0,0,0.15)]">
+        <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[94%] max-w-[420px] bg-white/90 backdrop-blur-3xl py-4 px-6 z-50 flex items-center justify-around rounded-[3rem] border border-white shadow-[0_25px_60px_-15px_rgba(0,0,0,0.2)]">
           {navItems.map((item) => {
             const isActive = location.pathname === item.to;
             const Icon = item.icon;
@@ -41,24 +42,24 @@ export default function Layout({ children }) {
                 to={item.to}
                 className={cn(
                   "nav-item group relative",
-                  isActive ? "nav-item-active" : "text-slate-400"
+                  isActive ? "text-sav-primary" : "text-slate-500"
                 )}
               >
                 {isActive && (
                   <motion.div
                     layoutId="active-pill"
-                    className="absolute -bottom-1 w-1.5 h-1.5 bg-sav-primary rounded-full shadow-sav-glow"
+                    className="absolute -bottom-1 w-2 h-2 bg-sav-primary rounded-full shadow-sav-glow"
                   />
                 )}
                 <div className={cn(
-                  "transition-all duration-500 p-2 rounded-2xl",
-                  isActive ? "bg-sav-primary/10 scale-110" : "scale-100 group-active:scale-90"
+                  "transition-all duration-500 p-2.5 rounded-2xl",
+                  isActive ? "bg-sav-primary/10 scale-110 shadow-inner" : "scale-100 group-active:scale-90"
                 )}>
-                  <Icon size={24} strokeWidth={isActive ? 2.5 : 1.5} />
+                  <Icon size={26} strokeWidth={isActive ? 3 : 2} />
                 </div>
                 <span className={cn(
-                  "text-[8px] font-black uppercase tracking-[0.2em] transition-all mt-0.5",
-                  isActive ? "text-sav-primary opacity-100" : "opacity-0 scale-0 h-0 overflow-hidden"
+                  "text-[9px] font-black uppercase tracking-[0.15em] transition-all mt-1",
+                  isActive ? "opacity-100" : "opacity-0 scale-0 h-0 overflow-hidden"
                 )}>
                   {item.label}
                 </span>

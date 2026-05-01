@@ -62,9 +62,9 @@ export default function Login() {
           <h1 className="text-4xl font-black tracking-tighter text-slate-900 mb-2 uppercase">
             Bienvenido
           </h1>
-          <div className="flex items-center justify-center gap-2 opacity-50">
+          <div className="flex items-center justify-center gap-2">
             <ShieldCheck size={14} className="text-sav-primary" />
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-600">Portal Seguro BCB</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-sav-muted">Portal Seguro BCB</p>
           </div>
         </div>
 
