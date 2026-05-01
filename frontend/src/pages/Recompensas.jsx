@@ -211,18 +211,43 @@ export default function Recompensas() {
           {/* Wheel Container */}
           <div className="relative flex flex-col items-center">
             <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-4 z-30">
-              <div className="w-8 h-10 bg-white rounded-b-full shadow-2xl flex items-center justify-center border-x-4 border-b-4 border-[#1a1f36]">
-                <div className="w-2 h-2 bg-rose-500 rounded-full animate-pulse" />
-              </div>
+              {/* Nuevo diseño del puntero */}
+              <div className="w-0 h-0 border-l-[15px] border-l-transparent border-r-[15px] border-r-transparent border-t-[30px] border-t-amber-400 shadow-[0_0_15px_rgba(251,191,36,0.8)] relative z-10" />
+              <div className="w-6 h-6 -mt-3 bg-amber-400 rounded-full mx-auto shadow-[0_0_15px_rgba(251,191,36,0.8)] animate-pulse-slow" />
             </div>
 
-            <div className="relative w-80 h-80 md:w-96 md:h-96 rounded-full border-8 border-[#1a1f36] shadow-[0_0_50px_rgba(0,0,0,0.2)] overflow-hidden bg-white">
+            <div className="relative w-80 h-80 md:w-96 md:h-96 rounded-full border-8 border-amber-300 shadow-[0_0_60px_rgba(251,191,36,0.6)] overflow-hidden bg-white">
               <div 
                 ref={wheelRef}
                 className="w-full h-full transition-transform duration-[5000ms] cubic-bezier(0.15, 0, 0.15, 1)"
                 style={{ transform: `rotate(${rotation}deg)` }}
               >
                 <svg viewBox="0 0 100 100" className="w-full h-full">
+                  <defs>
+                    <linearGradient id="gradGold" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#FFD700" />
+                      <stop offset="100%" stopColor="#FFA500" />
+                    </linearGradient>
+                    <linearGradient id="gradSilver" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#C0C0C0" />
+                      <stop offset="100%" stopColor="#A9A9A9" />
+                    </linearGradient>
+                    <linearGradient id="gradBronze" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#CD7F32" />
+                      <stop offset="100%" stopColor="#8B4513" />
+                    </linearGradient>
+                    <linearGradient id="gradEmerald" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#34D399" />
+                      <stop offset="100%" stopColor="#059669" />
+                    </linearGradient>
+                    <linearGradient id="gradRuby" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#E53935" />
+                      <stop offset="100%" stopColor="#B71C1C" />
+                    </linearGradient>
+                    <filter id="shadowText">
+                      <feDropShadow dx="0.5" dy="0.5" stdDeviation="0.5" floodColor="rgba(0,0,0,0.6)" />
+                    </filter>
+                  </defs>
                   {Array.isArray(premios) && premios.map((premio, i) => {
                     const count = premios.length || 1;
                     const angle = 360 / count;
@@ -231,14 +256,19 @@ export default function Recompensas() {
                     const y1 = 50 + 50 * Math.sin((Math.PI * (rotationAngle - 90)) / 180);
                     const x2 = 50 + 50 * Math.cos((Math.PI * (rotationAngle + angle - 90)) / 180);
                     const y2 = 50 + 50 * Math.sin((Math.PI * (rotationAngle + angle - 90)) / 180);
+
+                    const getGradient = (index) => {
+                      const gradients = ['url(#gradGold)', 'url(#gradSilver)', 'url(#gradBronze)', 'url(#gradEmerald)', 'url(#gradRuby)'];
+                      return gradients[index % gradients.length];
+                    };
                     
                     return (
                       <g key={premio.id}>
                         <path 
                           d={`M 50 50 L ${x1} ${y1} A 50 50 0 0 1 ${x2} ${y2} Z`}
-                          fill={premio.color || (i % 2 === 0 ? '#7f1d1d' : '#991b1b')}
-                          stroke="white"
-                          strokeWidth="0.2"
+                          fill={premio.color ? premio.color : getGradient(i)}
+                          stroke="#333"
+                          strokeWidth="0.5"
                         />
                         <text
                           x="50"
@@ -248,7 +278,8 @@ export default function Recompensas() {
                           fontWeight="900"
                           textAnchor="middle"
                           transform={`rotate(${rotationAngle + angle/2}, 50, 50)`}
-                          style={{ textTransform: 'uppercase', paintOrder: 'stroke', stroke: 'rgba(0,0,0,0.2)', strokeWidth: '0.1px' }}
+                          filter="url(#shadowText)"
+                          style={{ textTransform: 'uppercase', paintOrder: 'stroke', stroke: 'rgba(0,0,0,0.4)', strokeWidth: '0.15px' }}
                         >
                           {premio.valor} BOB
                         </text>
@@ -256,7 +287,7 @@ export default function Recompensas() {
                     );
                   })}
                   {(!Array.isArray(premios) || premios.length === 0) && (
-                    <circle cx="50" cy="50" r="50" fill="#f3f4f6" />
+                    <circle cx="50" cy="50" r="50" fill="url(#gradSilver)" stroke="#333" strokeWidth="0.5" />
                   )}
                 </svg>
               </div>
@@ -272,8 +303,8 @@ export default function Recompensas() {
                 </div>
               )}
               
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 rounded-full bg-white border-4 border-sav-dark shadow-2xl flex items-center justify-center z-20">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-500 to-rose-500 animate-pulse flex items-center justify-center">
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 rounded-full bg-white border-4 border-amber-300 shadow-2xl flex items-center justify-center z-20">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-amber-400 to-amber-600 animate-pulse flex items-center justify-center">
                   <Coins className="text-white" size={20} />
                 </div>
               </div>
