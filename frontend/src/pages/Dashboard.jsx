@@ -325,7 +325,7 @@ export default function Dashboard() {
 
         {/* Footer Brand */}
         <div className="pt-6 pb-4 space-y-4">
-          <img src="/images/institutional-security.png" alt="Seguridad Institucional Garantizada" className="mx-auto w-full max-w-xs opacity-70" />
+          <img src="/images/institutional-security.png" alt="Seguridad Institucional Garantizada" className="mx-auto w-full h-full object-contain opacity-70" />
         </div>
       </main>
 
