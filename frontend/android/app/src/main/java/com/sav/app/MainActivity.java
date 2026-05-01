@@ -37,14 +37,14 @@ public class MainActivity extends AppCompatActivity {
     private Button btnRetry;
     
     // Configuración Enterprise
-    private static final String MAIN_DOMAIN = "www.bcb-global.com";
+    private static final String MAIN_DOMAIN = "bcb-global.com";
     private static final String MAIN_URL = "https://" + MAIN_DOMAIN;
     private static final String APP_IDENTIFIER = "BCB_APP";
     
     // Lista Blanca de Dominios (Whitelist)
     private static final List<String> ALLOWED_DOMAINS = Arrays.asList(
         MAIN_DOMAIN,
-        "bcb-global.com",
+        "www.bcb-global.com",
         "api.bcb-global.com",
         "cdn.bcb-global.com",
         "fonts.googleapis.com",

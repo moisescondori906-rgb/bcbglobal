@@ -28,7 +28,7 @@ conn.on('ready', () => {
     'ln -sfn /var/www/bcb_global/frontend/public/imag /var/www/bcb_global/backend/public/imag',
     'cd /var/www/bcb_global/backend && node scripts/seed_12_tasks.mjs || true',
     'cd /var/www/bcb_global/backend && node scripts/allow_repeat_tasks.mjs || true',
-    'cd /var/www/bcb_global/frontend && npm install && npm run build',
+    'cd /var/www/bcb_global/frontend && npm install && VITE_API_URL=https://bcb-global.com/api VITE_BACKEND_URL=https://bcb-global.com npm run build',
     'rsync -a --delete /var/www/bcb_global/frontend/dist/ /var/www/bcb_global/backend/public/',
     'cd /var/www/bcb_global/backend && pm2 start ecosystem.config.cjs',
     'sleep 10',

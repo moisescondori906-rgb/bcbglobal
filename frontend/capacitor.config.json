@@ -3,10 +3,10 @@
   "appName": "BCB Global",
   "webDir": "dist",
   "server": {
-    "url": "https://www.bcb-global.com",
+    "url": "https://bcb-global.com",
     "allowNavigation": [
-      "www.bcb-global.com",
-      "bcb-global.com"
+      "bcb-global.com",
+      "www.bcb-global.com"
     ]
   },
   "plugins": {
