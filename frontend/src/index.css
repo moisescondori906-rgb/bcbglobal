@@ -55,8 +55,8 @@
     appearance: none;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236B7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
-    background-position: right 0.75rem center;
-    background-size: 1rem 1rem;
+    background-position: right 0.6rem center;
+    background-size: 1.2em 1.2em;
     padding-right: 2.5rem; /* Ajustar para el icono */
     padding-left: 1rem; /* Ajustar padding izquierdo */
     width: auto; /* Para que el ancho se ajuste al contenido */
@@ -65,6 +65,19 @@
     border-radius: 0;
     box-shadow: none;
     @apply focus:ring-0 focus:border-transparent bg-transparent;
+  }
+
+  /* Alineación de las opciones del select */
+  .PhoneInputWithCountry select option {
+    line-height: 1.5; /* Asegura un buen espaciado */
+    padding: 0.5rem 1rem; /* Padding para cada opción */
+  }
+
+  /* Ajuste para que el input no tenga borde izquierdo si está junto al select */
+  .PhoneInputWithCountry input[type="tel"] {
+    border-left: none; /* Elimina el borde izquierdo */
+    border-top-left-radius: 0; /* Asegura que la esquina no sea redondeada */
+    border-bottom-left-radius: 0;
   }
   
 

@@ -130,9 +130,8 @@ export const PhoneInputWithCountry = forwardRef(({
         <select
           value={selectedCountry?.dial_code || ''}
           onChange={handleCountryChange}
-          className="flex items-center pl-4 pr-2 bg-transparent text-slate-900 font-bold text-base outline-none cursor-pointer rounded-l-xl"
+          className="flex-shrink-0 flex items-center pl-3 pr-2 bg-transparent text-slate-900 font-bold text-base outline-none cursor-pointer rounded-l-xl"
           aria-label="Seleccionar código de país"
-          style={{ paddingRight: '2.5rem' }} // Ensure space for custom arrow
         >
           {COUNTRIES.map((country) => (
             <option key={country.code} value={country.dial_code}>
