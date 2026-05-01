@@ -148,24 +148,13 @@ export default function Withdrawal() {
   const msgHorario = !schedRet.ok ? schedRet.message : '';
 
   // --- VALIDACIÓN DE DÍAS SEGÚN NIVEL ---
-  const today = getBoliviaNow().getDay(); // 0=Dom, 1=Lun, 2=Mar... 6=Sab
-  const levelRules = {
-    'global1': 2, // Martes
-    'global2': 3, // Miércoles
-    'global3': 4, // Jueves
-    'global4': 5  // Viernes
-  };
-
-  let assignedDay = levelRules[userLevel?.codigo];
-  if (assignedDay === undefined && userLevel && userLevel.orden >= 5) {
-    assignedDay = 6; // Sábado
-  }
-
-  const DAY_NAMES = { 2: 'Martes', 3: 'Miércoles', 4: 'Jueves', 5: 'Viernes', 6: 'Sábado' };
-  const assignedDayName = DAY_NAMES[assignedDay] || 'No asignado';
-  const isCorrectDay = assignedDay !== undefined && today === assignedDay;
-  const isInternar = userLevel?.codigo === 'internar';
-  const canWithdrawToday = isCorrectDay && !isInternar;
+  const boliviaNow = getBoliviaNow();
+  const today = boliviaNow.getDay(); // 0=Dom, 1=Lun, 2=Mar... 6=Sab
+  
+  // Regla Global: Martes a Jueves (2, 3, 4)
+  const isAllowedDay = today >= 2 && today <= 4;
+  const isInternar = userLevel?.codigo === 'internar' || userLevel?.codigo === 'pasantia';
+  const canWithdrawToday = isAllowedDay && !isInternar;
 
   const handleFile = async (e) => {
     const file = e.target.files?.[0];
@@ -267,22 +256,22 @@ export default function Withdrawal() {
           <Card className="p-4 sm:p-6 border-amber-500/20 bg-amber-500/5 flex items-start sm:items-center gap-3 sm:gap-4">
             <ClockIcon size={20} className="text-amber-500 shrink-0 mt-0.5 sm:mt-0" />
             <p className="text-[9px] sm:text-[10px] font-black text-amber-500 uppercase tracking-widest leading-relaxed">
-              Ya has realizado un retiro hoy. Intenta de nuevo mañana.
+              Solo puedes realizar 1 retiro por día.
             </p>
           </Card>
         )}
 
         {/* Alerta de Día de Retiro */}
-        {!isCorrectDay && !isInternar && userLevel && (
+        {!isAllowedDay && !isInternar && userLevel && (
           <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
             <Card variant="flat" className="p-5 sm:p-6 border-amber-500/20 bg-amber-500/10 flex flex-col gap-3">
               <div className="flex items-center gap-2 sm:gap-3 text-amber-500">
                 <ClockIcon size={18} />
-                <h3 className="text-[10px] sm:text-xs font-black uppercase tracking-widest">Día no asignado</h3>
+                <h3 className="text-[10px] sm:text-xs font-black uppercase tracking-widest">Días no permitidos</h3>
               </div>
               <p className="text-[9px] sm:text-[10px] text-sav-muted font-bold uppercase tracking-widest leading-relaxed">
-                Tu nivel <span className="text-slate-900">{userLevel.nombre}</span> tiene asignado el día <span className="text-amber-600">{assignedDayName}</span> para retiros.
-                <br/>Por favor, regresa el {assignedDayName.toLowerCase()} para procesar tu solicitud.
+                Los retiros están disponibles de martes a jueves, según horario de Bolivia.
+                <br/>Por favor, regresa en los días permitidos para procesar tu solicitud.
               </p>
             </Card>
           </motion.div>
@@ -295,10 +284,10 @@ export default function Withdrawal() {
                 <LockIcon size={28} className="sm:w-[32px] sm:h-[32px]" />
               </div>
               <div className="space-y-1.5 sm:space-y-2">
-                <h3 className="text-xs sm:text-sm font-black text-gray-900 uppercase tracking-widest">Nivel Insuficiente</h3>
+                <h3 className="text-xs sm:text-sm font-black text-gray-900 uppercase tracking-widest">Retiros Deshabilitados</h3>
                 <p className="text-[9px] sm:text-[10px] font-bold text-sav-muted uppercase tracking-widest leading-relaxed">
-                  Los usuarios <span className="text-gray-900 font-black">Internares</span> no pueden realizar retiros.<br/>
-                  Sube a <span className="text-sav-primary font-black">GLOBAL 1</span> para desbloquear esta función.
+                  El nivel Internar no tiene habilitados los retiros. <br/>
+                  Debes estar en un nivel global para solicitar retiros.
                 </p>
               </div>
               <Button onClick={() => navigate('/vip')} variant="primary" className="mt-2 text-[10px] py-3 h-12 w-full max-w-[200px]">Ver Niveles VIP</Button>
@@ -517,7 +506,7 @@ export default function Withdrawal() {
               disabled={!canWithdrawToday || fueraHorario || hasWithdrawalToday || isPunished || !qrImage || !password || !hasSignature}
               className="h-16 sm:h-20 w-full rounded-2xl sm:rounded-[2rem] text-xs sm:text-sm tracking-[0.2em] sm:tracking-[0.3em] shadow-xl sm:shadow-[0_25px_50px_-12px_rgba(220,38,38,0.4)] active:scale-95 transition-all uppercase font-black"
             >
-              {!canWithdrawToday ? `ESPERAR AL ${assignedDayName.toUpperCase()}` : 'SOLICITAR RETIRO'}
+              {!isAllowedDay ? 'FUERA DE DÍA PERMITIDO' : 'SOLICITAR RETIRO'}
             </Button>
           </div>
 
@@ -526,8 +515,8 @@ export default function Withdrawal() {
             <div className="space-y-1 min-w-0">
               <p className="text-[9px] sm:text-[10px] font-black text-slate-900 uppercase tracking-widest">Información importante</p>
               <p className="text-[8px] sm:text-[9px] text-slate-500 font-bold uppercase tracking-[0.05em] leading-relaxed">
-                Los retiros se procesan en un plazo de 2 a 24 horas. 
-                Asegúrate de que tu QR sea legible y pertenezca a tu cuenta.
+                Los retiros están disponibles de martes a jueves, según horario de Bolivia.<br/>
+                Se permite 1 retiro por día. El plazo de procesamiento es de 2 a 24 horas.
               </p>
             </div>
           </Card>

@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { query, queryOne, transaction } from '../config/db.mjs';
 import logger from '../utils/logger.mjs';
+import * as boliviaTimeHelper from '../utils/boliviaTime.mjs';
 
 // Re-exportar utilidades de base de datos para evitar SyntaxErrors en imports delegados
 export { query, queryOne, transaction };
@@ -47,38 +48,45 @@ const DEFAULT_LEVELS = [
  */
 export const boliviaTime = {
   now: (date = new Date()) => {
-    const d = new Date(date);
-    // Obtenemos el desplazamiento de Bolivia (-4 horas)
-    // Para que getUTC* devuelva la hora de Bolivia, restamos 4 horas al tiempo UTC real
-    const boliviaOffsetMs = -4 * 60 * 60000;
-    // El d.getTime() siempre es UTC. Le aplicamos el offset de Bolivia.
-    // Esto crea un objeto Date cuya representación UTC es la hora de Bolivia.
-    return new Date(d.getTime() + boliviaOffsetMs);
+    // Si se pasa una fecha, la convertimos a la hora de Bolivia
+    if (date instanceof Date && !isNaN(date)) {
+      return new Date(date.toLocaleString('en-US', { timeZone: boliviaTimeHelper.BOLIVIA_TIMEZONE }));
+    }
+    return boliviaTimeHelper.getBoliviaNow();
   },
   todayStr: () => {
-    return boliviaTime.getDateString();
+    return boliviaTimeHelper.getBoliviaDateKey();
   },
   yesterdayStr: () => {
-    const d = new Date();
+    const d = boliviaTimeHelper.getBoliviaNow();
     d.setDate(d.getDate() - 1);
-    return boliviaTime.getDateString(d);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   },
   getDateString: (date = new Date()) => {
-    if (!date) return '';
-    const d = boliviaTime.now(date);
-    const year = d.getUTCFullYear();
-    const month = String(d.getUTCMonth() + 1).padStart(2, '0');
-    const day = String(d.getUTCDate()).padStart(2, '0');
+    const d = (date instanceof Date && !isNaN(date)) 
+      ? new Date(date.toLocaleString('en-US', { timeZone: boliviaTimeHelper.BOLIVIA_TIMEZONE }))
+      : boliviaTimeHelper.getBoliviaNow();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
   },
   getTimeString: (date = new Date()) => {
-    const d = boliviaTime.now(date);
-    const h = String(d.getUTCHours()).padStart(2, '0');
-    const min = String(d.getUTCMinutes()).padStart(2, '0');
+    const d = (date instanceof Date && !isNaN(date)) 
+      ? new Date(date.toLocaleString('en-US', { timeZone: boliviaTimeHelper.BOLIVIA_TIMEZONE }))
+      : boliviaTimeHelper.getBoliviaNow();
+    const h = String(d.getHours()).padStart(2, '0');
+    const min = String(d.getMinutes()).padStart(2, '0');
     return `${h}:${min}`;
   },
   getDay: (date = new Date()) => {
-    return boliviaTime.now(date).getUTCDay();
+    const d = (date instanceof Date && !isNaN(date)) 
+      ? new Date(date.toLocaleString('en-US', { timeZone: boliviaTimeHelper.BOLIVIA_TIMEZONE }))
+      : boliviaTimeHelper.getBoliviaNow();
+    return d.getDay();
   },
   getDayName: (date = new Date()) => {
     const days = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
@@ -320,70 +328,31 @@ export async function canWithdraw(userId, dateStr = boliviaTime.todayStr()) {
   const levels = await getLevels();
   const userLevel = levels.find(l => String(l.id) === String(user.nivel_id));
   
-  if (!userLevel || userLevel.codigo === 'internar') {
-    return { ok: false, message: 'El nivel Internar no tiene permitido realizar retiros. Sube a GLOBAL 1 o superior.' };
+  if (!userLevel || userLevel.codigo === 'internar' || userLevel.codigo === 'pasantia') {
+    return { ok: false, message: 'El nivel Internar no tiene habilitados los retiros. Debes estar en un nivel global para solicitar retiros.' };
   }
 
-  // 1. Regla de Día de la Semana (Prioridad: Calendario > Nivel > Default)
-  // Obtenemos el día de la semana basado en la fecha proporcionada (UTC Bolivia)
-  const [y, m, d] = dateStr.split('-').map(Number);
-  const dayOfWeek = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
-  
-  const levelRules = typeof status.reglas_niveles === 'string' 
-    ? JSON.parse(status.reglas_niveles) 
-    : (status.reglas_niveles || {});
+  // REGLA GLOBAL: Martes (2) a Jueves (4)
+  const dayOfWeek = boliviaTime.getDay(); // Basado en hora de Bolivia actual
+  const isAllowedDay = dayOfWeek >= 2 && dayOfWeek <= 4;
 
-  const hasSpecificCalendarRule = levelRules[userLevel.codigo]?.retiro !== undefined;
-
-  if (hasSpecificCalendarRule) {
-    if (levelRules[userLevel.codigo].retiro === false) {
-      return { ok: false, message: `Los retiros para el nivel ${userLevel.nombre} están bloqueados hoy por calendario operativo.` };
-    }
-  } else {
-    if (userLevel.retiro_horario_habilitado) {
-      // Validación por rango de días del nivel
-      let allowed = false;
-      const start = Number(userLevel.retiro_dia_inicio);
-      const end = Number(userLevel.retiro_dia_fin);
-      
-      if (start <= end) {
-        allowed = dayOfWeek >= start && dayOfWeek <= end;
-      } else {
-        allowed = dayOfWeek >= start || dayOfWeek <= end;
-      }
-
-      if (!allowed) {
-        const DAYS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-        return { ok: false, message: `Tu nivel permite retiros de ${DAYS[start]} a ${DAYS[end]}.` };
-      }
-    } else {
-      // Cronograma Institucional Default: G1=Mar, G2=Mie, G3=Jue, G4=Vie, G5+=Sab
-      const defaultRules = { 'global1': 2, 'global2': 3, 'global3': 4, 'global4': 5 };
-      let allowedDay = defaultRules[userLevel.codigo];
-      if (allowedDay === undefined && userLevel.orden >= 5) allowedDay = 6;
-
-      if (allowedDay !== undefined && dayOfWeek !== allowedDay) {
-        const DAY_NAMES = { 0: 'Domingo', 1: 'Lunes', 2: 'Martes', 3: 'Miércoles', 4: 'Jueves', 5: 'Viernes', 6: 'Sábado' };
-        return { ok: false, message: `Tu nivel (${userLevel.nombre}) solo permite retirar los días ${DAY_NAMES[allowedDay]}.` };
-      }
-    }
+  if (!isAllowedDay) {
+    return { ok: false, message: 'Los retiros están disponibles de martes a jueves, según horario de Bolivia.' };
   }
 
-  // 2. Regla de Horario (Prioridad: Nivel > Config Global)
+  // 2. Regla de Horario (Config Global)
   const time = boliviaTime.getTimeString();
   const config = await getPublicContent();
   
   let schedule = { enabled: true, inicio: '09:00', fin: '18:00' };
   
-  if (userLevel.retiro_horario_habilitado) {
-    schedule = { enabled: true, inicio: userLevel.retiro_hora_inicio, fin: userLevel.retiro_hora_fin };
-  } else if (config.horario_retiro) {
+  if (config.horario_retiro) {
     const c = typeof config.horario_retiro === 'string' ? JSON.parse(config.horario_retiro) : config.horario_retiro;
     schedule = { enabled: !!c.enabled, inicio: c.hora_inicio, fin: c.hora_fin };
   }
 
   if (schedule.enabled && !boliviaTime.isTimeInWindow(time, schedule.inicio, schedule.fin)) {
-    return { ok: false, message: `El horario de retiros para tu nivel es de ${schedule.inicio} a ${schedule.fin} (Hora Bolivia).` };
+    return { ok: false, message: `El horario de retiros es de ${schedule.inicio} a ${schedule.fin} (Hora Bolivia).` };
   }
 
   return { ok: true };
@@ -799,7 +768,7 @@ export async function requestWithdrawal(userId, { monto, tipo_billetera, tarjeta
     );
     
     if (withdrawCount[0].total > 0) {
-      throw new Error('Límite excedido: Solo se permite 1 retiro por día (Hora Bolivia).');
+      throw new Error('Solo puedes realizar 1 retiro por día.');
     }
 
     // 3. DESCONTAR SALDO (ACID)
