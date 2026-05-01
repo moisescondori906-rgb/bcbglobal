@@ -104,8 +104,8 @@ export default function AboutUs() {
             exit={{ opacity: 0, x: -20 }}
             transition={{ duration: 0.3, ease: "easeOut" }}
           >
-            <Card variant="premium" className="p-8 relative overflow-hidden min-h-[400px]">
-              <div className="absolute top-0 right-0 p-8 opacity-5">
+            <Card variant="premium" className="p-8 relative overflow-hidden min-h-[420px] bg-white shadow-[0_30px_60px_-15px_rgba(0,0,0,0.1)] border-sav-primary/30">
+              <div className="absolute top-0 right-0 p-8 opacity-[0.03] text-sav-primary">
                 {(() => {
                   const Icon = tabs.find(t => t.id === activeTab).icon;
                   return <Icon size={180} />;
@@ -114,26 +114,26 @@ export default function AboutUs() {
 
               <div className="relative z-10 space-y-6">
                 <div className="space-y-2">
-                  <Badge variant="info" className="mb-2">BCB GLOBAL OFFICIAL</Badge>
-                  <h2 className="text-3xl font-black text-white uppercase tracking-tighter leading-none">
+                  <Badge variant="info" className="mb-2 bg-sav-primary text-white border-sav-primary shadow-sm">BCB GLOBAL OFFICIAL</Badge>
+                  <h2 className="text-3xl font-black text-slate-900 uppercase tracking-tighter leading-none drop-shadow-sm">
                     {content[activeTab].title}
                   </h2>
-                  <p className="text-xs font-black text-sav-primary uppercase tracking-[0.2em]">
+                  <p className="text-[13px] font-black text-sav-primary uppercase tracking-[0.25em] bg-sav-primary/5 py-1 px-3 rounded-lg inline-block">
                     {content[activeTab].subtitle}
                   </p>
                 </div>
 
-                <p className="text-sm text-sav-muted font-medium leading-relaxed">
+                <p className="text-[15px] text-slate-700 font-bold leading-relaxed border-l-4 border-sav-primary/30 pl-4 py-1">
                   {content[activeTab].description}
                 </p>
 
-                <div className="space-y-4 pt-4">
+                <div className="space-y-5 pt-4">
                   {content[activeTab].items.map((item, i) => (
                     <div key={i} className="flex items-center gap-4 group">
-                      <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-sav-primary group-hover:scale-110 transition-transform">
-                        <item.icon size={18} />
+                      <div className="w-11 h-11 rounded-2xl bg-sav-primary text-white flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg shadow-sav-primary/30">
+                        <item.icon size={20} strokeWidth={2.5} />
                       </div>
-                      <span className="text-xs font-bold text-white/80 uppercase tracking-wide">{item.text}</span>
+                      <span className="text-[13px] font-black text-slate-800 uppercase tracking-tight">{item.text}</span>
                     </div>
                   ))}
                 </div>
