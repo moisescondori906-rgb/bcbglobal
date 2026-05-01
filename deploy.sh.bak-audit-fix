@@ -21,7 +21,6 @@ npm install || { echo "❌ Error en npm install (backend)"; exit 1; }
 # Sincronizar Base de Datos (idempotente)
 echo "🗄️ Sincronizando Base de Datos..."
 node src/db-sync.mjs || { echo "⚠️ Advertencia en db-sync.mjs, continuando..."; }
-node scripts/fix_schema_safe.mjs || { echo "⚠️ Advertencia en fix_schema_safe.mjs, continuando..."; }
 
 # Reiniciar Backend con PM2
 echo "🔄 Reiniciando proceso PM2..."

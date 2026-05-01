@@ -48,20 +48,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
   INDEX idx_usuarios_telefono (telefono),
   INDEX idx_usuarios_invitado_por (invitado_por),
   INDEX idx_usuarios_codigo_inv (codigo_invitacion),
-  INDEX idx_usuarios_tenant (tenant_id),
-  INDEX idx_usuarios_telegram_user_id (telegram_user_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- 2.1 SORTEO CONFIG PERSONALIZADA
-CREATE TABLE IF NOT EXISTS sorteo_config_personalizada (
-  id VARCHAR(36) PRIMARY KEY,
-  target_type ENUM('usuario', 'nivel') NOT NULL,
-  target_id VARCHAR(36) NOT NULL,
-  premio_id_forzado VARCHAR(36) NULL,
-  activa TINYINT(1) DEFAULT 1,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  UNIQUE KEY unique_sorteo_target (target_type, target_id)
+  INDEX idx_usuarios_tenant (tenant_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 3. TAREAS (Contenido Visual Global)

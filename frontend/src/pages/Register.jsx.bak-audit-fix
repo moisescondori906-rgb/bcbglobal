@@ -43,12 +43,11 @@ export default function Register() {
 
     setLoading(true);
     try {
-      const inviteCode = String(data.codigo_invitacion || '').trim().toUpperCase();
       await register({
         telefono: data.telefono.trim(),
         nombre_usuario: data.nombre_usuario,
         password: data.password,
-        codigo_invitacion: inviteCode,
+        codigo_invitacion: data.codigo_invitacion,
       });
       navigate('/');
     } catch (err) {

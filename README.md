@@ -1,101 +1,84 @@
 # BCB Global Institutional (v11.4.2)
 
-🚀 **Actualización Premium**: Auditoría Técnica Total completada. Sistema unificado en MySQL, eliminación de dependencias de Supabase, y alineación total con la Tabla de Inversiones Global 1-9. Sincronización de seguridad y resiliencia v11.4.2.
+🚀 **Auditoría Técnica Total Completada**: Sistema unificado en MySQL, eliminación de dependencias obsoletas y alineación total con la Tabla de Inversiones Global 1-9. Seguridad y resiliencia v11.4.2 lista para producción.
 
 ## Tabla Oficial de Niveles
 
-| Nivel | Inversión (BOB) | Tareas/Día | Pago Tarea | Ingreso Diario |
-| :--- | :--- | :--- | :--- | :--- |
-| Internar | 0 | 3 | 1.00 | 3.00 |
-| global1 | 230.00 | 4 | 1.80 | 7.20 |
-| global2 | 780.00 | 8 | 3.22 | 25.76 |
-| global3 | 2,900.00 | 15 | 6.76 | 101.40 |
-| global4 | 9,200.00 | 30 | 11.33 | 339.90 |
-| global5 | 28,200.00 | 60 | 17.43 | 1,045.80 |
-| global6 | 58,000.00 | 100 | 22.35 | 2,235.00 |
-| global7 | 124,000.00 | 160 | 31.01 | 4,961.60 |
-| global8 | 299,400.00 | 250 | 47.91 | 11,977.50 |
-| global9 | 541,600.00 | 400 | 58.87 | 23,548.00 |
+| Nivel | Inversión (BOB) | Tareas/Día | Pago Tarea | Ingreso Diario | Ingreso Mensual |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Pasante** | 0.00 | 3 | 1.00 | 3.00 | — |
+| **GLOBAL 1** | 230.00 | 4 | 1.80 | 7.20 | 216.00 |
+| **GLOBAL 2** | 780.00 | 8 | 3.22 | 25.76 | 772.80 |
+| **GLOBAL 3** | 2,900.00 | 15 | 6.76 | 101.40 | 3,042.00 |
+| **GLOBAL 4** | 9,200.00 | 30 | 11.33 | 339.90 | 10,197.00 |
+| **GLOBAL 5** | 28,200.00 | 60 | 17.43 | 1,045.80 | 31,374.00 |
+| **GLOBAL 6** | 58,000.00 | 100 | 22.35 | 2,235.00 | 67,050.00 |
+| **GLOBAL 7** | 124,000.00 | 160 | 31.01 | 4,961.60 | 148,848.00 |
+| **GLOBAL 8** | 299,400.00 | 250 | 47.91 | 11,977.50 | 359,325.00 |
+| **GLOBAL 9** | 541,600.00 | 400 | 58.87 | 23,548.00 | 706,440.00 |
 
 ## Requisitos del Servidor (Ubuntu 22.04+)
 
-```bash
-# Instalación de dependencias básicas
-sudo apt update
-sudo apt install -y mysql-server redis-server git nginx unzip build-essential
-
-# Instalación de Node.js 20
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-sudo apt install -y nodejs
-```
+- **Node.js**: v20.x o v22.x
+- **MySQL**: 8.0+
+- **Redis**: Activo (Puerto 6379)
+- **PM2**: Global (`npm install -g pm2`)
+- **Nginx**: Configurado como Reverse Proxy
 
 ## Instalación y Despliegue
 
-### 1. Clonar Repositorio
-```bash
-git clone https://github.com/moisescondori906-rgb/bcbglobal.git /var/www/bcb_global
-cd /var/www/bcb_global
-```
-
-### 2. Backend
+### 1. Preparación de la Base de Datos
 ```bash
 cd backend
 npm install
-cp .env.example .env
-# Editar .env con tus credenciales de MySQL y Redis
+cp .env.example .env # Configurar credenciales reales
+
+# 1. Crear BD y Esquema Base
 node src/db-sync.mjs
-# Iniciar con PM2
-pm2 start ecosystem.config.cjs
-pm2 save
-pm2 startup
+
+# 2. Aplicar Parches de Seguridad y Sorteo (Idempotente)
+node scripts/fix_schema_safe.mjs
 ```
 
-### 3. Frontend
+### 2. Lanzamiento del Backend
+```bash
+pm2 start ecosystem.config.cjs
+pm2 save
+```
+
+### 3. Construcción del Frontend
 ```bash
 cd ../frontend
 npm install
-# Asegúrate de configurar .env con la URL de tu API
+# Configurar VITE_API_URL en el entorno o .env
 npm run build
 ```
 
-### 4. Configuración de Nginx
-El frontend se sirve desde la carpeta `dist`.
-```nginx
-server {
-    listen 80;
-    server_name bcb-global.com;
-    root /var/www/bcb_global/frontend/dist;
-    index index.html;
+## Health Check Profesional
+El sistema expone un endpoint de salud ultra-resiliente en:
+`https://bcb-global.com/api/health`
 
-    location /api {
-        proxy_pass http://127.0.0.1:4000/api;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_cache_bypass $http_upgrade;
-    }
-
-    location / {
-        try_files $uri $uri/ /index.html;
-    }
+Respuesta esperada (200 OK):
+```json
+{
+  "status": "ok",
+  "version": "11.4.2",
+  "db": "ok",
+  "redis": "ok"
 }
 ```
 
-## Health Check
-Puedes verificar el estado del sistema en:
-`http://TU_IP/api/health`
+## Troubleshooting & Solución de Problemas
 
-## Troubleshooting
-- **Error 401 en Login**: Verifica la normalización del teléfono. El sistema acepta formatos: `70000001`, `59170000001`, `+59170000001`.
-- **502 Bad Gateway**: Asegúrate de que el backend esté corriendo con PM2 (`pm2 list`).
-- **CORS Error**: Verifica que tu dominio o IP esté en `allowedOrigins` dentro de `backend/src/index.mjs`.
+- **Login 401**: El sistema normaliza automáticamente el teléfono. Acepta `70000001`, `59170000001` y `+59170000001`. Si persiste, verifica que el `password_hash` en la DB sea compatible con `bcryptjs`.
+- **Ruleta sin Premios**: Si la ruleta no muestra premios, ejecuta `node scripts/fix_schema_safe.mjs` para poblar los premios base.
+- **Invitaciones con URL Incorrecta**: Asegúrate de que `VITE_WEB_URL` en el frontend esté configurado correctamente (ej: `https://bcb-global.com`).
+- **Error 502 / 504**: Verifica que PM2 no esté en loop de reinicio: `pm2 logs bcb-global-backend`.
 
-## Estructura del Proyecto
-```
-bcb_global/
-├── backend/          # API Node.js + Express + MySQL
-├── frontend/         # React + Vite + Tailwind (App Android Capacitor)
-├── deploy.sh         # Script de despliegue automático
-└── deploy-check.sh   # Script de validación técnica
-```
+## Seguridad Integrada
+- **CORS**: Configurado en `backend/src/index.mjs` para permitir solo dominios autorizados y subdominios de `bcb-global.com`.
+- **Idempotencia**: Todas las transacciones financieras (retiros, tareas, ruleta) usan una tabla de `idempotencia` para evitar duplicados.
+- **Auditoría**: Cada movimiento de saldo se registra en `auditoria_financiera` con un `trace_id` único.
+
+---
+© 2026 BCB Global Institutional Platform. Todos los derechos reservados.

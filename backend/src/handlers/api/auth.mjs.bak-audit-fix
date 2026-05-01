@@ -21,12 +21,10 @@ router.post('/register', asyncHandler(async (req, res) => {
     return res.status(400).json({ error: 'Faltan campos requeridos' });
   }
 
-  const inviteCode = String(codigo_invitacion || '').trim().toUpperCase();
-
   // 1. Validaciones en paralelo con Fingerprinting
   const [exists, inviter, levels, ipCheck, fpCheck] = await Promise.all([
     findUserByTelefono(telefono),
-    queryOne(`SELECT id FROM usuarios WHERE codigo_invitacion = ?`, [inviteCode]),
+    queryOne(`SELECT id FROM usuarios WHERE codigo_invitacion = ?`, [codigo_invitacion]),
     getLevels(),
     // Protección Anti-Abuso: IP + Fingerprint
     redis.get(`onboarding:ip:${req.ip}`),

@@ -11,7 +11,7 @@ echo "⚙️ Verificando Backend..."
 cd backend || exit 1
 
 # Comprobar sintaxis de archivos críticos
-FILES_TO_CHECK=("src/index.mjs" "src/handlers/api/auth.mjs" "src/handlers/api/sorteo.mjs" "src/services/dbService.mjs" "src/config/db.mjs")
+FILES_TO_CHECK=("src/index.mjs" "src/handlers/api/auth.mjs" "src/services/dbService.mjs" "src/config/db.mjs")
 
 for FILE in "${FILES_TO_CHECK[@]}"; do
     node --check "$FILE"

@@ -53,11 +53,14 @@ async function syncDatabase() {
       const sql = fs.readFileSync(filePath, 'utf8');
       
       // Limpieza robusta de SQL:
+      // 1. Quitar comentarios de bloque /* ... */
+      // 2. Quitar comentarios de línea -- o #
+      // 3. Dividir por ; pero ser cuidadoso con los que están dentro de strings (aunque para esquemas simples split funciona)
       const cleanSql = sql
         .replace(/\/\*[\s\S]*?\*\//g, '') // Quitar /* ... */
-        .split('\n')
-        .map(line => line.replace(/(--|#).*$/, '').trim()) // Quitar comentarios de línea
-        .join(' ');
+        .replace(/^--.*$/gm, '')          // Quitar -- al inicio de línea
+        .replace(/^\s*#.*$/gm, '')        // Quitar # al inicio de línea
+        .replace(/\s+--.*$/gm, '');       // Quitar -- después de código
 
       const queries = cleanSql
         .split(';')
