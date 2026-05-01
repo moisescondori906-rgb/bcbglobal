@@ -11,17 +11,17 @@ dotenv.config();
  */
 
 async function tableExists(tableName) {
-  const rows = await query('SHOW TABLES LIKE ?', [tableName]);
+  const rows = await query(`SHOW TABLES LIKE '${tableName}'`);
   return rows.length > 0;
 }
 
 async function columnExists(tableName, columnName) {
-  const rows = await query('SHOW COLUMNS FROM ?? LIKE ?', [tableName, columnName]);
+  const rows = await query(`SHOW COLUMNS FROM ${tableName} LIKE '${columnName}'`);
   return rows.length > 0;
 }
 
 async function indexExists(tableName, indexName) {
-  const rows = await query('SHOW INDEX FROM ?? WHERE Key_name = ?', [tableName, indexName]);
+  const rows = await query(`SHOW INDEX FROM ${tableName} WHERE Key_name = '${indexName}'`);
   return rows.length > 0;
 }
 
