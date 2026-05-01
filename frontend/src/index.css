@@ -1,5 +1,4 @@
 @import "tailwindcss";
-@import 'react-phone-number-input/style.css';
 
 @theme {
   --color-sav-primary: #6366F1; /* Indigo 500 - Más vibrante */
@@ -48,6 +47,25 @@
     @apply h-14 w-full px-5 rounded-2xl bg-white border border-sav-border text-slate-900 text-base focus:border-sav-primary/50 focus:ring-4 focus:ring-sav-primary/10 transition-all outline-none placeholder:text-sav-muted shadow-sm;
     /* text-base evita el zoom automático en iOS al enfocar inputs */
   }
+
+  /* Estilos específicos para el select dentro de PhoneInputWithCountry */
+  .PhoneInputWithCountry select {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236B7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.5rem center;
+    background-size: 1.5em 1.5em;
+    padding-right: 2.5rem; /* Ajustar para el icono */
+    width: auto; /* Para que el ancho se ajuste al contenido */
+    border: none; /* Eliminar borde para que se fusione con el contenedor */
+    height: 100%;
+    border-radius: 0;
+    box-shadow: none;
+    @apply focus:ring-0 focus:border-transparent;
+  }
+  
 
   button {
     @apply transition-all active:scale-[0.97] min-h-[44px];

@@ -90,6 +90,7 @@ export default function Login() {
                 onChange={setNumero}
                 placeholder="Teléfono (ej: 70000001)"
                 className="flex-1"
+                error={error}
                 required
               />
             </div>

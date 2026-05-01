@@ -102,6 +102,7 @@ export default function Register() {
                 onChange={(value) => handleChange('telefono', value)}
                 placeholder="Celular (ej: 70000001)"
                 className="flex-1"
+                error={error}
                 required
               />
             </div>
