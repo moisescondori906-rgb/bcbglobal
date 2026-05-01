@@ -17,12 +17,12 @@ export default function StatCard({ label, value, icon: Icon, color, bg, delay = 
           <Icon size={20} strokeWidth={2.5} />
         </div>
         <div className="flex flex-col items-end">
-          <span className="text-[8px] font-black uppercase tracking-[0.3em] text-sav-muted mb-1">
+          <span className="text-[8px] font-black uppercase tracking-[0.3em] text-slate-300 mb-1">
             {label}
           </span>
           <div className="flex items-baseline gap-1">
-            <span className="text-xl font-black text-slate-900 tracking-tighter">{value}</span>
-            <span className="text-[9px] font-bold text-sav-muted uppercase">BOB</span>
+            <span className="text-xl font-black text-white tracking-tighter">{value}</span>
+            <span className="text-[9px] font-bold text-slate-300 uppercase">BOB</span>
           </div>
         </div>
       </div>

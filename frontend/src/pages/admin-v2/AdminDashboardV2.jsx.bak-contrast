@@ -31,7 +31,7 @@ const StatCard = ({ title, value, change, icon: Icon, color, delay }) => (
     
     <div className="flex items-start justify-between mb-6">
       <div className={`p-4 rounded-2xl bg-gradient-to-br ${color} bg-opacity-10 border border-white/5 shadow-lg group-hover:scale-110 transition-transform duration-500`}>
-        <Icon size={24} className="text-sav-primary" />
+        <Icon size={24} className="text-white" />
       </div>
       <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${change > 0 ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'}`}>
         {change > 0 ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
