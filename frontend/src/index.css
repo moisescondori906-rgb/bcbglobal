@@ -71,6 +71,8 @@
   .PhoneInputWithCountry select option {
     line-height: 1.5; /* Asegura un buen espaciado */
     padding: 0.5rem 1rem; /* Padding para cada opción */
+    background-color: var(--color-sav-primary); /* Azul */
+    color: white; /* Texto blanco para contraste */
   }
 
   /* Ajuste para que el input no tenga borde izquierdo si está junto al select */
