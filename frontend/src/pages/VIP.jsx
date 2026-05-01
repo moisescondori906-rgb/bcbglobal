@@ -53,7 +53,7 @@ export default function VIP() {
         </div>
 
         {/* Current Status Card */}
-        <Card variant="premium" className="relative overflow-hidden group border-sav-primary/20 bg-gradient-to-br from-white to-sav-surface">
+        <Card variant="premium" className="relative overflow-hidden group border-sav-primary/20 bg-gradient-to-br from-white to-slate-50">
           <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:rotate-12 transition-transform">
             <Crown size={80} className="text-sav-primary" />
           </div>
@@ -61,8 +61,8 @@ export default function VIP() {
             <div className="w-16 h-16 rounded-3xl bg-sav-primary/5 border border-sav-primary/10 flex items-center justify-center text-sav-primary mb-4 shadow-xl shadow-sav-primary/5">
               <Crown size={32} strokeWidth={2.5} />
             </div>
-            <p className="text-[10px] font-black text-sav-muted uppercase tracking-[0.3em] mb-1">Tu Nivel Actual</p>
-            <h2 className="text-3xl font-black text-sav-dark uppercase tracking-tight">
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-1">Tu Nivel Actual</p>
+            <h2 className="text-3xl font-black text-slate-900 uppercase tracking-tight">
               {displayLevelCode(user?.nivel_codigo || 'Internar')}
             </h2>
           </div>
@@ -126,39 +126,39 @@ export default function VIP() {
                 <div className="grid grid-cols-1 gap-4">
                   {/* Depósito y Tareas */}
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-sav-surface rounded-2xl p-4 border border-sav-border/30">
-                      <p className="text-[8px] font-black text-sav-muted uppercase tracking-[0.2em] mb-1">Depósito</p>
-                      <p className="text-lg font-black text-sav-dark tracking-tighter">
-                        {formatBOB(nivel.deposito)} <span className="text-[10px] font-bold text-sav-muted">BOB</span>
+                    <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
+                      <p className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Depósito</p>
+                      <p className="text-lg font-black text-slate-900 tracking-tighter">
+                        {formatBOB(nivel.deposito)} <span className="text-[10px] font-bold text-slate-400">BOB</span>
                       </p>
                     </div>
-                    <div className="bg-sav-surface rounded-2xl p-4 border border-sav-border/30">
-                      <p className="text-[8px] font-black text-sav-muted uppercase tracking-[0.2em] mb-1">Tareas Diarias</p>
-                      <p className="text-lg font-black text-sav-dark tracking-tighter">
-                        {nivel.num_tareas_diarias} <span className="text-[10px] font-bold text-sav-muted">CUPOS</span>
+                    <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
+                      <p className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Tareas Diarias</p>
+                      <p className="text-lg font-black text-slate-900 tracking-tighter">
+                        {nivel.num_tareas_diarias} <span className="text-[10px] font-bold text-slate-400">CUPOS</span>
                       </p>
                     </div>
                   </div>
 
                   {/* Comisiones y Rentas */}
-                  <div className="bg-sav-surface rounded-2xl p-5 border border-sav-border/30 space-y-4">
-                    <div className="flex justify-between items-center border-b border-sav-border/20 pb-3">
-                      <span className="text-[9px] font-black text-sav-muted uppercase tracking-widest">Pago por Tarea</span>
-                      <span className="text-xs font-black text-sav-dark">{formatBOB(nivel.ganancia_tarea)} BOB</span>
+                  <div className="bg-slate-50 rounded-2xl p-5 border border-slate-100 space-y-4">
+                    <div className="flex justify-between items-center border-b border-slate-200/50 pb-3">
+                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Pago por Tarea</span>
+                      <span className="text-xs font-black text-slate-900">{formatBOB(nivel.ganancia_tarea)} BOB</span>
                     </div>
                     
                     <div className="grid grid-cols-3 gap-2">
                       <div className="text-center space-y-1">
-                        <p className="text-[7px] font-black text-sav-muted uppercase tracking-widest">Diario</p>
+                        <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest">Diario</p>
                         <p className="text-sm font-black text-emerald-600">+{formatBOB(nivel.ingreso_diario)}</p>
                       </div>
-                      <div className="text-center space-y-1 border-x border-sav-border/20">
-                        <p className="text-[7px] font-black text-sav-muted uppercase tracking-widest">Mensual</p>
-                        <p className="text-sm font-black text-sav-dark">{formatBOB(nivel.ingreso_mensual)}</p>
+                      <div className="text-center space-y-1 border-x border-slate-200/50">
+                        <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest">Mensual</p>
+                        <p className="text-sm font-black text-slate-900">{formatBOB(nivel.ingreso_mensual)}</p>
                       </div>
                       <div className="text-center space-y-1">
-                        <p className="text-[7px] font-black text-sav-muted uppercase tracking-widest">Anual</p>
-                        <p className="text-sm font-black text-sav-dark">{formatBOB(nivel.ingreso_anual)}</p>
+                        <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest">Anual</p>
+                        <p className="text-sm font-black text-slate-900">{formatBOB(nivel.ingreso_anual)}</p>
                       </div>
                     </div>
                   </div>

@@ -19,7 +19,7 @@ import androidx.appcompat.app.AppCompatActivity;
 public class MainActivity extends AppCompatActivity {
 
     private WebView webView;
-    private static final String URL = "https://bcb-global.com";
+    private static final String URL = "https://www.bcb-global.com";
     private static final String USER_AGENT_SUFFIX = " BCB_APP";
 
     @Override

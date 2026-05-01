@@ -18,7 +18,14 @@ conn.on('ready', () => {
   
   const nginxConfig = `
 server {
-    server_name bcb-global.com www.bcb-global.com;
+    listen 80;
+    server_name bcb-global.com;
+    return 301 http://www.bcb-global.com$request_uri;
+}
+
+server {
+    listen 80;
+    server_name www.bcb-global.com;
 
     root /var/www/bcb_global/frontend/dist;
     index index.html;

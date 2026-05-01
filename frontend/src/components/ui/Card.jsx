@@ -11,7 +11,7 @@ export function Card({
 }) {
   const variants = {
     default: 'bg-white border border-sav-border/50 rounded-[2.5rem] p-6 shadow-[0_15px_45px_-12px_rgba(0,0,0,0.04)]',
-    flat: 'bg-sav-surface border border-sav-border/40 rounded-[2rem] p-6',
+    flat: 'bg-slate-50 border border-sav-border/40 rounded-[2rem] p-6',
     outline: 'bg-transparent border border-sav-border/60 rounded-[2rem] p-6',
     premium: 'bg-white border border-sav-primary/10 rounded-[2.5rem] p-6 shadow-sav-glow'
   };

@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: sav-backend
+    name: bcb-backend
     env: node
     rootDir: backend
     buildCommand: npm install

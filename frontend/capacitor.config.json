@@ -1,12 +1,12 @@
 {
   "appId": "com.sav.app",
-  "appName": "CV Global",
+  "appName": "BCB Global",
   "webDir": "dist",
   "server": {
-    "url": "https://sav-lat.vercel.app",
+    "url": "https://www.bcb-global.com",
     "allowNavigation": [
-      "sav-lat.vercel.app",
-      "*.vercel.app"
+      "www.bcb-global.com",
+      "bcb-global.com"
     ]
   },
   "plugins": {

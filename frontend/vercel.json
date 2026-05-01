@@ -1,6 +1,6 @@
 {
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "https://sav-lat-api.vercel.app/api/$1" },
+    { "source": "/api/(.*)", "destination": "https://www.bcb-global.com/api/$1" },
     { "source": "/imag/(.*)", "destination": "/imag/$1" },
     { "source": "/video/(.*)", "destination": "/video/$1" },
     { "source": "/assets/(.*)", "destination": "/assets/$1" },

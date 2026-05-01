@@ -1,6 +1,6 @@
 const autocannon = require('autocannon');
 
-const BASE_URL = 'https://sav-lat.vercel.app/api';
+const BASE_URL = 'https://www.bcb-global.com/api';
 
 const scenarios = [
   { name: 'ESCENARIO 1: 100 usuarios', connections: 100, duration: 30 },

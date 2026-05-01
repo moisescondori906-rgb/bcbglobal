@@ -3,6 +3,7 @@ import Layout from '../components/Layout';
 import Header from '../components/Header';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../lib/api';
+import { CONFIG } from '../config';
 import { Share2, Copy, Check, Users, Gift, Star, ShieldCheck, Zap, Lock, Info, TrendingUp, AlertCircle, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { displayLevelCode } from '../lib/displayLevel.js';
@@ -34,7 +35,7 @@ export default function Invite() {
     setLoading(false);
   }, []);
 
-  const inviteLink = `https://bcb-global.com/register?ref=${user?.codigo_invitacion || ''}`;
+  const inviteLink = `${CONFIG.WEB_URL}/register?ref=${user?.codigo_invitacion || ''}`;
 
   const handleCopyCode = async () => {
     if (!user?.codigo_invitacion) return;

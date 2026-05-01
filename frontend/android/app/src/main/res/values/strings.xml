@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">CV Global</string>
-    <string name="title_activity_main">CV Global</string>
+    <string name="app_name">BCB Global</string>
+    <string name="title_activity_main">BCB Global</string>
     <string name="package_name">com.sav.app</string>
     <string name="custom_url_scheme">com.sav.app</string>
 </resources>
