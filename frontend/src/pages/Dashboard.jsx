@@ -325,14 +325,7 @@ export default function Dashboard() {
 
         {/* Footer Brand */}
         <div className="pt-6 pb-4 space-y-4">
-          <div className="flex items-center justify-center gap-4 opacity-20">
-            <div className="h-px w-12 bg-gradient-to-r from-transparent to-gray-400" />
-            <ShieldCheckIcon size={16} className="text-gray-900" />
-            <div className="h-px w-12 bg-gradient-to-l from-transparent to-gray-400" />
-          </div>
-          <p className="text-[8px] sm:text-[9px] font-black text-sav-muted text-center uppercase tracking-[0.3em] opacity-40">
-            Seguridad Institucional Garantizada
-          </p>
+          <img src="/images/institutional-security.png" alt="Seguridad Institucional Garantizada" className="mx-auto w-full max-w-xs opacity-70" />
         </div>
       </main>
 
