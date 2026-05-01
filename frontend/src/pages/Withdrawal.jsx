@@ -264,11 +264,40 @@ export default function Withdrawal() {
         {/* Alerta de Día de Retiro */}
         {!isAllowedDay && !isInternar && userLevel && (
           <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
-            <Card variant="flat" className="p-5 sm:p-6 border-amber-500/20 bg-amber-500/10 flex flex-col gap-3">
+            <Card variant="flat" className="p-5 sm:p-6 border-amber-500/20 bg-amber-500/10 flex flex-col gap-5">
               <div className="flex items-center gap-2 sm:gap-3 text-amber-500">
                 <ClockIcon size={18} />
                 <h3 className="text-[10px] sm:text-xs font-black uppercase tracking-widest">Días no permitidos</h3>
               </div>
+              
+              {/* Calendario de Retiros Unificado */}
+              <div className="bg-white/50 backdrop-blur-sm rounded-2xl p-4 border border-amber-500/10 space-y-3">
+                <div className="flex justify-between items-center px-1">
+                  <span className="text-[8px] font-black text-amber-600/60 uppercase tracking-widest">Cronograma Semanal</span>
+                  <span className="text-[8px] font-black text-amber-600 uppercase tracking-widest">Bolivia Time</span>
+                </div>
+                <div className="grid grid-cols-7 gap-1.5">
+                  {['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((day, i) => {
+                    const isAllowed = i >= 1 && i <= 3;
+                    const isToday = today === (i === 6 ? 0 : i + 1);
+                    return (
+                      <div key={i} className="flex flex-col items-center gap-1.5">
+                        <span className="text-[8px] font-black text-slate-400">{day}</span>
+                        <div className={cn(
+                          "w-full aspect-square rounded-lg flex items-center justify-center text-[9px] font-black transition-all",
+                          isAllowed 
+                            ? "bg-sav-primary text-white shadow-md shadow-sav-primary/20" 
+                            : "bg-white/50 text-slate-300 border border-slate-100",
+                          isToday && !isAllowed && "border-amber-500/40 ring-1 ring-amber-500/20"
+                        )}>
+                          {i + 1}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
               <p className="text-[9px] sm:text-[10px] text-sav-muted font-bold uppercase tracking-widest leading-relaxed">
                 Los retiros están disponibles de martes a jueves, según horario de Bolivia.
                 <br/>Por favor, regresa en los días permitidos para procesar tu solicitud.

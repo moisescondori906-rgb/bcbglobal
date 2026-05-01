@@ -55,13 +55,10 @@ export default function AboutUs() {
     retiros: {
       title: "Sistema de Pagos",
       subtitle: "Calendario de Retiros Institucional",
-      description: "Para garantizar la liquidez y rapidez del sistema, BCB Global opera bajo un cronograma estricto de retiros asignado por nivel. Asegúrate de solicitar tu retiro el día correspondiente.",
+      description: "Para garantizar la liquidez y rapidez del sistema, BCB Global opera bajo un cronograma de retiros unificado. Todos los niveles Globales pueden solicitar sus fondos durante la ventana operativa semanal.",
       items: [
-        { icon: Wallet, text: "GLOBAL 1: Martes" },
-        { icon: Wallet, text: "GLOBAL 2: Miércoles" },
-        { icon: Wallet, text: "GLOBAL 3: Jueves" },
-        { icon: Wallet, text: "GLOBAL 4: Viernes" },
-        { icon: Wallet, text: "GLOBAL 5 a 9: Sábado" },
+        { icon: ShieldCheck, text: "Retiros habilitados de Martes a Jueves." },
+        { icon: Wallet, text: "Se permite 1 retiro por día por usuario." },
         { icon: ShieldCheck, text: "Firma Digital requerida para procesar el pago." }
       ]
     }
@@ -126,6 +123,46 @@ export default function AboutUs() {
                 <p className="text-[15px] text-slate-700 font-bold leading-relaxed border-l-4 border-sav-primary/30 pl-4 py-1">
                   {content[activeTab].description}
                 </p>
+
+                {activeTab === 'retiros' && (
+                  <div className="bg-slate-50 rounded-3xl p-6 border border-slate-100 shadow-inner space-y-4">
+                    <div className="flex justify-between items-center px-1">
+                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Ventana Operativa</span>
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-sav-primary animate-pulse" />
+                        <span className="text-[9px] font-black text-sav-primary uppercase tracking-widest">Bolivia Time</span>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-7 gap-2">
+                      {['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((day, i) => {
+                        const isAllowed = i >= 1 && i <= 3; // M, M, J (Martes=1, Miércoles=2, Jueves=3 en este array de 0-6)
+                        return (
+                          <div key={i} className="space-y-2 flex flex-col items-center">
+                            <span className="text-[10px] font-black text-slate-400">{day}</span>
+                            <div className={cn(
+                              "w-full aspect-square rounded-xl flex items-center justify-center text-[11px] font-black transition-all",
+                              isAllowed 
+                                ? "bg-sav-primary text-white shadow-lg shadow-sav-primary/30 scale-110" 
+                                : "bg-white text-slate-300 border border-slate-100"
+                            )}>
+                              {i + 1}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="pt-2 flex items-center justify-center gap-4">
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-2 h-2 rounded-full bg-sav-primary" />
+                        <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Habilitado</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-2 h-2 rounded-full bg-white border border-slate-200" />
+                        <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Cerrado</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 <div className="space-y-5 pt-4">
                   {content[activeTab].items.map((item, i) => (
