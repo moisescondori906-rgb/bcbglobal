@@ -77,41 +77,44 @@ export default function AdminLayoutV2() {
   const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [scrolled, setScrolled] = useState(false);
+  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  // Responsive sidebar handling
-  useEffect(() => {
     const handleResize = () => {
+      setWindowWidth(window.innerWidth);
       if (window.innerWidth < 1024) setIsSidebarOpen(false);
       else setIsSidebarOpen(true);
     };
-    handleResize();
+    
+    window.addEventListener('scroll', handleScroll);
     window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    
+    handleResize(); // Initial check
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('resize', handleResize);
+    };
   }, []);
 
   // Close sidebar on mobile when location changes
   useEffect(() => {
-    if (window.innerWidth < 1024) setIsSidebarOpen(false);
-  }, [location.pathname]);
+    if (windowWidth < 1024) setIsSidebarOpen(false);
+  }, [location.pathname, windowWidth]);
 
   return (
-    <div className="min-h-screen bg-[#0f111a] text-slate-200 flex overflow-hidden">
+    <div className="min-h-screen bg-[#0f111a] text-slate-200 flex overflow-hidden w-full">
       {/* Sidebar Ultra Modern */}
       <motion.aside 
         initial={false}
         animate={{ 
-          x: isSidebarOpen ? 0 : (window.innerWidth < 1024 ? -280 : 0),
-          width: isSidebarOpen ? 280 : (window.innerWidth < 1024 ? 280 : 0),
-          opacity: isSidebarOpen ? 1 : (window.innerWidth < 1024 ? 1 : 0)
+          x: isSidebarOpen ? 0 : (windowWidth < 1024 ? -280 : 0),
+          width: isSidebarOpen ? 280 : (windowWidth < 1024 ? 280 : 0),
+          opacity: isSidebarOpen ? 1 : (windowWidth < 1024 ? 1 : 0)
         }}
         transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-        className="fixed lg:relative z-[100] h-screen bg-[#161926] border-r border-white/5 flex flex-col shadow-2xl overflow-hidden"
+        className="fixed lg:relative z-[100] h-screen bg-[#161926] border-r border-white/5 flex flex-col shadow-2xl overflow-hidden shrink-0"
       >
         {/* Header Sidebar */}
         <div className="p-6 flex items-center gap-4 border-b border-white/5 bg-[#1a1e2e]">
@@ -222,7 +225,7 @@ export default function AdminLayoutV2() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
-            className="max-w-7xl mx-auto"
+            className="w-full mx-auto"
           >
             <Outlet />
           </motion.div>
@@ -230,7 +233,7 @@ export default function AdminLayoutV2() {
 
         {/* Overlay for mobile */}
         <AnimatePresence>
-          {isSidebarOpen && window.innerWidth < 1024 && (
+          {isSidebarOpen && windowWidth < 1024 && (
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
