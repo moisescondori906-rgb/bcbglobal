@@ -13,11 +13,9 @@ async function run() {
   try {
     console.log('🚀 Iniciando limpieza de títulos...');
 
-    const [resTitulo] = await connection.query("UPDATE tareas SET titulo = REPLACE(titulo, ' (Copia)', '') WHERE titulo LIKE '% (Copia)%'");
     const [resNombre] = await connection.query("UPDATE tareas SET nombre = REPLACE(nombre, ' (Copia)', '') WHERE nombre LIKE '% (Copia)%'");
 
     console.log('✅ Limpieza completada.');
-    console.log(`Filas actualizadas en 'titulo': ${resTitulo.affectedRows}`);
     console.log(`Filas actualizadas en 'nombre': ${resNombre.affectedRows}`);
 
   } catch (error) {
