@@ -30,6 +30,25 @@ import {
 import { api } from '../../lib/api';
 import { cn } from '../../lib/utils/cn';
 
+function parseDiasOperativos(value) {
+  if (Array.isArray(value)) return value.map(Number).filter(n => Number.isFinite(n));
+  if (value == null || value === '') return [1, 2, 3, 4, 5, 6, 0];
+
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) return parsed.map(Number).filter(n => Number.isFinite(n));
+    } catch {}
+
+    return value
+      .split(',')
+      .map(v => Number(v.trim()))
+      .filter(n => Number.isFinite(n));
+  }
+
+  return [1, 2, 3, 4, 5, 6, 0];
+}
+
 export default function AdminTelegramV2() {
   const [equipos, setEquipos] = useState([]);
   const [integrantes, setIntegrantes] = useState([]);
@@ -67,14 +86,16 @@ export default function AdminTelegramV2() {
       setEquipos(e || []);
       setIntegrantes(i || []);
       setHistorial(log || []);
-      if (h) setHorarios({ 
-        ...h, 
-        dias_operativos: typeof h.dias_operativos === 'string' ? JSON.parse(h.dias_operativos) : h.dias_operativos,
-        activo: !!h.activo,
-        visibilidad_numero: h.visibilidad_numero || 'parcial'
+      
+      setHorarios({ 
+        hora_inicio: h?.hora_inicio || '08:00', 
+        hora_fin: h?.hora_fin || '22:00', 
+        dias_operativos: parseDiasOperativos(h?.dias_operativos),
+        activo: h?.activo === true || h?.activo === 1 || h?.activo === '1',
+        visibilidad_numero: h?.visibilidad_numero || 'parcial'
       });
     } catch (err) {
-      console.error('Error fetching telegram data:', err);
+      console.error('[ADMIN RENDER/API ERROR] Telegram:', err);
     } finally {
       setLoading(false);
     }

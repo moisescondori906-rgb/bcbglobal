@@ -25,6 +25,12 @@ import {
 } from 'lucide-react';
 import { api } from '../../lib/api';
 
+function parseDiasSemana(value) {
+  if (Array.isArray(value)) return value;
+  if (!value) return [];
+  return String(value).split(',').map(v => v.trim()).filter(Boolean);
+}
+
 const diasOptions = [
   { label: 'Lunes', value: 'lunes' },
   { label: 'Martes', value: 'martes' },
@@ -71,7 +77,7 @@ export default function AdminAdminsV2() {
       setUsers(Array.isArray(usersRes) ? usersRes : []);
       if (pc) setNotifyGroupAlways(pc.notificar_grupo_recargas_siempre === 'true');
     } catch (err) {
-      console.error('Error fetching admin data:', err);
+      console.error('[ADMIN RENDER/API ERROR] Admins:', err);
     } finally {
       setLoading(false);
     }
@@ -103,16 +109,17 @@ export default function AdminAdminsV2() {
   };
 
   const toggleDia = (val) => {
-    const current = Array.isArray(formData.dias_semana) ? formData.dias_semana : [];
+    const current = parseDiasSemana(formData.dias_semana);
     let next = current.includes(val) ? current.filter(d => d !== val) : [...current, val].sort();
     setFormData({ ...formData, dias_semana: next });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!Array.isArray(formData.dias_semana) || formData.dias_semana.length === 0) return alert('Selecciona al menos un día');
+    const dias = parseDiasSemana(formData.dias_semana);
+    if (dias.length === 0) return alert('Selecciona al menos un día');
     try {
-      const dataToSend = { ...formData, dias_semana: formData.dias_semana.join(',') };
+      const dataToSend = { ...formData, dias_semana: dias.join(',') };
       if (editingId) await api.put(`/admin/admins/${editingId}`, dataToSend);
       else await api.post('/admin/admins', dataToSend);
       setShowForm(false);
@@ -129,7 +136,7 @@ export default function AdminAdminsV2() {
       ...admin,
       hora_inicio_turno: admin.hora_inicio_turno?.substring(0, 5) || '00:00',
       hora_fin_turno: admin.hora_fin_turno?.substring(0, 5) || '23:59',
-      dias_semana: admin.dias_semana ? admin.dias_semana.split(',').filter(d => d) : []
+      dias_semana: parseDiasSemana(admin.dias_semana)
     });
     setShowForm(true);
   };
@@ -232,16 +239,20 @@ export default function AdminAdminsV2() {
                   <div className="space-y-2">
                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 italic flex items-center gap-2"><Calendar size={12} /> Shift Schedule (Active Days)</label>
                     <div className="flex flex-wrap gap-2">
-                      {diasOptions.map(d => (
-                        <button 
-                          key={d.value} 
-                          type="button" 
-                          onClick={() => toggleDia(d.value)}
-                          className={`px-4 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest border transition-all ${formData.dias_semana.includes(d.value) ? 'bg-sav-primary text-white border-sav-primary shadow-lg shadow-sav-primary/20' : 'bg-[#0f111a] text-slate-600 border-white/5 hover:border-white/10'}`}
-                        >
-                          {d.label}
-                        </button>
-                      ))}
+                      {diasOptions.map(d => {
+                        const currentDias = parseDiasSemana(formData.dias_semana);
+                        const isSelected = currentDias.includes(d.value);
+                        return (
+                          <button 
+                            key={d.value} 
+                            type="button" 
+                            onClick={() => toggleDia(d.value)}
+                            className={`px-4 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest border transition-all ${isSelected ? 'bg-sav-primary text-white border-sav-primary shadow-lg shadow-sav-primary/20' : 'bg-[#0f111a] text-slate-600 border-white/5 hover:border-white/10'}`}
+                          >
+                            {d.label}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
 
