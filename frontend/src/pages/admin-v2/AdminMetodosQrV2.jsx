@@ -366,8 +366,8 @@ export default function AdminMetodosQrV2() {
                     </div>
 
                     <div className="aspect-square w-full max-w-[160px] mx-auto bg-white rounded-3xl p-3 shadow-2xl shadow-black/40 relative group/qr">
-                      <img src={m.imagen_qr_url} alt="QR" className="w-full h-full object-contain" />
-                      <a href={m.imagen_qr_url} target="_blank" rel="noreferrer" className="absolute inset-0 bg-black/60 opacity-0 group-hover/qr:opacity-100 transition-opacity flex items-center justify-center rounded-3xl">
+                      <img src={api.getMediaUrl(m.imagen_qr_url)} alt="QR" className="w-full h-full object-contain" />
+                      <a href={api.getMediaUrl(m.imagen_qr_url)} target="_blank" rel="noreferrer" className="absolute inset-0 bg-black/60 opacity-0 group-hover/qr:opacity-100 transition-opacity flex items-center justify-center rounded-3xl">
                         <ExternalLink size={24} className="text-white" />
                       </a>
                     </div>
@@ -500,7 +500,7 @@ export default function AdminMetodosQrV2() {
                       <span className="text-[8px] font-black uppercase tracking-widest">Cambiar QR</span>
                     </button>
                     <div className="h-32 rounded-3xl bg-[#0f111a] border border-white/5 flex items-center justify-center overflow-hidden">
-                      <img src={editingMetodo.imagen_base64 || editingMetodo.imagen_qr_url} alt="QR" className="w-full h-full object-contain p-2" />
+                      <img src={editingMetodo.imagen_base64 || api.getMediaUrl(editingMetodo.imagen_qr_url)} alt="QR" className="w-full h-full object-contain p-2" />
                     </div>
                   </div>
                   <input ref={fileRef} type="file" className="hidden" accept="image/*" onChange={(e) => handleFile(e, true)} />

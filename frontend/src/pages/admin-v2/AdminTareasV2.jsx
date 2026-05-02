@@ -312,7 +312,7 @@ export default function AdminTareasV2() {
                       <Layers size={12} className="text-slate-500" />
                       <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest italic">Global Audience</span>
                     </div>
-                    <a href={t.video_url} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-[9px] font-black text-sav-primary uppercase hover:underline tracking-widest">
+                    <a href={api.getMediaUrl(t.video_url)} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-[9px] font-black text-sav-primary uppercase hover:underline tracking-widest">
                       Preview Video <ExternalLink size={14} />
                     </a>
                   </div>

@@ -144,7 +144,7 @@ export default function AdminBannersV2() {
               className="bg-[#161926] border border-white/5 rounded-[40px] shadow-2xl overflow-hidden group"
             >
               <div className="aspect-video relative overflow-hidden bg-[#0f111a]">
-                 <img src={b.imagen_url} alt={b.nombre} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                 <img src={api.getMediaUrl(b.imagen_url)} alt={b.nombre} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
                  <div className="absolute inset-0 bg-gradient-to-t from-[#0f111a] via-transparent to-transparent opacity-60" />
                  <div className="absolute top-4 right-4 flex gap-2">
                     <button onClick={() => toggleStatus(b.id, b.activo)} className={`p-2.5 rounded-xl border backdrop-blur-md transition-all ${b.activo ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-500' : 'bg-rose-500/20 border-rose-500/30 text-rose-500'}`}>

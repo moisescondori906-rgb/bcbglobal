@@ -11,7 +11,7 @@ import {
 } from '../../services/dbService.mjs';
 import { query, queryOne } from '../../config/db.mjs';
 import { authenticate, requireAdmin } from '../../utils/middleware/auth.mjs';
-import { uploadToCloudinary, uploadVideoBuffer, uploadImageBuffer } from '../../config/cloudinary.mjs';
+import { uploadVideoBuffer, uploadImageBuffer } from '../../utils/fileStorage.mjs';
 import logger from '../../utils/logger.mjs';
 import { asyncHandler } from '../../utils/asyncHandler.mjs';
 

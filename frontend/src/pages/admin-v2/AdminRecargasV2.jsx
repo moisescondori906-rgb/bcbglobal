@@ -175,7 +175,7 @@ export default function AdminRecargasV2() {
 
                   {r.comprobante_url ? (
                     <a 
-                      href={r.comprobante_url} 
+                      href={api.getMediaUrl(r.comprobante_url)} 
                       target="_blank" 
                       rel="noreferrer" 
                       className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-white/5 border border-white/5 text-[9px] font-black uppercase tracking-widest text-slate-400 hover:bg-emerald-500 hover:text-white transition-all group"

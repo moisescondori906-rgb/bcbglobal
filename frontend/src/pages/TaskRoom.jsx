@@ -203,7 +203,7 @@ export default function TaskRoom() {
             <div className="relative aspect-video rounded-3xl overflow-hidden border border-sav-border bg-black shadow-2xl">
               <video 
                 ref={videoRef}
-                src={activeTask.video_url}
+                src={api.getMediaUrl(activeTask.video_url)}
                 className="w-full h-full object-cover"
                 onEnded={() => setVideoFinished(true)}
                 playsInline
@@ -347,7 +347,7 @@ export default function TaskRoom() {
               <div className="relative w-20 h-20 rounded-2xl overflow-hidden border border-black/5 shrink-0 bg-black">
                 {/* Previsualización del video optimizada para Android v11.3.1 */}
                 <video 
-                  src={`${t.video_url}#t=0.1`} 
+                  src={`${api.getMediaUrl(t.video_url)}#t=0.1`} 
                   className="w-full h-full object-cover opacity-60 group-hover:opacity-100 group-hover:scale-110 transition-all duration-500"
                   muted
                   playsInline

@@ -14,7 +14,6 @@ import {
   sendToSecretaria, 
   formatRecargaMessage 
 } from '../../services/telegramBot.mjs';
-import { uploadImageBuffer } from '../../config/cloudinary.mjs';
 import logger from '../../utils/logger.mjs';
 import { asyncHandler } from '../../utils/asyncHandler.mjs';
 
