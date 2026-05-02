@@ -18,7 +18,18 @@ class ErrorBoundary extends React.Component {
   }
 
   componentDidCatch(error, errorInfo) {
-    console.error('[ErrorBoundary] Error capturado:', error, errorInfo);
+    console.error('[ErrorBoundary] Error capturado:', error);
+    console.error('[ErrorBoundary] Stack:', errorInfo.componentStack);
+    
+    // Si es un error de carga de chunk que el lazyWithRetry no atrapó
+    if (error.message?.includes('chunk') || error.message?.includes('module')) {
+      const lastReload = sessionStorage.getItem('last-chunk-reload');
+      const now = Date.now();
+      if (!lastReload || now - parseInt(lastReload) > 10000) {
+        sessionStorage.setItem('last-chunk-reload', now.toString());
+        window.location.reload();
+      }
+    }
   }
 
   render() {

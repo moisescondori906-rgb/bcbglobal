@@ -10,19 +10,31 @@ export function AuthProvider({ children }) {
   const isUpdatingRef = useRef(false);
 
   const checkVersion = useCallback(async () => {
+    if (isUpdatingRef.current) return;
     try {
       const health = await api.get('/health');
-      if (health && health.version && health.version !== apiVersion) {
-        console.log(`[VERSION] New version detected: ${health.version}. Reloading...`);
-        setApiVersion(health.version); // Actualizar estado antes de recargar
+      const currentVersion = localStorage.getItem('apiVersion') || '1.0.0';
+      
+      if (health && health.version && health.version !== currentVersion) {
+        console.log(`[VERSION] New version detected: ${health.version} (current: ${currentVersion}). Reloading...`);
         localStorage.setItem('apiVersion', health.version);
-        // Pequeño delay para asegurar que el localStorage se guarde
-        setTimeout(() => window.location.reload(), 500);
+        setApiVersion(health.version);
+        
+        // Evitar múltiples recargas simultáneas
+        if (!sessionStorage.getItem('reloading-for-version')) {
+          sessionStorage.setItem('reloading-for-version', 'true');
+          setTimeout(() => {
+            sessionStorage.removeItem('reloading-for-version');
+            window.location.reload();
+          }, 1000);
+        }
       }
     } catch (err) {
-      console.warn('[VersionCheck] Error checking backend version:', err.message);
+      if (err.name !== 'AbortError') {
+        console.warn('[VersionCheck] Error checking backend version:', err.message);
+      }
     }
-  }, [apiVersion]);
+  }, []); // apiVersion eliminado de dependencias para evitar bucles si cambia el estado
 
   const logout = useCallback(() => {
     console.log('[Auth] Cerrando sesión...');

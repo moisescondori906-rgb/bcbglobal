@@ -32,7 +32,7 @@ export default function Layout({ children }) {
       <FloatingQuestionnaire />
 
       {!isAuthPage && (
-        <nav className="fixed bottom-[env(safe-area-inset-bottom,24px)] left-1/2 -translate-x-1/2 w-[94%] max-w-[420px] bg-white/95 backdrop-blur-3xl py-3 sm:py-4 px-4 sm:px-6 z-50 flex items-center justify-around rounded-[2.5rem] sm:rounded-[3rem] border border-white/50 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.2)]">
+        <nav className="fixed bottom-0 left-0 right-0 w-full bg-white/95 backdrop-blur-3xl py-3 sm:py-4 px-4 sm:px-6 z-50 flex items-center justify-around border-t border-black/5 shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.1)]">
           {navItems.map((item) => {
             const isActive = location.pathname === item.to;
             const Icon = item.icon;
@@ -41,28 +41,28 @@ export default function Layout({ children }) {
                 key={item.to}
                 to={item.to}
                 className={cn(
-                  "nav-item group relative flex-1 flex flex-col items-center justify-center",
-                  isActive ? "text-sav-primary" : "text-slate-500"
+                  "nav-item group relative flex-1 flex flex-col items-center justify-center py-1",
+                  isActive ? "text-sav-primary" : "text-slate-400"
                 )}
               >
-                {isActive && (
-                  <motion.div
-                    layoutId="active-pill"
-                    className="absolute -bottom-1 w-2 h-2 bg-sav-primary rounded-full shadow-sav-glow"
-                  />
-                )}
                 <div className={cn(
-                  "transition-all duration-500 p-2 sm:p-2.5 rounded-xl sm:rounded-2xl",
-                  isActive ? "bg-sav-primary/10 scale-105 sm:scale-110 shadow-inner" : "scale-100 group-active:scale-90"
+                  "transition-all duration-300 p-1.5 rounded-xl",
+                  isActive ? "bg-sav-primary/10 scale-110" : "scale-100 group-active:scale-95"
                 )}>
-                  <Icon className="w-5 h-5 sm:w-6 sm:h-6" strokeWidth={isActive ? 3 : 2} />
+                  <Icon className="w-5 h-5 sm:w-6 sm:h-6" strokeWidth={isActive ? 2.5 : 2} />
                 </div>
                 <span className={cn(
-                  "text-[8px] sm:text-[9px] font-black uppercase tracking-[0.1em] sm:tracking-[0.15em] transition-all mt-1",
-                  isActive ? "opacity-100" : "opacity-0 h-0 overflow-hidden"
+                  "text-[7px] sm:text-[8px] font-black uppercase tracking-widest mt-1.5 transition-colors",
+                  isActive ? "text-sav-primary opacity-100" : "text-slate-400 opacity-80"
                 )}>
                   {item.label}
                 </span>
+                {isActive && (
+                  <motion.div
+                    layoutId="active-indicator"
+                    className="absolute top-0 w-8 h-0.5 bg-sav-primary rounded-full"
+                  />
+                )}
               </NavLink>
             );
           })}

@@ -24,15 +24,22 @@ function NavigationGuard({ children }) {
  */
 const lazyWithRetry = (componentImport) =>
   lazy(async () => {
+    const pageHasBeenReloaded = sessionStorage.getItem('page-has-been-reloaded');
     try {
       return await componentImport();
     } catch (error) {
-      console.error('Error cargando componente:', error);
-      // Solo recargar si es un error de carga de módulo
-      if (error.message?.includes('Failed to fetch dynamically imported module') || 
-          error.message?.includes('Importing a module script failed')) {
+      console.error('[LazyLoad] Error cargando componente:', error);
+      
+      const isChunkError = error.message?.includes('Failed to fetch dynamically imported module') || 
+                          error.message?.includes('Importing a module script failed') ||
+                          error.name === 'ChunkLoadError';
+
+      if (isChunkError && !pageHasBeenReloaded) {
+        sessionStorage.setItem('page-has-been-reloaded', 'true');
         window.location.reload();
+        return;
       }
+      
       throw error;
     }
   });
