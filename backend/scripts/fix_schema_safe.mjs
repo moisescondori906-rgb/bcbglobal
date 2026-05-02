@@ -119,6 +119,38 @@ async function runMigrations() {
       `);
     }
 
+    // 7. Tabla telegram_equipos
+    if (!await tableExists('telegram_equipos')) {
+      logger.info('Creando tabla telegram_equipos...');
+      await query(`
+        CREATE TABLE telegram_equipos (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          nombre_equipo VARCHAR(100) NOT NULL,
+          tipo_equipo VARCHAR(50) NOT NULL,
+          telegram_chat_id VARCHAR(100) NOT NULL,
+          activo TINYINT(1) DEFAULT 1,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      `);
+    }
+
+    // 8. Tabla telegram_integrantes
+    if (!await tableExists('telegram_integrantes')) {
+      logger.info('Creando tabla telegram_integrantes...');
+      await query(`
+        CREATE TABLE telegram_integrantes (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          equipo_id INT NOT NULL,
+          telegram_user_id VARCHAR(100) NOT NULL,
+          nombre_visible VARCHAR(255),
+          activo TINYINT(1) DEFAULT 1,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      `);
+    }
+
     logger.info('Migraciones completadas con éxito.');
   } catch (err) {
     logger.error('Error crítico durante la migración:', err);

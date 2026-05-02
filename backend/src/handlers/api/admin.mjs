@@ -584,8 +584,13 @@ router.delete('/calendario/:fecha', asyncHandler(async (req, res) => {
 // ========================
 
 router.get('/cuestionarios', asyncHandler(async (req, res) => {
-  const list = await query(`SELECT * FROM cuestionarios ORDER BY created_at DESC`);
-  res.json(list);
+  try {
+    const list = await query(`SELECT * FROM cuestionarios ORDER BY created_at DESC`);
+    res.json(list);
+  } catch (err) {
+    logger.error(`[ADMIN] Error al listar cuestionarios: ${err.message}`);
+    res.json([]); // Retornar vacío si la tabla no existe aún
+  }
 }));
 
 router.post('/cuestionarios', asyncHandler(async (req, res) => {
@@ -788,8 +793,13 @@ router.post('/cuestionario/castigar', (req, res) => {
 // ========================
 
 router.get('/telegram/equipos', asyncHandler(async (req, res) => {
-  const list = await query('SELECT * FROM telegram_equipos ORDER BY created_at DESC');
-  res.json(list);
+  try {
+    const list = await query('SELECT * FROM telegram_equipos ORDER BY created_at DESC');
+    res.json(list);
+  } catch (err) {
+    logger.error(`[ADMIN] Error al listar equipos telegram: ${err.message}`);
+    res.json([]);
+  }
 }));
 
 router.post('/telegram/equipos', asyncHandler(async (req, res) => {
@@ -816,11 +826,16 @@ router.delete('/telegram/equipos/:id', asyncHandler(async (req, res) => {
 }));
 
 router.get('/telegram/integrantes', asyncHandler(async (req, res) => {
-  const list = await query(`
-    SELECT * FROM usuarios_telegram 
-    ORDER BY created_at DESC
-  `);
-  res.json(list);
+  try {
+    const list = await query(`
+      SELECT * FROM usuarios_telegram 
+      ORDER BY created_at DESC
+    `);
+    res.json(list);
+  } catch (err) {
+    logger.error(`[ADMIN] Error al listar integrantes telegram: ${err.message}`);
+    res.json([]);
+  }
 }));
 
 router.post('/telegram/integrantes', asyncHandler(async (req, res) => {
