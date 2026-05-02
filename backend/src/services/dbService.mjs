@@ -1125,6 +1125,15 @@ export async function distributeInvestmentCommissions(userId, amount) {
     const user = await findUserById(userId);
     if (!user || !user.invitado_por) return;
 
+    // --- REGLA: SOLO PRIMERA INVERSIÓN ---
+    // Verificamos si el usuario ya tiene otras inversiones aprobadas anteriormente.
+    // Contamos todas las compras aprobadas. Si el total es > 1, significa que no es la primera.
+    const [stats] = await query(`SELECT COUNT(*) as total FROM compras_nivel WHERE usuario_id = ? AND estado IN ('aprobada', 'completada')`, [userId]);
+    if (stats.total > 1) {
+      logger.info(`[COMMISSIONS] Usuario ${user.nombre_usuario} (${userId}) ya realizó inversiones previas. Saltando distribución de comisiones.`);
+      return;
+    }
+
     const levels = await getLevels();
     const userLevel = levels.find(l => String(l.id) === String(user.nivel_id));
     if (!userLevel) return;
