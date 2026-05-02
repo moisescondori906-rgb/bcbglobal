@@ -90,7 +90,7 @@ router.get('/usuarios', asyncHandler(async (req, res) => {
 router.get('/admins', asyncHandler(async (req, res) => {
   const admins = await query(`
     SELECT id, nombre_usuario, telefono, rol, created_at, 
-           hora_inicio_turno, hora_fin_turno, dias_semana, activo, recibe_notificaciones, telegram_user_id
+           bloqueado, telegram_user_id
     FROM usuarios 
     WHERE rol IN ('admin', 'global_admin')
   `);

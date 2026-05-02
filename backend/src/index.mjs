@@ -25,11 +25,9 @@ import redis from './services/redisService.mjs';
 validateEnv();
 
 const app = express();
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 // Servir archivos estáticos locales
-app.use('/uploads', express.static(path.join(__dirname, '../public/uploads')));
+app.use('/uploads', express.static(path.join(process.cwd(), 'public/uploads')));
 
 // --- BLINDAJE Y OPTIMIZACIÓN DE ALTA CONCURRENCIA v11.5.0 ---
 
