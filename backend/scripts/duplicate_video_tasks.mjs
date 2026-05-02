@@ -23,28 +23,36 @@ async function duplicateTasks() {
     for (const task of tasks) {
       // 2. Omitir la tarea "Ferrari Speed" (según el div seleccionado)
       // Buscamos por título o por URL del video
-      const isFerrari = task.titulo.toLowerCase().includes('ferrari') || 
-                        (task.video_url && task.video_url.includes('ferrari1.mp4'));
+      const titulo = task.titulo || task.nombre || '';
+      const videoUrl = task.video_url || task.url || '';
+      
+      const isFerrari = titulo.toLowerCase().includes('ferrari') || 
+                        videoUrl.includes('ferrari1.mp4');
 
       if (isFerrari) {
-        console.log(`Omitiendo tarea: ${task.titulo} (ID: ${task.id})`);
+        console.log(`Omitiendo tarea: ${titulo} (ID: ${task.id})`);
         continue;
       }
 
       // 3. Duplicar la tarea
       const newId = uuidv4();
-      const newTitle = `${task.titulo} (Copia)`;
+      const newTitle = titulo ? `${titulo} (Copia)` : 'Tarea Duplicada';
       
-      // Insertar copia
-      // Asumimos las columnas basadas en el schema y el objeto task
+      // Filtrar columnas para la inserción
       const columns = Object.keys(task).filter(col => col !== 'id' && col !== 'created_at' && col !== 'updated_at');
-      const values = columns.map(col => col === 'titulo' ? newTitle : task[col]);
+      const values = columns.map(col => {
+        if (col === 'titulo') return newTitle;
+        if (col === 'nombre') return newTitle;
+        return task[col];
+      });
       
-      const query = `INSERT INTO tareas (id, ${columns.join(', ')}) VALUES (?, ${columns.map(() => '?').join(', ')})`;
-      await connection.query(query, [newId, ...values]);
+      const placeholders = columns.map(() => '?').join(', ');
+      const sql = `INSERT INTO tareas (id, ${columns.join(', ')}) VALUES (?, ${placeholders})`;
+      
+      await connection.query(sql, [newId, ...values]);
       
       duplicatedCount++;
-      console.log(`Duplicada tarea: ${task.titulo} -> ${newTitle}`);
+      console.log(`Duplicada tarea: ${titulo} -> ${newTitle}`);
     }
 
     console.log(`✅ Proceso finalizado. Se duplicaron ${duplicatedCount} tareas.`);
