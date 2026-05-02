@@ -79,9 +79,14 @@ export default function Recharge() {
 
   return (
     <Layout>
-      <div className="min-h-screen bg-gradient-to-b from-sky-50 via-white to-slate-50 pb-32">
+      <div className="min-h-screen bg-sav-dark">
         <Header title="Subir de Nivel" />
         
+        {/* Background Decor */}
+        <div className="fixed inset-0 pointer-events-none overflow-hidden -z-10">
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[500px] bg-gradient-to-b from-sav-primary/5 to-transparent blur-[120px]" />
+        </div>
+
         <main className="px-4 sm:px-6 space-y-8 sm:space-y-10 pb-32 animate-fade pt-4">
           {/* Nivel Actual */}
           <section className="relative">
@@ -90,14 +95,14 @@ export default function Recharge() {
               animate={{ opacity: 1, y: 0 }}
               className="relative z-10"
             >
-              <Card className="relative overflow-hidden p-6 sm:p-8 text-center bg-white border-slate-200 shadow-xl">
+              <Card variant="premium" className="relative overflow-hidden p-6 sm:p-8 text-center border-none shadow-[0_30px_60px_-15px_rgba(220,38,38,0.3)]">
                 <div className="relative z-10">
-                  <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1 sm:py-1.5 rounded-full bg-slate-100 border border-slate-200 mb-4 sm:mb-6">
+                  <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1 sm:py-1.5 rounded-full bg-white/10 border border-white/20 mb-4 sm:mb-6 backdrop-blur-md">
                     <div className="w-1.5 h-1.5 bg-sav-primary rounded-full animate-pulse" />
-                    <span className="text-[9px] sm:text-[10px] font-black text-slate-600 uppercase tracking-[0.2em]">Socio Activo</span>
+                    <span className="text-[9px] sm:text-[10px] font-black text-slate-900 uppercase tracking-[0.2em]">Socio Activo</span>
                   </div>
                   
-                  <h2 className="text-3xl sm:text-4xl font-black tracking-tighter text-slate-900 uppercase mb-1 sm:mb-2">
+                  <h2 className="text-3xl sm:text-4xl font-black tracking-tighter text-slate-900 uppercase drop-shadow-2xl mb-1 sm:mb-2">
                     {displayLevelCode(user?.nivel_codigo)}
                   </h2>
                   <div className="flex items-center justify-center gap-2">
@@ -131,7 +136,7 @@ export default function Recharge() {
                 </div>
                 <h3 className="text-[10px] sm:text-[11px] font-black text-slate-900 uppercase tracking-[0.2em] sm:tracking-[0.3em]">1. Selecciona Nivel</h3>
               </div>
-              <Badge variant="outline" className="bg-slate-100 border-slate-200 px-2 sm:px-3 py-1 text-[9px] sm:text-[10px] font-black text-slate-600">BCB GLOBAL</Badge>
+              <Badge variant="info" className="bg-slate-100 border-slate-200 px-2 sm:px-3 py-1 text-[9px] sm:text-[10px] font-black text-slate-600">BCB GLOBAL</Badge>
             </div>
 
             <div className="grid grid-cols-1 gap-3 sm:gap-4">
@@ -152,7 +157,7 @@ export default function Recharge() {
                       "w-full text-left p-4 sm:p-5 rounded-2xl sm:rounded-[2rem] border transition-all duration-300 relative overflow-hidden group",
                       isSelected 
                         ? "bg-sav-primary border-sav-primary shadow-lg sm:shadow-[0_20px_40px_-10px_rgba(220,38,38,0.4)]" 
-                        : "bg-white border-slate-200 hover:border-sav-primary/20 shadow-sm",
+                        : "bg-white border-black/5 hover:border-sav-primary/20 shadow-sm",
                       (isCurrent || !isHigher) && "opacity-40 grayscale cursor-not-allowed"
                     )}
                   >
@@ -174,13 +179,13 @@ export default function Recharge() {
                           )}>
                             {Number(n.deposito || n.costo).toLocaleString('es-BO')}
                           </span>
-                          <span className={cn("text-[9px] sm:text-[10px] font-bold shrink-0", isSelected ? "text-white/70" : "text-slate-400")}>BOB</span>
+                          <span className={cn("text-[9px] sm:text-[10px] font-bold shrink-0", isSelected ? "text-white" : "text-sav-muted")}>BOB</span>
                         </div>
                       </div>
 
                       <div className="text-right space-y-0.5 sm:space-y-1 shrink-0 ml-2">
-                        <p className={cn("text-[7px] sm:text-[8px] font-black uppercase tracking-widest", isSelected ? "text-white/70" : "text-slate-400")}>Renta Diaria</p>
-                        <p className={cn("text-xs sm:text-sm font-black truncate", isSelected ? "text-white" : "text-emerald-600")}>
+                        <p className={cn("text-[7px] sm:text-[8px] font-black uppercase tracking-widest", isSelected ? "text-white" : "text-sav-muted")}>Renta Diaria</p>
+                        <p className={cn("text-xs sm:text-sm font-black truncate", isSelected ? "text-white" : "text-sav-success")}>
                           +{Number(n.ingreso_diario || (Number(n.num_tareas_diarias || 0) * Number(n.ganancia_tarea || 0))).toLocaleString('es-BO', { minimumFractionDigits: 2 })}
                         </p>
                       </div>
@@ -192,7 +197,7 @@ export default function Recharge() {
           </section>
 
           {/* Sticky Continue Button */}
-          <div className="h-28" /> {/* Increased Spacer */}
+          <div className="h-20" /> {/* Spacer */}
           <AnimatePresence mode="wait">
             {selectedLevel && (
               <motion.div 
@@ -201,14 +206,14 @@ export default function Recharge() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 50 }}
                 transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                className="fixed bottom-[calc(100px+env(safe-area-inset-bottom))] left-0 right-0 p-4 sm:p-6 z-[100] flex justify-center pointer-events-none"
+                className="fixed bottom-[calc(95px+env(safe-area-inset-bottom))] left-0 right-0 p-4 sm:p-6 z-[100] flex justify-center pointer-events-none"
               >
                 <div className="w-full max-w-[420px] pointer-events-auto px-4 sm:px-0">
                   <Button 
                     onClick={handleContinue}
-                    className="w-full h-14 sm:h-16 rounded-xl sm:rounded-[2rem] shadow-2xl flex items-center justify-center gap-3 group bg-sav-primary border-none text-white font-black uppercase tracking-widest"
+                    className="w-full h-14 sm:h-16 rounded-xl sm:rounded-[2rem] shadow-2xl flex items-center justify-center gap-3 group bg-sav-primary border-none"
                   >
-                    <span>Continuar al Pago</span>
+                    <span className="text-[11px] sm:text-xs font-black uppercase tracking-[0.2em]">Continuar al Pago</span>
                     <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform sm:w-[18px] sm:h-[18px]" />
                   </Button>
                 </div>

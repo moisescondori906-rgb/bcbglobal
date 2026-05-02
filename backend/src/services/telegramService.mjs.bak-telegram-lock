@@ -129,67 +129,35 @@ export async function setupTelegramLogic() {
           }
 
           if (action === 'tomar') {
-            // 1. Verificación de Bloqueo Atómico
-            if (caso.estado_operativo === 'tomado' || caso.estado_operativo === 'resuelto') {
-              const tomadoPor = caso.tomado_por_username ? `@${caso.tomado_por_username}` : (caso.tomado_por_nombre || 'otro operador');
-              return safeTelegramCall(() => bot.answerCallbackQuery(callbackId, { 
-                text: `❌ Este caso ya fue tomado por ${tomadoPor}.`,
-                show_alert: true 
-              }), 'answerCallbackQuery-alreadyTaken');
+            // Permitir tomar incluso si ya está tomado (para permitir re-asignación libre v10.4.0)
+            if (caso.estado_operativo === 'resuelto') {
+              throw new Error(`Este caso ya fue resuelto por otro operador.`);
             }
 
-            // 2. Marcar como tomado en bloqueo (actualiza el responsable actual)
+            // Marcar como tomado en bloqueo (actualiza el responsable actual)
             await conn.query(`
               UPDATE telegram_casos_bloqueo 
               SET estado_operativo = 'tomado', 
                   tomado_por = ?, 
-                  tomado_por_nombre = ?,
-                  tomado_por_username = ?,
                   tomado_at = ?, 
-                  telegram_message_id = ?,
-                  chat_id = ?
+                  telegram_message_id = ?
               WHERE referencia_id = ?
-            `, [
-              telegramUserId, 
-              from.first_name + (from.last_name ? ' ' + from.last_name : ''),
-              from.username || null,
-              boliviaTime.now(), 
-              String(message.message_id), 
-              String(message.chat.id),
-              refId
-            ]);
+            `, [telegramUserId, boliviaTime.now(), String(message.message_id), refId]);
 
-            // 3. Actualizar estado operativo en la tabla real (compras_nivel o retiros)
+            // Actualizar estado_operativo en la tabla real
             const table = caso.tipo_operacion === 'retiro' ? 'retiros' : 'compras_nivel';
-            
-            // Verificamos si las columnas existen en la tabla destino
-            const [columns] = await conn.query(`SHOW COLUMNS FROM ${table}`);
-            const colNames = columns.map(c => c.Field);
-            
-            let updateQuery = `UPDATE ${table} SET estado_operativo = 'tomado'`;
-            const params = [];
+            await conn.query(`
+              UPDATE ${table} SET 
+                estado_operativo = 'tomado', 
+                taken_by_admin_id = ?, 
+                taken_by_admin_name = ?, 
+                taken_at = ?
+              WHERE id = ?`, 
+              [adminId, adminName, boliviaTime.now(), refId]
+            );
 
-            if (colNames.includes('taken_by_admin_id')) {
-              updateQuery += `, taken_by_admin_id = ?`;
-              params.push(adminId);
-            }
-            if (colNames.includes('taken_by_admin_name')) {
-              updateQuery += `, taken_by_admin_name = ?`;
-              params.push(adminName);
-            }
-            if (colNames.includes('taken_at')) {
-              updateQuery += `, taken_at = ?`;
-              params.push(boliviaTime.now());
-            }
-            
-            updateQuery += ` WHERE id = ?`;
-            params.push(refId);
-
-            await conn.query(updateQuery, params);
-
-            const displayerName = from.username ? `@${from.username}` : (from.first_name || 'Operador');
-            await safeTelegramCall(() => bot.answerCallbackQuery(callbackId, { text: `✅ Caso tomado correctamente.` }), 'answerCallbackQuery-tomar-success');
-            await updateTelegramMessage(bot, message, 'tomado', displayerName, refId, caso.tipo_operacion);
+            await safeTelegramCall(() => bot.answerCallbackQuery(callbackId, { text: `✅ Caso tomado por ${adminName}.` }), 'answerCallbackQuery-tomar');
+            await updateTelegramMessage(bot, message, 'tomado', adminName, refId, caso.tipo_operacion);
           }
 
           else if (action === 'aceptar' || action === 'rechazar') {
