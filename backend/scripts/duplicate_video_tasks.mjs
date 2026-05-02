@@ -41,9 +41,17 @@ async function duplicateTasks() {
       // Filtrar columnas para la inserción
       const columns = Object.keys(task).filter(col => col !== 'id' && col !== 'created_at' && col !== 'updated_at');
       const values = columns.map(col => {
-        if (col === 'titulo') return newTitle;
-        if (col === 'nombre') return newTitle;
-        return task[col];
+        let val = task[col];
+        if (col === 'titulo' || col === 'nombre') return titulo ? `${titulo} (Copia)` : 'Tarea Duplicada';
+        
+        // Si el valor es un objeto o array (JSON en DB), lo convertimos a string si es necesario
+        // Pero mysql2 suele manejar bien los objetos si la columna es JSON.
+        // El problema anterior fue que la query se construyó con placeholders incorrectos o el driver aplanó algo.
+        // Vamos a forzar el stringify para columnas que sospechamos son JSON como 'opciones'
+        if (typeof val === 'object' && val !== null) {
+          return JSON.stringify(val);
+        }
+        return val;
       });
       
       const placeholders = columns.map(() => '?').join(', ');
