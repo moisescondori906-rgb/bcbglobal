@@ -238,48 +238,48 @@ export default function AdminUsuariosV2() {
   const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-6 sm:space-y-10">
       {/* Header with Title and Search */}
-      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-8">
+      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-6 sm:gap-8">
         <div className="space-y-2">
-          <div className="flex items-center gap-4">
-            <div className="p-3.5 rounded-2xl bg-gradient-to-tr from-sav-primary to-rose-500 text-white shadow-xl shadow-sav-primary/20">
-              <Users size={24} />
+          <div className="flex items-center gap-3 sm:gap-4">
+            <div className="p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl bg-gradient-to-tr from-sav-primary to-rose-500 text-white shadow-xl shadow-sav-primary/20">
+              <Users size={20} className="sm:w-[24px] sm:h-[24px]" />
             </div>
             <div>
-              <h1 className="text-4xl font-black text-white tracking-tighter uppercase italic">User Management</h1>
-              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.3em] flex items-center gap-2">
-                <Shield size={14} className="text-sav-primary" /> Auditoría de cuentas institucional
+              <h1 className="text-2xl sm:text-4xl font-black text-white tracking-tighter uppercase italic">User Management</h1>
+              <p className="text-[8px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] sm:tracking-[0.3em] flex items-center gap-2">
+                <Shield size={12} className="text-sav-primary sm:w-[14px] sm:h-[14px]" /> Auditoría de cuentas
               </p>
             </div>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="relative group flex-1 min-w-[300px]">
-            <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-sav-primary transition-colors" />
+        <div className="flex flex-wrap items-center gap-3 sm:gap-4">
+          <div className="relative group flex-1 min-w-[250px] sm:min-w-[300px]">
+            <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-sav-primary transition-colors sm:w-[18px] sm:h-[18px]" />
             <input 
               type="text" 
-              placeholder="Buscar por usuario o ID..." 
+              placeholder="Buscar usuario..." 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-[#161926] border border-white/5 rounded-2xl py-4 pl-12 pr-6 text-xs font-bold text-white outline-none focus:border-sav-primary/30 transition-all shadow-2xl"
+              className="w-full bg-[#161926] border border-white/5 rounded-xl sm:rounded-2xl py-3 sm:py-4 pl-10 sm:pl-12 pr-4 sm:pr-6 text-[10px] sm:text-xs font-bold text-white outline-none focus:border-sav-primary/30 transition-all shadow-2xl"
             />
           </div>
           <select 
             value={filterRole}
             onChange={(e) => setFilterRole(e.target.value)}
-            className="bg-[#161926] border border-white/5 rounded-2xl py-4 px-6 text-[10px] font-black uppercase tracking-widest text-slate-300 outline-none focus:border-sav-primary/30 transition-all shadow-2xl appearance-none cursor-pointer"
+            className="flex-1 sm:flex-none bg-[#161926] border border-white/5 rounded-xl sm:rounded-2xl py-3 sm:py-4 px-4 sm:px-6 text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-slate-300 outline-none focus:border-sav-primary/30 transition-all shadow-2xl appearance-none cursor-pointer"
           >
-            <option value="all">Todos los Roles</option>
-            <option value="user">Usuarios VIP</option>
-            <option value="admin">Administradores</option>
+            <option value="all">Todos</option>
+            <option value="user">Usuarios</option>
+            <option value="admin">Admins</option>
           </select>
           <button 
             onClick={fetchUsers}
-            className="p-4 rounded-2xl bg-white/5 border border-white/5 text-slate-400 hover:text-white transition-all shadow-2xl"
+            className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-white/5 border border-white/5 text-slate-400 hover:text-white transition-all shadow-2xl"
           >
-            <RefreshCw size={20} className={loading ? 'animate-spin' : ''} />
+            <RefreshCw size={18} className={`${loading ? 'animate-spin' : ''} sm:w-[20px] sm:h-[20px]`} />
           </button>
         </div>
       </div>

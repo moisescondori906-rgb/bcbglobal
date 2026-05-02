@@ -77,16 +77,16 @@ export default function AdminDashboardV2() {
   return (
     <div className="space-y-6 sm:space-y-10">
       {/* Header Section */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-        <div className="space-y-3 sm:space-y-2">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl sm:rounded-2xl bg-sav-primary/20 flex items-center justify-center border border-sav-primary/20 shrink-0">
-              <Zap size={20} className="text-sav-primary animate-pulse" />
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 sm:gap-6">
+        <div className="space-y-2 sm:space-y-2">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-2xl bg-sav-primary/20 flex items-center justify-center border border-sav-primary/20 shrink-0">
+              <Zap size={16} className="text-sav-primary animate-pulse sm:w-[20px] sm:h-[20px]" />
             </div>
-            <h1 className="text-2xl sm:text-4xl font-black text-white tracking-tighter uppercase italic leading-none">Institutional Command Center</h1>
+            <h1 className="text-xl sm:text-4xl font-black text-white tracking-tighter uppercase italic leading-none">Institutional Command</h1>
           </div>
-          <p className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-[0.2em] sm:tracking-[0.3em] flex items-center gap-2">
-            <Activity size={14} className="text-sav-primary shrink-0" /> Monitoreo en tiempo real de BCB Global
+          <p className="text-[8px] sm:text-xs font-bold text-slate-500 uppercase tracking-[0.2em] sm:tracking-[0.3em] flex items-center gap-2">
+            <Activity size={12} className="text-sav-primary shrink-0 sm:w-[14px] sm:h-[14px]" /> Monitoreo en tiempo real
           </p>
         </div>
 

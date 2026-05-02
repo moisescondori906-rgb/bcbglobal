@@ -92,15 +92,25 @@ export default function AdminLayoutV2() {
     };
     handleResize();
     window.addEventListener('resize', handleResize);
-    return () => window.removeResizeListener?.(handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // Close sidebar on mobile when location changes
+  useEffect(() => {
+    if (window.innerWidth < 1024) setIsSidebarOpen(false);
+  }, [location.pathname]);
 
   return (
     <div className="min-h-screen bg-[#0f111a] text-slate-200 flex overflow-hidden">
       {/* Sidebar Ultra Modern */}
       <motion.aside 
         initial={false}
-        animate={{ width: isSidebarOpen ? 280 : 0, opacity: isSidebarOpen ? 1 : 0 }}
+        animate={{ 
+          x: isSidebarOpen ? 0 : (window.innerWidth < 1024 ? -280 : 0),
+          width: isSidebarOpen ? 280 : (window.innerWidth < 1024 ? 280 : 0),
+          opacity: isSidebarOpen ? 1 : (window.innerWidth < 1024 ? 1 : 0)
+        }}
+        transition={{ type: 'spring', damping: 25, stiffness: 200 }}
         className="fixed lg:relative z-[100] h-screen bg-[#161926] border-r border-white/5 flex flex-col shadow-2xl overflow-hidden"
       >
         {/* Header Sidebar */}
@@ -174,10 +184,10 @@ export default function AdminLayoutV2() {
       <main className="flex-1 flex flex-col h-screen overflow-hidden relative">
         {/* Top Header Fixed */}
         <header className={`
-          z-50 h-16 sm:h-20 px-4 sm:px-8 flex items-center justify-between border-b border-white/5 transition-all duration-300
+          z-50 h-16 sm:h-20 px-4 sm:px-8 flex items-center justify-between border-b border-white/5 transition-all duration-300 shrink-0
           ${scrolled ? 'bg-[#0f111a]/80 backdrop-blur-xl shadow-xl' : 'bg-transparent'}
         `}>
-          <div className="flex items-center gap-3 sm:gap-4">
+          <div className="flex items-center gap-3 sm:gap-4 overflow-hidden">
             <button 
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
               className="p-2 sm:p-2.5 rounded-lg sm:rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all text-slate-400 shrink-0"
@@ -185,23 +195,23 @@ export default function AdminLayoutV2() {
               {isSidebarOpen ? <X size={18} className="sm:w-[20px] sm:h-[20px]" /> : <Menu size={18} className="sm:w-[20px] sm:h-[20px]" />}
             </button>
             <div className="flex flex-col min-w-0">
-              <h2 className="text-xs sm:text-sm font-black text-white uppercase tracking-tighter truncate">Panel de Control</h2>
-              <p className="text-[8px] sm:text-[9px] font-bold text-slate-500 uppercase tracking-widest truncate">BCB Global Institutional</p>
+              <h2 className="text-[10px] sm:text-sm font-black text-white uppercase tracking-tighter truncate">Panel de Control</h2>
+              <p className="text-[7px] sm:text-[9px] font-bold text-slate-500 uppercase tracking-widest truncate">BCB Institutional</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3 sm:gap-4 shrink-0">
-            <div className="hidden md:flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/5">
+          <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+            <div className="hidden lg:flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/5">
               <Search size={16} className="text-slate-500" />
               <input 
                 type="text" 
-                placeholder="Buscar en el sistema..." 
-                className="bg-transparent border-none outline-none text-[11px] font-bold text-slate-300 w-48"
+                placeholder="Buscar..." 
+                className="bg-transparent border-none outline-none text-[11px] font-bold text-slate-300 w-32"
               />
             </div>
-            <div className="flex items-center gap-2">
-              <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="text-[8px] sm:text-[9px] font-black text-emerald-500 uppercase tracking-widest">Sistema Online</span>
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <div className="w-1 h-1 sm:w-2 sm:h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="text-[7px] sm:text-[9px] font-black text-emerald-500 uppercase tracking-widest">ONLINE</span>
             </div>
           </div>
         </header>

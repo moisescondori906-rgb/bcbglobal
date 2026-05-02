@@ -81,49 +81,49 @@ export default function AdminRecargasV2() {
   const totalPages = Math.ceil(filteredList.length / itemsPerPage);
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-6 sm:space-y-10">
       {/* Header Section */}
-      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-8">
+      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-6 sm:gap-8">
         <div className="space-y-2">
-          <div className="flex items-center gap-4">
-            <div className="p-3.5 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-600 text-white shadow-xl shadow-emerald-500/20">
-              <CreditCard size={24} />
+          <div className="flex items-center gap-3 sm:gap-4">
+            <div className="p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-600 text-white shadow-xl shadow-emerald-500/20">
+              <CreditCard size={20} className="sm:w-[24px] sm:h-[24px]" />
             </div>
             <div>
-              <h1 className="text-4xl font-black text-white tracking-tighter uppercase italic">Institutional Recharges</h1>
-              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.3em] flex items-center gap-2">
-                <ShieldCheck size={14} className="text-emerald-500" /> Verificación de ingresos BCB Global
+              <h1 className="text-2xl sm:text-4xl font-black text-white tracking-tighter uppercase italic leading-none">Institutional Recharges</h1>
+              <p className="text-[8px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] sm:tracking-[0.3em] flex items-center gap-2">
+                <ShieldCheck size={12} className="text-emerald-500 sm:w-[14px] sm:h-[14px]" /> Verificación de ingresos
               </p>
             </div>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="relative group flex-1 min-w-[300px]">
-            <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-emerald-500 transition-colors" />
+        <div className="flex flex-wrap items-center gap-3 sm:gap-4">
+          <div className="relative group flex-1 min-w-[250px] sm:min-w-[300px]">
+            <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-emerald-500 transition-colors sm:w-[18px] sm:h-[18px]" />
             <input 
               type="text" 
               placeholder="Buscar por usuario o ID..." 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-[#161926] border border-white/5 rounded-2xl py-4 pl-12 pr-6 text-xs font-bold text-white outline-none focus:border-emerald-500/30 transition-all shadow-2xl"
+              className="w-full bg-[#161926] border border-white/5 rounded-xl sm:rounded-2xl py-3 sm:py-4 pl-10 sm:pl-12 pr-4 sm:pr-6 text-[10px] sm:text-xs font-bold text-white outline-none focus:border-emerald-500/30 transition-all shadow-2xl"
             />
           </div>
           <select 
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
-            className="bg-[#161926] border border-white/5 rounded-2xl py-4 px-6 text-[10px] font-black uppercase tracking-widest text-slate-300 outline-none focus:border-emerald-500/30 transition-all shadow-2xl appearance-none cursor-pointer"
+            className="flex-1 sm:flex-none bg-[#161926] border border-white/5 rounded-xl sm:rounded-2xl py-3 sm:py-4 px-4 sm:px-6 text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-slate-300 outline-none focus:border-emerald-500/30 transition-all shadow-2xl appearance-none cursor-pointer"
           >
-            <option value="pendiente">Solo Pendientes</option>
+            <option value="pendiente">Pendientes</option>
             <option value="aprobada">Aprobadas</option>
             <option value="rechazada">Rechazadas</option>
-            <option value="all">Todo el Historial</option>
+            <option value="all">Todo</option>
           </select>
           <button 
             onClick={fetchRecargas}
-            className="p-4 rounded-2xl bg-white/5 border border-white/5 text-slate-400 hover:text-white transition-all shadow-2xl"
+            className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-white/5 border border-white/5 text-slate-400 hover:text-white transition-all shadow-2xl"
           >
-            <RefreshCw size={20} className={loading ? 'animate-spin' : ''} />
+            <RefreshCw size={18} className={`${loading ? 'animate-spin' : ''} sm:w-[20px] sm:h-[20px]`} />
           </button>
         </div>
       </div>
