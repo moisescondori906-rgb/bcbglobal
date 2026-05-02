@@ -29,7 +29,7 @@ import {
 import { api } from '../../lib/api';
 import { formatCurrency, formatDate } from '../../utils/format';
 
-const UserRow = ({ user, onEdit, onDelete, onToggleStatus, onToggleBlock, onResetPassword, onAdjustBalance, onViewFinancial, onResetDevice }) => (
+const UserRow = ({ user, onEdit, onDelete, onToggleStatus, onToggleBlock, onResetPassword, onAdjustBalance, onViewFinancial, onResetDevice, onEditLevel }) => (
   <motion.tr 
     initial={{ opacity: 0 }}
     animate={{ opacity: 1 }}
@@ -66,9 +66,16 @@ const UserRow = ({ user, onEdit, onDelete, onToggleStatus, onToggleBlock, onRese
       </div>
     </td>
     <td className="px-6 py-5 text-center">
-      <div className="flex flex-col items-center">
+      <div className="flex flex-col items-center group/level relative">
         <p className="text-sm font-black text-sav-primary uppercase tracking-tighter italic">{user.nivel || 'Internar'}</p>
         <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">VIP Status</p>
+        <button 
+          onClick={() => onEditLevel(user)}
+          className="absolute -right-4 top-0 p-1.5 rounded-lg bg-sav-primary/10 text-sav-primary opacity-0 group-hover/level:opacity-100 transition-all hover:bg-sav-primary hover:text-white"
+          title="Cambiar Nivel VIP"
+        >
+          <Edit3 size={12} />
+        </button>
       </div>
     </td>
     <td className="px-6 py-5 text-center">
@@ -112,18 +119,23 @@ export default function AdminUsuariosV2() {
   const [showAdjustModal, setShowAdjustModal] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [showFinancialModal, setShowFinancialModal] = useState(false);
+  const [showLevelModal, setShowLevelModal] = useState(false);
   
   const [selectedUser, setSelectedUser] = useState(null);
   const [financialData, setFinancialData] = useState(null);
+  const [levels, setLevels] = useState([]);
   const [adjustForm, setAdjustForm] = useState({ tipo: 'principal', monto: '', motivo: '' });
   const [passwordForm, setPasswordForm] = useState({ password: '', type: 'inicio' });
+  const [selectedLevelId, setSelectedLevelId] = useState('');
   
   const [isAdjusting, setIsAdjusting] = useState(false);
   const [isUpdatingPass, setIsUpdatingPass] = useState(false);
+  const [isUpdatingLevel, setIsUpdatingLevel] = useState(false);
   const [loadingFinancial, setLoadingFinancial] = useState(false);
 
   useEffect(() => {
     fetchUsers();
+    fetchLevels();
   }, []);
 
   const fetchUsers = async () => {
@@ -135,6 +147,38 @@ export default function AdminUsuariosV2() {
       console.error('Error fetching users:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchLevels = async () => {
+    try {
+      const data = await api.levels.list();
+      setLevels(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('Error fetching levels:', err);
+    }
+  };
+
+  const handleEditLevel = (user) => {
+    setSelectedUser(user);
+    setSelectedLevelId(user.nivel_id || '');
+    setShowLevelModal(true);
+  };
+
+  const submitLevelChange = async (e) => {
+    e.preventDefault();
+    if (!selectedLevelId) return alert('Seleccione un nivel');
+    
+    setIsUpdatingLevel(true);
+    try {
+      await api.post(`/admin/usuarios/${selectedUser.id}/nivel`, { nivel_id: selectedLevelId });
+      setShowLevelModal(false);
+      fetchUsers();
+      alert('Nivel actualizado con éxito');
+    } catch (err) {
+      alert('Error: ' + err.message);
+    } finally {
+      setIsUpdatingLevel(false);
     }
   };
 
@@ -316,6 +360,7 @@ export default function AdminUsuariosV2() {
                     onAdjustBalance={handleAdjustBalance}
                     onViewFinancial={handleViewFinancial}
                     onResetDevice={handleResetDevice}
+                    onEditLevel={handleEditLevel}
                   />
                 ))
               ) : (
@@ -600,6 +645,77 @@ export default function AdminUsuariosV2() {
                   </div>
                 </div>
               )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Level Change Modal */}
+      <AnimatePresence>
+        {showLevelModal && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/90 backdrop-blur-2xl flex items-center justify-center p-6 z-[200]"
+          >
+            <motion.div 
+              initial={{ scale: 0.9, y: 30 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 30 }}
+              className="bg-[#161926] border border-white/10 p-12 rounded-[50px] max-w-lg w-full shadow-2xl relative overflow-hidden"
+            >
+              <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-sav-primary to-indigo-600 shadow-lg shadow-sav-primary/50" />
+              
+              <div className="flex items-center gap-4 mb-8">
+                <div className="p-3.5 rounded-2xl bg-sav-primary/10 text-sav-primary border border-sav-primary/20">
+                  <Target size={24} />
+                </div>
+                <div>
+                  <h3 className="text-2xl font-black text-white uppercase tracking-tighter italic">Ascenso Administrativo</h3>
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{selectedUser?.nombre_usuario}</p>
+                </div>
+              </div>
+
+              <form onSubmit={submitLevelChange} className="space-y-6">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 italic">Seleccionar Nuevo Nivel VIP</label>
+                  <select 
+                    value={selectedLevelId}
+                    onChange={e => setSelectedLevelId(e.target.value)}
+                    className="w-full bg-[#0f111a] border border-white/5 rounded-2xl px-6 py-4 text-xs font-black text-white uppercase outline-none focus:border-sav-primary/30 shadow-inner"
+                  >
+                    <option value="">-- Seleccionar Nivel --</option>
+                    {levels.map(lvl => (
+                      <option key={lvl.id} value={lvl.id}>{lvl.nombre} (Orden: {lvl.orden})</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-sav-primary/5 border border-sav-primary/10">
+                  <p className="text-[9px] font-bold text-sav-primary uppercase tracking-tight leading-relaxed text-center">
+                    Atención: Cambiar el nivel manualmente omitirá las validaciones de depósito y actualizará instantáneamente los beneficios del usuario.
+                  </p>
+                </div>
+
+                <div className="flex gap-4 pt-4">
+                  <button 
+                    type="button"
+                    onClick={() => setShowLevelModal(false)}
+                    className="flex-1 py-4 rounded-2xl bg-white/5 text-slate-400 text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all"
+                  >
+                    Cancelar
+                  </button>
+                  <button 
+                    type="submit"
+                    disabled={isUpdatingLevel}
+                    className="flex-1 py-4 rounded-2xl bg-sav-primary text-white text-[10px] font-black uppercase tracking-widest hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-sav-primary/20 flex items-center justify-center gap-2"
+                  >
+                    {isUpdatingLevel ? <RefreshCw className="animate-spin" size={14} /> : <CheckCircle2 size={14} />}
+                    Actualizar Nivel
+                  </button>
+                </div>
+              </form>
             </motion.div>
           </motion.div>
         )}
