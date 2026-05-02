@@ -212,4 +212,44 @@ router.post('/cuestionario/responder', asyncHandler(async (req, res) => {
   res.json({ ok: true, message: 'Gracias por participar en nuestra encuesta diaria.' });
 }));
 
+router.get('/my-referrals', asyncHandler(async (req, res) => {
+  const userId = req.user.id;
+
+  const referrals = await query(`
+    SELECT 
+      u.id, 
+      u.telefono, 
+      u.nombre_usuario, 
+      u.created_at, 
+      COALESCE(n.nombre, 'Internar') AS nivel, 
+      COALESCE(n.codigo, 'internar') AS nivel_codigo 
+    FROM usuarios u 
+    LEFT JOIN niveles n ON n.id = u.nivel_id 
+    WHERE u.invitado_por = ? 
+    ORDER BY u.created_at DESC
+  `, [userId]);
+
+  const maskPhoneLast5 = (phone) => {
+    const raw = String(phone || '');
+    const digits = raw.replace(/\D/g, '');
+    const last5 = digits.slice(-5);
+    if (!last5) return 'Sin número';
+    return `******${last5}`;
+  };
+
+  const maskedReferrals = referrals.map(ref => ({
+    id: ref.id,
+    nombre_usuario: ref.nombre_usuario,
+    telefono_masked: maskPhoneLast5(ref.telefono),
+    nivel: ref.nivel,
+    nivel_codigo: ref.nivel_codigo,
+    created_at: ref.created_at
+  }));
+
+  res.json({
+    items: maskedReferrals,
+    total: maskedReferrals.length
+  });
+}));
+
 export default router;

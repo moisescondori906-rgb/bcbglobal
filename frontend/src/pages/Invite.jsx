@@ -30,8 +30,21 @@ export default function Invite() {
   const [copiedLink, setCopiedLink] = useState(false);
   const [punished, setPunished] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [referrals, setReferrals] = useState([]);
+  const [referralsLoading, setReferralsLoading] = useState(true);
 
   useEffect(() => {
+    const fetchReferrals = async () => {
+      try {
+        const res = await api.get('/users/my-referrals');
+        setReferrals(res.items || []);
+      } catch (err) {
+        console.error('Error fetching referrals:', err);
+      } finally {
+        setReferralsLoading(false);
+      }
+    };
+    fetchReferrals();
     setLoading(false);
   }, []);
 
@@ -220,6 +233,69 @@ export default function Invite() {
             </div>
           </Card>
         )}
+
+        {/* Sección de Usuarios Registrados */}
+        <div className="space-y-4 sm:space-y-5">
+          <div className="flex flex-col gap-1 px-1">
+            <h3 className="text-[10px] sm:text-[11px] font-black text-gray-900 uppercase tracking-[0.2em] sm:tracking-[0.3em] flex items-center gap-2">
+              <Users size={14} className="text-sav-primary" /> Usuarios registrados con mi código
+            </h3>
+            <p className="text-[8px] sm:text-[9px] text-sav-muted font-bold uppercase tracking-widest">
+              Estos son los usuarios que se registraron usando tu invitación.
+            </p>
+          </div>
+
+          <Card className="bg-white border-black/5 shadow-xl shadow-black/5 rounded-[1.5rem] sm:rounded-[2.5rem] overflow-hidden">
+            {referralsLoading ? (
+              <div className="p-12 flex flex-col items-center justify-center space-y-4">
+                <div className="w-8 h-8 border-4 border-black/5 border-t-sav-primary rounded-full animate-spin"></div>
+                <p className="text-[8px] font-black text-sav-muted uppercase tracking-widest">Cargando invitados...</p>
+              </div>
+            ) : referrals.length > 0 ? (
+              <div className="divide-y divide-slate-50 max-h-[400px] overflow-y-auto custom-scrollbar">
+                {referrals.map((ref, idx) => (
+                  <div key={ref.id} className="p-4 sm:p-5 flex items-center justify-between group hover:bg-slate-50/50 transition-all">
+                    <div className="flex items-center gap-3 sm:gap-4">
+                      <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-slate-50 flex items-center justify-center text-sav-primary font-black text-[10px] sm:text-xs shadow-inner group-hover:bg-white transition-all">
+                        {idx + 1}
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-[11px] sm:text-sm font-black text-gray-900 uppercase tracking-wide truncate max-w-[120px] sm:max-w-none">
+                          {ref.nombre_usuario}
+                        </p>
+                        <p className="text-[9px] sm:text-[10px] font-bold text-sav-primary tracking-widest">
+                          {ref.telefono_masked}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right space-y-1">
+                      <div className="inline-block px-2 py-1 rounded-lg bg-sav-primary/10 border border-sav-primary/20">
+                        <p className="text-[8px] sm:text-[9px] font-black text-sav-primary uppercase tracking-widest">
+                          {ref.nivel}
+                        </p>
+                      </div>
+                      <p className="text-[7px] sm:text-[8px] font-bold text-sav-muted uppercase tracking-tighter">
+                        {new Date(ref.created_at).toLocaleDateString('es-BO', { day: '2-digit', month: '2-digit', year: '2-digit' })}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-12 flex flex-col items-center justify-center text-center space-y-4">
+                <div className="w-16 h-16 rounded-[1.5rem] bg-slate-50 flex items-center justify-center text-slate-200">
+                  <Users size={32} />
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[10px] font-black text-gray-900 uppercase tracking-widest">Sin invitados</p>
+                  <p className="text-[8px] font-bold text-sav-muted uppercase tracking-widest leading-relaxed">
+                    Aún no tienes usuarios registrados <br/> con tu código de invitación.
+                  </p>
+                </div>
+              </div>
+            )}
+          </Card>
+        </div>
       </div>
     </Layout>
   );
