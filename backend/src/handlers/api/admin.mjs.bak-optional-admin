@@ -92,7 +92,7 @@ router.get('/admins', asyncHandler(async (req, res) => {
     SELECT id, nombre_usuario, telefono, rol, created_at, 
            hora_inicio_turno, hora_fin_turno, dias_semana, activo, recibe_notificaciones, telegram_user_id
     FROM usuarios 
-    WHERE rol IN ('admin', 'global_admin')
+    WHERE rol = 'admin'
   `);
   res.json(admins);
 }));
@@ -295,7 +295,7 @@ router.post('/metodos-qr', asyncHandler(async (req, res) => {
 
   const id = uuidv4();
   await query(`INSERT INTO metodos_qr (id, nombre_titular, imagen_qr_url, admin_id, activo, orden, dias_semana, hora_inicio, hora_fin) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [id, nombre_titular, final_url, admin_id || null, activo !== false ? 1 : 0, orden || 0, dias_semana || '0,1,2,3,4,5,6', hora_inicio || '00:00:00', hora_fin || '23:59:59']);
+    [id, nombre_titular, final_url, admin_id, activo !== false ? 1 : 0, orden || 0, dias_semana || '0,1,2,3,4,5,6', hora_inicio || '00:00:00', hora_fin || '23:59:59']);
   res.json({ id, ok: true, imagen_qr_url: final_url });
 }));
 
@@ -313,7 +313,7 @@ router.put('/metodos-qr/:id', asyncHandler(async (req, res) => {
   }
 
   await query(`UPDATE metodos_qr SET nombre_titular = ?, imagen_qr_url = ?, admin_id = ?, activo = ?, orden = ?, seleccionada = ?, dias_semana = ?, hora_inicio = ?, hora_fin = ? WHERE id = ?`,
-    [nombre_titular, final_url, admin_id || null, activo !== false ? 1 : 0, orden || 0, seleccionada ? 1 : 0, dias_semana, hora_inicio, hora_fin, req.params.id]);
+    [nombre_titular, final_url, admin_id, activo !== false ? 1 : 0, orden || 0, seleccionada ? 1 : 0, dias_semana, hora_inicio, hora_fin, req.params.id]);
   res.json({ ok: true, imagen_qr_url: final_url });
 }));
 

@@ -98,7 +98,7 @@ export default function AdminMetodosQrV2() {
   };
 
   const handleCreate = async () => {
-    // selectedAdminId ahora es opcional
+    if (!selectedAdminId) return alert('Selecciona un administrador');
     if (!formData.nombre.trim()) return alert('Ingresa el titular');
     if (!formData.imagen) return alert('Sube un QR');
     
@@ -225,7 +225,7 @@ export default function AdminMetodosQrV2() {
 
           <div className="space-y-6">
             <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 italic">Operador Responsable (Opcional)</label>
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 italic">Operador Responsable</label>
               <div className="relative group">
                 <User className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-600 group-focus-within:text-sav-primary transition-colors" size={18} />
                 <select 
@@ -233,7 +233,7 @@ export default function AdminMetodosQrV2() {
                   onChange={(e) => setSelectedAdminId(e.target.value)}
                   className="w-full pl-14 pr-6 py-5 rounded-2xl bg-[#0f111a] border border-white/5 text-xs font-black text-white uppercase outline-none focus:border-sav-primary/30 transition-all shadow-inner appearance-none cursor-pointer"
                 >
-                  <option value="">Sin asignar / Sistema</option>
+                  <option value="">-- SELECCIONAR OPERADOR --</option>
                   {admins.map(a => (
                     <option key={a.id} value={a.id}>{a.nombre_usuario || a.nombre}</option>
                   ))}
@@ -356,7 +356,7 @@ export default function AdminMetodosQrV2() {
                           </div>
                         )}
                       </div>
-                      <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Responsable: <span className="text-sav-primary">{admins.find(a => a.id === m.admin_id)?.nombre_usuario || admins.find(a => a.id === m.admin_id)?.nombre || 'Sistema / General'}</span></p>
+                      <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Responsable: <span className="text-sav-primary">{admins.find(a => a.id === m.admin_id)?.nombre_usuario || admins.find(a => a.id === m.admin_id)?.nombre || 'Desconocido'}</span></p>
                       <div className="flex items-center gap-2 mt-2">
                         <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 border border-white/5 text-[9px] font-black text-slate-400 uppercase">
                           <Clock size={12} className="text-sav-primary" />
@@ -431,23 +431,6 @@ export default function AdminMetodosQrV2() {
                     onChange={(e) => setEditingMetodo(prev => ({ ...prev, nombre_titular: e.target.value }))}
                     className="w-full px-6 py-5 rounded-2xl bg-[#0f111a] border border-white/5 text-xs font-black text-white uppercase outline-none focus:border-sav-primary/30 transition-all shadow-inner"
                   />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 italic">Operador Responsable (Opcional)</label>
-                  <div className="relative group">
-                    <User className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-600 group-focus-within:text-sav-primary transition-colors" size={18} />
-                    <select 
-                      value={editingMetodo.admin_id || ''}
-                      onChange={(e) => setEditingMetodo(prev => ({ ...prev, admin_id: e.target.value }))}
-                      className="w-full pl-14 pr-6 py-5 rounded-2xl bg-[#0f111a] border border-white/5 text-xs font-black text-white uppercase outline-none focus:border-sav-primary/30 transition-all shadow-inner appearance-none cursor-pointer"
-                    >
-                      <option value="">Sin asignar / Sistema</option>
-                      {admins.map(a => (
-                        <option key={a.id} value={a.id}>{a.nombre_usuario || a.nombre}</option>
-                      ))}
-                    </select>
-                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
