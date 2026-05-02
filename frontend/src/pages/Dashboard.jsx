@@ -158,16 +158,6 @@ export default function Dashboard() {
           )}
         </AnimatePresence>
 
-        {/* Sync Indicator v10.0.0 */}
-        <div className="flex items-center justify-between px-1">
-          <div className="flex items-center gap-2">
-            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-[8px] font-black text-emerald-500/80 uppercase tracking-[0.2em]">Sincronizado v10.0</span>
-          </div>
-          <div className="text-[8px] font-black text-sav-muted uppercase tracking-[0.2em] italic">
-            BCB Global Institutional
-          </div>
-        </div>
 
         {/* Header Section */}
         <header className="flex items-center justify-between py-2 sm:py-4 px-1">

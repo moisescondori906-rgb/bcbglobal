@@ -246,7 +246,6 @@ export default function Profile() {
               <ShieldCheck size={14} />
               <p className="text-[8px] font-black uppercase tracking-[0.4em]">Seguridad Institucional BCB</p>
             </div>
-            <p className="text-[7px] font-bold text-sav-muted uppercase tracking-widest">Sincronizado v10.0</p>
           </div>
         </div>
       </main>
