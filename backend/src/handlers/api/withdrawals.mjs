@@ -54,7 +54,7 @@ router.get('/', asyncHandler(async (req, res) => {
 }));
 
 router.post('/', withdrawRateLimit, dynamicControlMiddleware('withdrawal'), asyncHandler(async (req, res) => {
-  const { monto, tipo_billetera, password_fondo, tarjeta_id, idempotency_key } = req.body;
+  const { monto, tipo_billetera, password_fondo, tarjeta_id, idempotency_key, qr_retiro } = req.body;
   const user = req.requestUser;
 
   const iKey = idempotency_key || req.headers['x-idempotency-key'];
@@ -82,10 +82,16 @@ router.post('/', withdrawRateLimit, dynamicControlMiddleware('withdrawal'), asyn
   });
 
   // 4. Alerta de Telegram (Resiliente y desacoplada)
+  // Obtener datos bancarios para el mensaje de Telegram
+  const tarjetas = await query(`SELECT * FROM tarjetas_bancarias WHERE id = ?`, [tarjeta_id]);
+  const tb = tarjetas[0] || {};
+
   const message = formatRetiroMessage({
-    telefono: user.nombre_usuario,
+    telefono: user.nombre_usuario || user.telefono,
     nivel: 'Usuario', 
     monto: m,
+    banco: tb.nombre_banco,
+    cuenta: tb.numero_cuenta,
     hora: boliviaTime.getTimeString()
   });
   
@@ -99,10 +105,20 @@ router.post('/', withdrawRateLimit, dynamicControlMiddleware('withdrawal'), asyn
     }
   };
 
+  // Si hay QR, enviarlo como foto
+  if (qr_retiro && qr_retiro.startsWith('data:image')) {
+    try {
+      const base64Data = qr_retiro.replace(/^data:image\/\w+;base64,/, '');
+      const buffer = Buffer.from(base64Data, 'base64');
+      options.photo = buffer;
+    } catch (err) {
+      logger.error('[TELEGRAM] Error al procesar QR para retiro:', err.message);
+    }
+  }
+
   // Notificar de forma asíncrona y resiliente con safeTelegram
   sendToRetiros(message, options);
   sendToAdmin(message, options);
-  // sendToSecretaria(message, { ...options, reply_markup: undefined }); // ELIMINADO: No notificar al inicio
 
   res.json({ success: true, message: 'Retiro solicitado con éxito.' });
 }));

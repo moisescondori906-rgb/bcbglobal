@@ -20,8 +20,8 @@ const configCache = { data: null, lastFetch: 0 };
 const DEFAULT_CONFIG = {
   task_allowed_days: '1,2,3,4,5',
   comision_retiro: 12,
-  horario_recarga: { enabled: true, hora_inicio: '08:00', hora_fin: '22:00', dias_semana: [1,2,3,4,5,6,0] },
-  horario_retiro: { enabled: true, hora_inicio: '09:00', hora_fin: '18:00', dias_semana: [1,2,3,4,5] },
+  horario_recarga: { enabled: true, hora_inicio: '08:00', hora_fin: '22:00', dias_semana: [0,1,2,3,4,5,6] },
+  horario_retiro: { enabled: true, hora_inicio: '09:00', hora_fin: '18:00', dias_semana: [2,3,4] },
   marquee_text: 'Bienvenido a BCB Global Institutional — Liderando la Inversión Publicitaria',
   soporte_canal_url: 'https://t.me/bcb_oficial',
   soporte_gerente_url: 'https://wa.me/59170000000',
@@ -292,6 +292,26 @@ export async function canRecharge(userId, dateStr = boliviaTime.todayStr()) {
   if (!user) return { ok: false, message: 'Usuario no encontrado.' };
   if (user.bloqueado) return { ok: false, message: 'Tu cuenta ha sido bloqueada.' };
 
+  // 2. Regla de Horario y Días (Config Global)
+  const config = await getPublicContent();
+  const time = boliviaTime.getTimeString();
+  const today = boliviaTime.getDay();
+
+  let schedule = DEFAULT_CONFIG.horario_recarga;
+  if (config.horario_recarga) {
+    schedule = typeof config.horario_recarga === 'string' ? JSON.parse(config.horario_recarga) : config.horario_recarga;
+  }
+
+  if (schedule.enabled) {
+    const isAllowedDay = Array.isArray(schedule.dias_semana) && schedule.dias_semana.includes(today);
+    if (!isAllowedDay) {
+      return { ok: false, message: 'Las recargas no están disponibles el día de hoy.' };
+    }
+    if (!boliviaTime.isTimeInWindow(time, schedule.hora_inicio, schedule.hora_fin)) {
+      return { ok: false, message: `El horario de recargas es de ${schedule.hora_inicio} a ${schedule.hora_fin} (Hora Bolivia).` };
+    }
+  }
+
   return { ok: true };
 }
 
@@ -314,27 +334,42 @@ export async function canWithdraw(userId, dateStr = boliviaTime.todayStr()) {
     return { ok: false, message: 'El nivel Internar no tiene habilitados los retiros. Debes estar en un nivel global para solicitar retiros.' };
   }
 
-  // REGLA GLOBAL: Martes (2) a Jueves (4)
-  const dayOfWeek = boliviaTime.getDay(); // Basado en hora de Bolivia actual
-  const isAllowedDay = dayOfWeek >= 2 && dayOfWeek <= 4;
+  // 1. Regla de Horario y Días (Config Global)
+  const config = await getPublicContent();
+  const time = boliviaTime.getTimeString();
+  const today = boliviaTime.getDay();
+
+  let schedule = DEFAULT_CONFIG.horario_retiro;
+  if (config.horario_retiro) {
+    schedule = typeof config.horario_retiro === 'string' ? JSON.parse(config.horario_retiro) : config.horario_retiro;
+  }
+
+  // --- VALIDACIÓN DE DÍAS (Prioridad: Nivel > Global) ---
+  let isAllowedDay = false;
+  if (userLevel.retiro_horario_habilitado) {
+    const start = Number(userLevel.retiro_dia_inicio);
+    const end = Number(userLevel.retiro_dia_fin);
+    if (start <= end) isAllowedDay = today >= start && today <= end;
+    else isAllowedDay = today >= start || today <= end;
+  } else {
+    // Usar la configuración global (Martes a Jueves por defecto)
+    isAllowedDay = Array.isArray(schedule.dias_semana) && schedule.dias_semana.includes(today);
+  }
 
   if (!isAllowedDay) {
-    return { ok: false, message: 'Los retiros están disponibles de martes a jueves, según horario de Bolivia.' };
+    const dayNames = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+    let msg = '';
+    if (userLevel.retiro_horario_habilitado) {
+      msg = `Tu nivel permite retiros de ${dayNames[userLevel.retiro_dia_inicio]} a ${dayNames[userLevel.retiro_dia_fin]}.`;
+    } else {
+      const allowedNames = schedule.dias_semana.map(d => dayNames[d]).join(', ');
+      msg = `Los retiros están disponibles los días: ${allowedNames}.`;
+    }
+    return { ok: false, message: msg };
   }
 
-  // 2. Regla de Horario (Config Global)
-  const time = boliviaTime.getTimeString();
-  const config = await getPublicContent();
-  
-  let schedule = { enabled: true, inicio: '09:00', fin: '18:00' };
-  
-  if (config.horario_retiro) {
-    const c = typeof config.horario_retiro === 'string' ? JSON.parse(config.horario_retiro) : config.horario_retiro;
-    schedule = { enabled: !!c.enabled, inicio: c.hora_inicio, fin: c.hora_fin };
-  }
-
-  if (schedule.enabled && !boliviaTime.isTimeInWindow(time, schedule.inicio, schedule.fin)) {
-    return { ok: false, message: `El horario de retiros es de ${schedule.inicio} a ${schedule.fin} (Hora Bolivia).` };
+  if (schedule.enabled && !boliviaTime.isTimeInWindow(time, schedule.hora_inicio, schedule.hora_fin)) {
+    return { ok: false, message: `El horario de retiros es de ${schedule.hora_inicio} a ${schedule.hora_fin} (Hora Bolivia).` };
   }
 
   return { ok: true };

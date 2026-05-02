@@ -26,7 +26,9 @@ export default function AdminContenidoHomeV2() {
     marquee_text: '',
     comision_retiro: 12,
     ruleta_activa: true,
-    recompensas_visibles: true
+    recompensas_visibles: true,
+    horario_recarga: { enabled: true, hora_inicio: '08:00', hora_fin: '22:00', dias_semana: [0,1,2,3,4,5,6] },
+    horario_retiro: { enabled: true, hora_inicio: '09:00', hora_fin: '18:00', dias_semana: [2,3,4] }
   });
 
   useEffect(() => {
@@ -37,7 +39,7 @@ export default function AdminContenidoHomeV2() {
     setLoading(true);
     try {
       const res = await api.get('/admin/public-content');
-      if (res) setContent(res);
+      if (res) setContent(prev => ({ ...prev, ...res }));
     } catch (err) {
       console.error('Error fetching public content:', err);
     } finally {
@@ -56,6 +58,17 @@ export default function AdminContenidoHomeV2() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const toggleDay = (key, day) => {
+    const currentDays = content[key].dias_semana || [];
+    const newDays = currentDays.includes(day)
+      ? currentDays.filter(d => d !== day)
+      : [...currentDays, day].sort();
+    setContent({
+      ...content,
+      [key]: { ...content[key], dias_semana: newDays }
+    });
   };
 
   if (loading) return (
@@ -194,6 +207,115 @@ export default function AdminContenidoHomeV2() {
                     <input type="checkbox" className="sr-only peer" checked={content.recompensas_visibles} onChange={e => setContent({...content, recompensas_visibles: e.target.checked})} />
                     <div className="w-11 h-6 bg-slate-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:bg-sav-primary after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all shadow-lg" />
                   </label>
+                </div>
+              </div>
+
+              {/* Schedules Section */}
+              <div className="space-y-6 pt-4">
+                {/* Horario de Recargas */}
+                <div className="bg-[#0f111a] border border-white/5 rounded-3xl p-6 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-[10px] font-black text-white uppercase tracking-widest italic flex items-center gap-2">
+                      <RefreshCw size={14} className="text-emerald-500" /> Horario de Recargas
+                    </h4>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input type="checkbox" className="sr-only peer" checked={content.horario_recarga?.enabled} onChange={e => setContent({...content, horario_recarga: {...content.horario_recarga, enabled: e.target.checked}})} />
+                      <div className="w-10 h-5 bg-slate-800 rounded-full peer peer-checked:bg-emerald-500 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all" />
+                    </label>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest ml-1">Inicio</label>
+                      <input 
+                        type="time" 
+                        value={content.horario_recarga?.hora_inicio || '08:00'} 
+                        onChange={e => setContent({...content, horario_recarga: {...content.horario_recarga, hora_inicio: e.target.value}})}
+                        className="w-full px-4 py-3 rounded-xl bg-[#161926] border border-white/5 text-[10px] font-bold text-white outline-none focus:border-emerald-500/30"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest ml-1">Fin</label>
+                      <input 
+                        type="time" 
+                        value={content.horario_recarga?.hora_fin || '22:00'} 
+                        onChange={e => setContent({...content, horario_recarga: {...content.horario_recarga, hora_fin: e.target.value}})}
+                        className="w-full px-4 py-3 rounded-xl bg-[#161926] border border-white/5 text-[10px] font-bold text-white outline-none focus:border-emerald-500/30"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest ml-1">Días Permitidos</label>
+                    <div className="flex flex-wrap gap-2">
+                      {['D', 'L', 'M', 'M', 'J', 'V', 'S'].map((d, i) => (
+                        <button
+                          key={i}
+                          onClick={() => toggleDay('horario_recarga', i)}
+                          className={`w-8 h-8 rounded-lg text-[10px] font-black transition-all ${
+                            content.horario_recarga?.dias_semana?.includes(i)
+                              ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20'
+                              : 'bg-white/5 text-slate-500 border border-white/5'
+                          }`}
+                        >
+                          {d}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Horario de Retiros */}
+                <div className="bg-[#0f111a] border border-white/5 rounded-3xl p-6 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-[10px] font-black text-white uppercase tracking-widest italic flex items-center gap-2">
+                      <DollarSign size={14} className="text-rose-500" /> Horario de Retiros
+                    </h4>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input type="checkbox" className="sr-only peer" checked={content.horario_retiro?.enabled} onChange={e => setContent({...content, horario_retiro: {...content.horario_retiro, enabled: e.target.checked}})} />
+                      <div className="w-10 h-5 bg-slate-800 rounded-full peer peer-checked:bg-rose-500 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all" />
+                    </label>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest ml-1">Inicio</label>
+                      <input 
+                        type="time" 
+                        value={content.horario_retiro?.hora_inicio || '09:00'} 
+                        onChange={e => setContent({...content, horario_retiro: {...content.horario_retiro, hora_inicio: e.target.value}})}
+                        className="w-full px-4 py-3 rounded-xl bg-[#161926] border border-white/5 text-[10px] font-bold text-white outline-none focus:border-rose-500/30"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest ml-1">Fin</label>
+                      <input 
+                        type="time" 
+                        value={content.horario_retiro?.hora_fin || '18:00'} 
+                        onChange={e => setContent({...content, horario_retiro: {...content.horario_retiro, hora_fin: e.target.value}})}
+                        className="w-full px-4 py-3 rounded-xl bg-[#161926] border border-white/5 text-[10px] font-bold text-white outline-none focus:border-rose-500/30"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest ml-1">Días Permitidos</label>
+                    <div className="flex flex-wrap gap-2">
+                      {['D', 'L', 'M', 'M', 'J', 'V', 'S'].map((d, i) => (
+                        <button
+                          key={i}
+                          onClick={() => toggleDay('horario_retiro', i)}
+                          className={`w-8 h-8 rounded-lg text-[10px] font-black transition-all ${
+                            content.horario_retiro?.dias_semana?.includes(i)
+                              ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/20'
+                              : 'bg-white/5 text-slate-500 border border-white/5'
+                          }`}
+                        >
+                          {d}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
 

@@ -147,14 +147,31 @@ export default function Withdrawal() {
   const fueraHorario = horarioRet?.enabled && !schedRet.ok;
   const msgHorario = !schedRet.ok ? schedRet.message : '';
 
-  // --- VALIDACIÓN DE DÍAS SEGÚN NIVEL ---
+  // --- VALIDACIÓN DE DÍAS (Sincronizado con Backend v12.0.0) ---
   const boliviaNow = getBoliviaNow();
   const today = boliviaNow.getDay(); // 0=Dom, 1=Lun, 2=Mar... 6=Sab
   
-  // Regla Global: Martes a Jueves (2, 3, 4)
-  const isAllowedDay = today >= 2 && today <= 4;
+  // Reglas Globales desde Configuración
+  const globalSchedule = pc?.horario_retiro || { enabled: true, dias_semana: [2, 3, 4] };
+  const globalAllowedDays = Array.isArray(globalSchedule.dias_semana) ? globalSchedule.dias_semana : [2, 3, 4];
+
+  // Si el nivel tiene horario específico configurado, usamos ese rango
+  let isAllowedDay = false;
+  if (userLevel?.retiro_horario_habilitado) {
+    const start = Number(userLevel.retiro_dia_inicio);
+    const end = Number(userLevel.retiro_dia_fin);
+    if (start <= end) isAllowedDay = today >= start && today <= end;
+    else isAllowedDay = today >= start || today <= end;
+  } else {
+    // Usar la regla general (Martes a Jueves por defecto)
+    isAllowedDay = globalAllowedDays.includes(today);
+  }
+
   const isInternar = userLevel?.codigo === 'internar' || userLevel?.codigo === 'pasantia';
   const canWithdrawToday = isAllowedDay && !isInternar;
+
+  const DAY_NAMES = { 0: 'Domingo', 1: 'Lunes', 2: 'Martes', 3: 'Miércoles', 4: 'Jueves', 5: 'Viernes', 6: 'Sábado' };
+  const globalAllowedNames = globalAllowedDays.map(d => DAY_NAMES[d]).join(', ');
 
   const handleFile = async (e) => {
     const file = e.target.files?.[0];
@@ -186,13 +203,17 @@ export default function Withdrawal() {
     setLoading(true);
     setError('');
     try {
+      // Generar clave de idempotencia única para este intento
+      const idempotencyKey = `withdraw_${user.id}_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+
       await api.withdrawals.create({ 
         monto, 
         tipo_billetera: tipoBilletera, 
         password_fondo: password, 
         qr_retiro: qrImage, 
         firma_digital: true,
-        tarjeta_id: tarjetaId || undefined 
+        tarjeta_id: tarjetaId || undefined,
+        idempotency_key: idempotencyKey
       });
       navigate('/ganancias');
     } catch (err) {
@@ -277,9 +298,19 @@ export default function Withdrawal() {
                   <span className="text-[8px] font-black text-amber-600 uppercase tracking-widest">Bolivia Time</span>
                 </div>
                 <div className="grid grid-cols-7 gap-1.5">
-                  {['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((day, i) => {
-                    const isAllowed = i >= 1 && i <= 3;
-                    const isToday = today === (i === 6 ? 0 : i + 1);
+                  {['D', 'L', 'M', 'M', 'J', 'V', 'S'].map((day, i) => {
+                    // i=0:Dom, 1:Lun, 2:Mar, 3:Mie, 4:Jue, 5:Vie, 6:Sab
+                    let isAllowed = false;
+                    if (userLevel?.retiro_horario_habilitado) {
+                      const start = Number(userLevel.retiro_dia_inicio);
+                      const end = Number(userLevel.retiro_dia_fin);
+                      if (start <= end) isAllowed = i >= start && i <= end;
+                      else isAllowed = i >= start || i <= end;
+                    } else {
+                      isAllowed = globalAllowedDays.includes(i);
+                    }
+                    
+                    const isToday = today === i;
                     return (
                       <div key={i} className="flex flex-col items-center gap-1.5">
                         <span className="text-[8px] font-black text-slate-400">{day}</span>
@@ -290,7 +321,7 @@ export default function Withdrawal() {
                             : "bg-white/50 text-slate-300 border border-slate-100",
                           isToday && !isAllowed && "border-amber-500/40 ring-1 ring-amber-500/20"
                         )}>
-                          {i + 1}
+                          {i === 0 ? 7 : i}
                         </div>
                       </div>
                     );
@@ -299,7 +330,10 @@ export default function Withdrawal() {
               </div>
 
               <p className="text-[9px] sm:text-[10px] text-sav-muted font-bold uppercase tracking-widest leading-relaxed">
-                Los retiros están disponibles de martes a jueves, según horario de Bolivia.
+                {userLevel?.retiro_horario_habilitado 
+                  ? `Tu nivel permite retiros de ${DAY_NAMES[userLevel.retiro_dia_inicio]} a ${DAY_NAMES[userLevel.retiro_dia_fin]}.`
+                  : `Días permitidos: ${globalAllowedNames}.`
+                }
                 <br/>Por favor, regresa en los días permitidos para procesar tu solicitud.
               </p>
             </Card>
@@ -535,7 +569,10 @@ export default function Withdrawal() {
               disabled={!canWithdrawToday || fueraHorario || hasWithdrawalToday || isPunished || !qrImage || !password || !hasSignature}
               className="h-16 sm:h-20 w-full rounded-2xl sm:rounded-[2rem] text-xs sm:text-sm tracking-[0.2em] sm:tracking-[0.3em] shadow-xl sm:shadow-[0_25px_50px_-12px_rgba(220,38,38,0.4)] active:scale-95 transition-all uppercase font-black"
             >
-              {!isAllowedDay ? 'FUERA DE DÍA PERMITIDO' : 'SOLICITAR RETIRO'}
+              {!canWithdrawToday 
+                ? 'FUERA DE DÍA ASIGNADO' 
+                : 'SOLICITAR RETIRO'
+              }
             </Button>
           </div>
 
@@ -544,7 +581,7 @@ export default function Withdrawal() {
             <div className="space-y-1 min-w-0">
               <p className="text-[9px] sm:text-[10px] font-black text-slate-900 uppercase tracking-widest">Información importante</p>
               <p className="text-[8px] sm:text-[9px] text-slate-500 font-bold uppercase tracking-[0.05em] leading-relaxed">
-                Los retiros están disponibles de martes a jueves, según horario de Bolivia.<br/>
+                Los retiros están disponibles en los días asignados, según horario de Bolivia.<br/>
                 Se permite 1 retiro por día. El plazo de procesamiento es de 2 a 24 horas.
               </p>
             </div>
