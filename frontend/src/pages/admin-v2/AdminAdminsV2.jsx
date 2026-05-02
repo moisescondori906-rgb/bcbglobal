@@ -21,7 +21,8 @@ import {
   Calendar,
   ChevronRight,
   MoreVertical,
-  Activity
+  Activity,
+  Send
 } from 'lucide-react';
 import { api } from '../../lib/api';
 

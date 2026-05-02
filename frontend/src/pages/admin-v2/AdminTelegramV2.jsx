@@ -52,6 +52,7 @@ function parseDiasOperativos(value) {
 export default function AdminTelegramV2() {
   const [equipos, setEquipos] = useState([]);
   const [integrantes, setIntegrantes] = useState([]);
+  const [bots, setBots] = useState([]);
   const [horarios, setHorarios] = useState({ 
     hora_inicio: '08:00', 
     hora_fin: '22:00', 
@@ -64,11 +65,15 @@ export default function AdminTelegramV2() {
   
   const [showEquipoModal, setShowEquipoModal] = useState(false);
   const [showIntegranteModal, setShowIntegranteModal] = useState(false);
+  const [showBotModal, setShowBotModal] = useState(false);
+  
   const [editingEquipo, setEditingEquipo] = useState(null);
   const [editingIntegrante, setEditingIntegrante] = useState(null);
+  const [editingBot, setEditingBot] = useState(null);
   
   const [equipoForm, setEquipoForm] = useState({ nombre: '', tipo: 'secretaria', chat_id: '', activo: true });
   const [integranteForm, setIntegranteForm] = useState({ telegram_user_id: '', nombre_visible: '', equipo_id: '', activo: true });
+  const [botForm, setBotForm] = useState({ alias: '', token: '', proposito: '', activo: true });
 
   useEffect(() => {
     fetchData();
@@ -77,15 +82,17 @@ export default function AdminTelegramV2() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [e, i, h, log] = await Promise.all([
+      const [e, i, h, log, b] = await Promise.all([
         api.admin.telegram.equipos(),
         api.admin.telegram.integrantes(),
         api.admin.telegram.horarios(),
-        api.admin.telegram.historial()
+        api.admin.telegram.historial(),
+        api.admin.telegram.bots()
       ]);
       setEquipos(e || []);
       setIntegrantes(i || []);
       setHistorial(log || []);
+      setBots(b || []);
       
       setHorarios({ 
         hora_inicio: h?.hora_inicio || '08:00', 
