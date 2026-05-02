@@ -222,6 +222,9 @@ export default function Dashboard() {
             </div>
 
             <div className="flex gap-3">
+              <Link to="/recargar" className="flex-1">
+                <Button variant="secondary" className="w-full h-12 sm:h-14 text-[10px] sm:text-[11px] font-black tracking-[0.2em] sm:tracking-[0.25em] bg-white/10 border-white/20 text-white hover:bg-white/20 backdrop-blur-md shadow-sm active:scale-[0.98] transition-all" icon={PlusIcon}>RECARGAR</Button>
+              </Link>
               <Link to="/retiro" className="flex-1">
                 <Button variant="secondary" className="w-full h-12 sm:h-14 text-[10px] sm:text-[11px] font-black tracking-[0.2em] sm:tracking-[0.25em] bg-white/10 border-white/20 text-white hover:bg-white/20 backdrop-blur-md shadow-sm active:scale-[0.98] transition-all" icon={ArrowDownCircleIcon}>RETIRAR</Button>
               </Link>
