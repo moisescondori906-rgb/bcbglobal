@@ -109,64 +109,59 @@ function CatchAll() {
 }
 
 function AppRoutes() {
-  const location = useLocation();
-  const isAdminRoute = location.pathname.startsWith('/admin');
-
   return (
-    <div className={isAdminRoute ? "admin-shell" : "mobile-root-container"}>
-      <Suspense fallback={<GlobalLoader />}>
-        <Routes>
-          {/* Rutas Públicas */}
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/admin" element={<PrivateRoute adminOnly><AdminLayout /></PrivateRoute>}>
-            <Route index element={<AdminDashboard />} />
-            <Route path="usuarios" element={<AdminUsuarios />} />
-            <Route path="dispositivos" element={<AdminDispositivos />} />
-            <Route path="niveles" element={<AdminNiveles />} />
-            <Route path="recargas" element={<AdminRecargas />} />
-            <Route path="retiros" element={<AdminRetiros />} />
-            <Route path="tareas" element={<AdminTareas />} />
-            <Route path="banners" element={<AdminBanners />} />
-            <Route path="metodos-qr" element={<AdminMetodosQr />} />
-            <Route path="recompensas" element={<AdminRecompensas />} />
-            <Route path="telegram" element={<AdminTelegram />} />
-            <Route path="admins" element={<AdminAdmins />} />
-            <Route path="calendario" element={<AdminCalendario />} />
-            <Route path="cuestionarios" element={<AdminCuestionario />} />
-            <Route path="ranking" element={<AdminRanking />} />
-            <Route path="contenido-home" element={<AdminContenidoHome />} />
-          </Route>
-          <Route path="/" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
-          <Route path="/premios" element={<PrivateRoute><Premios /></PrivateRoute>} />
-          <Route path="/recompensas" element={<Navigate to="/premios" replace />} />
-          <Route path="/mensajes" element={<PrivateRoute><Messages /></PrivateRoute>} />
-          {/* Rutas Privadas */}
-          <Route path="/tareas" element={<PrivateRoute><TaskRoom /></PrivateRoute>} />
-          <Route path="/usuario" element={<PrivateRoute><Profile /></PrivateRoute>} />
-          <Route path="/equipo" element={<PrivateRoute><Team /></PrivateRoute>} />
-          <Route path="/invitar" element={<PrivateRoute><Invite /></PrivateRoute>} />
-          <Route path="/vip" element={<PrivateRoute><VIP /></PrivateRoute>} />
-          <Route path="/ganancias" element={<PrivateRoute><Ganancias /></PrivateRoute>} />
-          <Route path="/movimientos" element={<PrivateRoute><Movimientos /></PrivateRoute>} />
-          <Route path="/noticias-conferencia" element={<PrivateRoute><NoticiasConferencia /></PrivateRoute>} />
-          <Route path="/retiro" element={<PrivateRoute><Withdrawal /></PrivateRoute>} />
-          <Route path="/pagar" element={<PrivateRoute><PaymentMethods /></PrivateRoute>} />
-          <Route path="/recargar" element={<PrivateRoute><Recharge /></PrivateRoute>} />
-          <Route path="/seguridad" element={<PrivateRoute><Security /></PrivateRoute>} />
-          <Route path="/vincular-tarjeta" element={<PrivateRoute><VincularTarjeta /></PrivateRoute>} />
-          <Route path="/ayuda" element={<PrivateRoute><HelpCenter /></PrivateRoute>} />
-          <Route path="/acerca-de" element={<PrivateRoute><AboutUs /></PrivateRoute>} />
-          <Route path="/cambiar-contrasena" element={<PrivateRoute><CambiarContrasena /></PrivateRoute>} />
-          <Route path="/cambiar-contrasena-fondo" element={<PrivateRoute><CambiarContrasenaFondo /></PrivateRoute>} />
-          <Route path="/registro-tareas" element={<PrivateRoute><TaskRoom /></PrivateRoute>} />
-          <Route path="/registro-facturacion" element={<PrivateRoute><BillingRecord /></PrivateRoute>} />
-          
-          {/* Ruta 404 por defecto */}
-          <Route path="*" element={<CatchAll />} />
-        </Routes>
-      </Suspense>
-    </div>
+    <Suspense fallback={<GlobalLoader />}>
+      <Routes>
+        {/* Rutas Públicas */}
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/admin" element={<PrivateRoute adminOnly><AdminLayout /></PrivateRoute>}>
+          <Route index element={<AdminDashboard />} />
+          <Route path="usuarios" element={<AdminUsuarios />} />
+          <Route path="dispositivos" element={<AdminDispositivos />} />
+          <Route path="niveles" element={<AdminNiveles />} />
+          <Route path="recargas" element={<AdminRecargas />} />
+          <Route path="retiros" element={<AdminRetiros />} />
+          <Route path="tareas" element={<AdminTareas />} />
+          <Route path="banners" element={<AdminBanners />} />
+          <Route path="metodos-qr" element={<AdminMetodosQr />} />
+          <Route path="recompensas" element={<AdminRecompensas />} />
+          <Route path="telegram" element={<AdminTelegram />} />
+          <Route path="admins" element={<AdminAdmins />} />
+          <Route path="calendario" element={<AdminCalendario />} />
+          <Route path="cuestionarios" element={<AdminCuestionario />} />
+          <Route path="ranking" element={<AdminRanking />} />
+          <Route path="contenido-home" element={<AdminContenidoHome />} />
+        </Route>
+        <Route path="/" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
+        <Route path="/premios" element={<PrivateRoute><Premios /></PrivateRoute>} />
+        <Route path="/recompensas" element={<Navigate to="/premios" replace />} />
+        <Route path="/mensajes" element={<PrivateRoute><Messages /></PrivateRoute>} />
+        {/* Rutas Privadas */}
+        <Route path="/tareas" element={<PrivateRoute><TaskRoom /></PrivateRoute>} />
+        <Route path="/usuario" element={<PrivateRoute><Profile /></PrivateRoute>} />
+        <Route path="/equipo" element={<PrivateRoute><Team /></PrivateRoute>} />
+        <Route path="/invitar" element={<PrivateRoute><Invite /></PrivateRoute>} />
+        <Route path="/vip" element={<PrivateRoute><VIP /></PrivateRoute>} />
+        <Route path="/ganancias" element={<PrivateRoute><Ganancias /></PrivateRoute>} />
+        <Route path="/movimientos" element={<PrivateRoute><Movimientos /></PrivateRoute>} />
+        <Route path="/noticias-conferencia" element={<PrivateRoute><NoticiasConferencia /></PrivateRoute>} />
+        <Route path="/retiro" element={<PrivateRoute><Withdrawal /></PrivateRoute>} />
+        <Route path="/pagar" element={<PrivateRoute><PaymentMethods /></PrivateRoute>} />
+        <Route path="/recargar" element={<PrivateRoute><Recharge /></PrivateRoute>} />
+        <Route path="/seguridad" element={<PrivateRoute><Security /></PrivateRoute>} />
+        <Route path="/vincular-tarjeta" element={<PrivateRoute><VincularTarjeta /></PrivateRoute>} />
+        <Route path="/ayuda" element={<PrivateRoute><HelpCenter /></PrivateRoute>} />
+        <Route path="/acerca-de" element={<PrivateRoute><AboutUs /></PrivateRoute>} />
+        <Route path="/cambiar-contrasena" element={<PrivateRoute><CambiarContrasena /></PrivateRoute>} />
+        <Route path="/cambiar-contrasena-fondo" element={<PrivateRoute><CambiarContrasenaFondo /></PrivateRoute>} />
+        <Route path="/registro-tareas" element={<PrivateRoute><TaskRoom /></PrivateRoute>} />
+        <Route path="/registro-facturacion" element={<PrivateRoute><BillingRecord /></PrivateRoute>} />
+        
+        {/* Ruta 404 por defecto */}
+        <Route path="*" element={<CatchAll />} />
+      </Routes>
+    </Suspense>
   );
 }
 
