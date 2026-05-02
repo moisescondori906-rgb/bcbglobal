@@ -188,25 +188,25 @@ export default function AdminTelegramV2() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/[0.03]">
-                  {equipos.map(e => (
+                  {Array.isArray(equipos) && equipos.map(e => (
                     <tr key={e.id} className="hover:bg-white/[0.01] transition-colors group">
                       <td className="px-8 py-5">
-                        <p className="text-xs font-black text-white uppercase tracking-tight italic">{e.nombre}</p>
+                        <p className="text-xs font-black text-white uppercase tracking-tight italic">{e.nombre_equipo || e.nombre}</p>
                       </td>
                       <td className="px-8 py-5">
-                        <span className={`px-3 py-1 rounded-xl text-[8px] font-black uppercase tracking-widest border ${e.tipo === 'administradores' ? 'bg-rose-500/10 text-rose-500 border-rose-500/20 shadow-lg shadow-rose-500/5' : 'bg-blue-500/10 text-blue-500 border-blue-500/20'}`}>
-                          {e.tipo}
+                        <span className={`px-3 py-1 rounded-xl text-[8px] font-black uppercase tracking-widest border ${(e.tipo_equipo || e.tipo) === 'administradores' ? 'bg-rose-500/10 text-rose-500 border-rose-500/20 shadow-lg shadow-rose-500/5' : 'bg-blue-500/10 text-blue-500 border-blue-500/20'}`}>
+                          {e.tipo_equipo || e.tipo}
                         </span>
                       </td>
                       <td className="px-8 py-5">
-                        <code className="text-[10px] font-mono text-slate-500 bg-[#0f111a] px-2 py-1 rounded-lg border border-white/5">{e.chat_id}</code>
+                        <code className="text-[10px] font-mono text-slate-500 bg-[#0f111a] px-2 py-1 rounded-lg border border-white/5">{e.telegram_chat_id || e.chat_id}</code>
                       </td>
                       <td className="px-8 py-5">
                         <div className={`w-2 h-2 rounded-full ${e.activo ? 'bg-emerald-500 shadow-lg shadow-emerald-500/50 animate-pulse' : 'bg-slate-700'}`} />
                       </td>
                       <td className="px-8 py-5 text-right">
                         <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button onClick={() => { setEditingEquipo(e); setEquipoForm(e); setShowEquipoModal(true); }} className="p-2 rounded-xl bg-white/5 text-blue-500 hover:bg-blue-500 hover:text-white transition-all shadow-lg border border-white/5"><Edit3 size={14} /></button>
+                          <button onClick={() => { setEditingEquipo(e); setEquipoForm({ nombre: e.nombre_equipo || e.nombre, tipo: e.tipo_equipo || e.tipo, chat_id: e.telegram_chat_id || e.chat_id, activo: !!e.activo }); setShowEquipoModal(true); }} className="p-2 rounded-xl bg-white/5 text-blue-500 hover:bg-blue-500 hover:text-white transition-all shadow-lg border border-white/5"><Edit3 size={14} /></button>
                           <button onClick={async () => { if(confirm('¿Eliminar equipo?')) { await api.admin.telegram.eliminarEquipo(e.id); fetchData(); } }} className="p-2 rounded-xl bg-white/5 text-rose-500 hover:bg-rose-500 hover:text-white transition-all shadow-lg border border-white/5"><Trash2 size={14} /></button>
                         </div>
                       </td>
@@ -254,23 +254,23 @@ export default function AdminTelegramV2() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/[0.03]">
-                  {integrantes.map(i => (
+                  {Array.isArray(integrantes) && integrantes.map(i => (
                     <tr key={i.id} className="hover:bg-white/[0.01] transition-colors group">
                       <td className="px-8 py-5">
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 rounded-lg bg-[#0f111a] flex items-center justify-center font-black text-indigo-500 text-[10px] border border-white/5 shadow-inner">
-                            {i.nombre_visible.charAt(0).toUpperCase()}
+                            {(i.nombre_visible || i.nombre || '?').charAt(0).toUpperCase()}
                           </div>
-                          <p className="text-xs font-black text-white uppercase tracking-tight">{i.nombre_visible}</p>
+                          <p className="text-xs font-black text-white uppercase tracking-tight">{i.nombre_visible || i.nombre}</p>
                         </div>
                       </td>
                       <td className="px-8 py-5">
-                        <code className="text-[10px] font-mono text-slate-500 bg-[#0f111a] px-2 py-1 rounded-lg border border-white/5">{i.telegram_user_id}</code>
+                        <code className="text-[10px] font-mono text-slate-500 bg-[#0f111a] px-2 py-1 rounded-lg border border-white/5">{i.telegram_user_id || i.telegram_id}</code>
                       </td>
                       <td className="px-8 py-5">
                         <div className="flex items-center gap-2">
                           <Shield size={12} className="text-indigo-500" />
-                          <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest">{equipos.find(e => e.id === i.equipo_id)?.nombre || 'Sin Equipo'}</p>
+                          <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest">{equipos.find(e => e.id === i.equipo_id)?.nombre_equipo || equipos.find(e => e.id === i.equipo_id)?.nombre || 'Sin Equipo'}</p>
                         </div>
                       </td>
                       <td className="px-8 py-5">
@@ -278,7 +278,7 @@ export default function AdminTelegramV2() {
                       </td>
                       <td className="px-8 py-5 text-right">
                         <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button onClick={() => { setEditingIntegrante(i); setIntegranteForm(i); setShowIntegranteModal(true); }} className="p-2 rounded-xl bg-white/5 text-indigo-500 hover:bg-indigo-500 hover:text-white transition-all shadow-lg border border-white/5"><Edit3 size={14} /></button>
+                          <button onClick={() => { setEditingIntegrante(i); setIntegranteForm({ telegram_user_id: i.telegram_user_id || i.telegram_id, nombre_visible: i.nombre_visible || i.nombre, equipo_id: i.equipo_id || '', activo: !!i.activo }); setShowIntegranteModal(true); }} className="p-2 rounded-xl bg-white/5 text-indigo-500 hover:bg-indigo-500 hover:text-white transition-all shadow-lg border border-white/5"><Edit3 size={14} /></button>
                           <button onClick={async () => { if(confirm('¿Eliminar integrante?')) { await api.admin.telegram.eliminarIntegrante(i.id); fetchData(); } }} className="p-2 rounded-xl bg-white/5 text-rose-500 hover:bg-rose-500 hover:text-white transition-all shadow-lg border border-white/5"><Trash2 size={14} /></button>
                         </div>
                       </td>
@@ -472,7 +472,7 @@ export default function AdminTelegramV2() {
                     <div className="space-y-2">
                       <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 italic">Equipo de Asignación</label>
                       <select value={integranteForm.equipo_id} onChange={e => setIntegranteForm({...integranteForm, equipo_id: e.target.value})} className="w-full px-6 py-4 rounded-2xl bg-[#0f111a] border border-white/5 text-[10px] font-black text-white uppercase tracking-widest outline-none focus:border-indigo-500/30 shadow-inner appearance-none cursor-pointer">
-                        {equipos.map(e => <option key={e.id} value={e.id}>{e.nombre} ({e.tipo.toUpperCase()})</option>)}
+                        {Array.isArray(equipos) && equipos.map(e => <option key={e.id} value={e.id}>{e.nombre_equipo || e.nombre} ({(e.tipo_equipo || e.tipo || 'unknown').toUpperCase()})</option>)}
                       </select>
                     </div>
                   </>

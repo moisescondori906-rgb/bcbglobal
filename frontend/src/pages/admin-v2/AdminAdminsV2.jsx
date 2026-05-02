@@ -201,7 +201,7 @@ export default function AdminAdminsV2() {
                       className="w-full bg-[#0f111a] border border-white/5 rounded-2xl px-6 py-4 text-xs font-bold text-white outline-none focus:border-sav-primary/30 transition-all shadow-inner appearance-none cursor-pointer"
                     >
                       <option value="">-- Buscar usuario registrado --</option>
-                      {users.map(u => <option key={u.id} value={u.id}>{u.nombre_usuario}</option>)}
+                      {Array.isArray(users) && users.map(u => <option key={u.id} value={u.id}>{u.nombre_usuario}</option>)}
                     </select>
                   </div>
 
@@ -288,7 +288,7 @@ export default function AdminAdminsV2() {
             Array(3).fill(0).map((_, i) => (
               <div key={i} className="bg-[#161926] border border-white/5 h-64 rounded-[40px] animate-pulse" />
             ))
-          ) : admins.map((admin, index) => (
+          ) : Array.isArray(admins) && admins.map((admin, index) => (
             <motion.div
               key={admin.id}
               initial={{ opacity: 0, scale: 0.9 }}
@@ -305,7 +305,7 @@ export default function AdminAdminsV2() {
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-4">
                     <div className="w-14 h-14 rounded-2xl bg-[#0f111a] flex items-center justify-center font-black text-sav-primary text-xl border border-white/5 shadow-inner">
-                      {admin.nombre.charAt(0).toUpperCase()}
+                      {admin.nombre?.charAt(0).toUpperCase() || '?'}
                     </div>
                     <div>
                       <h4 className="text-lg font-black text-white uppercase tracking-tighter italic truncate w-32">{admin.nombre}</h4>
@@ -329,14 +329,14 @@ export default function AdminAdminsV2() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <Clock size={14} className="text-sav-primary" />
-                      <p className="text-[10px] font-black text-white uppercase tracking-widest italic">{admin.hora_inicio_turno.substring(0, 5)} - {admin.hora_fin_turno.substring(0, 5)}</p>
+                      <p className="text-[10px] font-black text-white uppercase tracking-widest italic">{admin.hora_inicio_turno?.substring(0, 5) || '00:00'} - {admin.hora_fin_turno?.substring(0, 5) || '00:00'}</p>
                     </div>
                     <div className="flex items-center gap-2">
                        {admin.recibe_notificaciones ? <Bell size={14} className="text-blue-500" /> : <BellOff size={14} className="text-slate-600" />}
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    {admin.dias_semana?.split(',').map(d => (
+                    {admin.dias_semana?.split(',').filter(Boolean).map(d => (
                       <span key={d} className="px-3 py-1 rounded-lg bg-white/5 border border-white/5 text-[8px] font-black text-slate-500 uppercase tracking-widest italic">
                         {d}
                       </span>
