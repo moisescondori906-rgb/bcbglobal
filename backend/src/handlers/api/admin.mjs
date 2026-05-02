@@ -11,7 +11,7 @@ import {
 } from '../../services/dbService.mjs';
 import { query, queryOne } from '../../config/db.mjs';
 import { authenticate, requireAdmin } from '../../utils/middleware/auth.mjs';
-import { uploadVideoBuffer, uploadImageBuffer } from '../../utils/fileStorage.mjs';
+import { uploadVideoBuffer, uploadImageBuffer, uploadLocalVideo } from '../../utils/fileStorage.mjs';
 import logger from '../../utils/logger.mjs';
 import { asyncHandler } from '../../utils/asyncHandler.mjs';
 
@@ -500,17 +500,21 @@ router.delete('/tareas/:id', asyncHandler(async (req, res) => {
 }));
 
 // ========================
-// SUBIDA DE VIDEOS A CLOUDINARY
+// SUBIDA DE VIDEOS LOCAL
 // ========================
 
-router.post('/tareas/video', uploadToCloudinary.single('video'), asyncHandler(async (req, res) => {
+router.post('/tareas/video', uploadLocalVideo.single('video'), asyncHandler(async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: 'No se recibió ningún archivo de video.' });
   }
+
+  // La URL será relativa al servidor, e.g., /uploads/tareas/uuid.mp4
+  const videoUrl = `/uploads/tareas/${req.file.filename}`;
+
   res.json({
     ok: true,
-    video_url: req.file.secure_url || req.file.path,
-    public_id: req.file.public_id,
+    video_url: videoUrl,
+    public_id: req.file.filename,
     original_name: req.file.originalname,
     size_bytes: req.file.size
   });

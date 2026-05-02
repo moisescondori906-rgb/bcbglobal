@@ -2,9 +2,39 @@ import fs from 'fs/promises';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { fileURLToPath } from 'url';
+import multer from 'multer';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const UPLOADS_DIR = path.join(__dirname, '..', '..', 'public', 'uploads');
+
+/**
+ * Multer config para subidas locales de video
+ */
+const localVideoStorage = multer.diskStorage({
+  destination: async (req, file, cb) => {
+    const dir = path.join(UPLOADS_DIR, 'tareas');
+    try {
+      await fs.mkdir(dir, { recursive: true });
+      cb(null, dir);
+    } catch (err) {
+      cb(err);
+    }
+  },
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname) || '.mp4';
+    cb(null, `${uuidv4()}${ext}`);
+  }
+});
+
+export const uploadLocalVideo = multer({
+  storage: localVideoStorage,
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB
+  fileFilter: (req, file, cb) => {
+    const allowed = ['video/mp4', 'video/webm', 'video/quicktime', 'video/x-msvideo'];
+    if (allowed.includes(file.mimetype)) cb(null, true);
+    else cb(new Error('Solo se permiten archivos de video.'));
+  }
+});
 
 /**
  * Asegura que el directorio de uploads exista.
