@@ -2,6 +2,9 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
+import helmet from 'helmet';
+import compression from 'compression';
+import rateLimit from 'express-rate-limit';
 import { fileURLToPath } from 'url';
 import { asyncHandler } from './utils/asyncHandler.mjs';
 
@@ -22,6 +25,31 @@ import redis from './services/redisService.mjs';
 validateEnv();
 
 const app = express();
+
+// --- BLINDAJE Y OPTIMIZACIÓN DE ALTA CONCURRENCIA v11.5.0 ---
+
+// 1. Seguridad de cabeceras (Helmet)
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  contentSecurityPolicy: false, // Desactivar si causa problemas con uploads, o configurar finamente
+}));
+
+// 2. Compresión de respuestas (Gzip/Brotli) - Reduce latencia y ancho de banda
+app.use(compression());
+
+// 3. Desactivar cabecera de Express por seguridad y micro-optimización
+app.disable('x-powered-by');
+
+// 4. Rate Limiting Global (Protección contra inundaciones/DDoS básico)
+const globalLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minuto
+  max: 500, // límite de 500 peticiones por minuto por IP
+  message: { error: 'Demasiadas peticiones desde esta IP, por favor intente más tarde.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => req.path.includes('/api/health') || req.path.includes('/uploads'), // No limitar health check ni archivos estáticos
+});
+app.use('/api/', globalLimiter);
 
 // Blindaje contra caídas por errores no capturados
 process.on('uncaughtException', (err) => {

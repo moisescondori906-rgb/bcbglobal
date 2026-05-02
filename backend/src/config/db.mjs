@@ -12,10 +12,10 @@ const poolConfig = {
   password: process.env.MYSQL_PASSWORD,
   database: process.env.MYSQL_DATABASE,
   waitForConnections: true,
-  connectionLimit: 150, // Optimizado para escalabilidad v10.0.0
-  maxIdle: 50, // Mantener más conexiones listas para picos de tráfico
-  idleTimeout: 60000, // Un minuto antes de cerrar conexiones inactivas
-  queueLimit: 0,
+  connectionLimit: 200, // Aumentado para mayor concurrencia v11.5.0
+  maxIdle: 100, // Mantener más conexiones calientes
+  idleTimeout: 30000, // Reducido a 30s para reciclar conexiones más rápido
+  queueLimit: 1000, // Límite de cola para evitar fugas de memoria por peticiones pendientes
   enableKeepAlive: true,
   keepAliveInitialDelay: 10000,
   timezone: '-04:00', // Forzar zona horaria de Bolivia en la sesión de MySQL

@@ -11,11 +11,16 @@ import redis from '../../services/redisService.mjs';
 import { DEMO_USER_ID, DEMO_USER_DATA } from '../../utils/middleware/requestContext.mjs';
 import logger from '../../utils/logger.mjs';
 import { asyncHandler } from '../../utils/asyncHandler.mjs';
+import { rateLimiter } from '../../utils/middleware/rateLimiter.mjs';
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'sav-demo-secret';
 
-router.post('/register', asyncHandler(async (req, res) => {
+// Rate limits específicos para evitar ataques de fuerza bruta y saturación
+const registerLimiter = rateLimiter(15 * 60 * 1000, 10); // Máximo 10 registros cada 15 min por IP
+const loginLimiter = rateLimiter(5 * 60 * 1000, 20); // Máximo 20 intentos de login cada 5 min por IP
+
+router.post('/register', registerLimiter, asyncHandler(async (req, res) => {
   const { telefono, nombre_usuario, password, codigo_invitacion, deviceId, fingerprint } = req.body;
   if (!telefono || !nombre_usuario || !password || !codigo_invitacion) {
     return res.status(400).json({ error: 'Faltan campos requeridos' });
@@ -102,7 +107,7 @@ router.post('/register', asyncHandler(async (req, res) => {
   res.json({ user: sanitizeUser(user, levels), token });
 }));
 
-router.post('/login', asyncHandler(async (req, res) => {
+router.post('/login', loginLimiter, asyncHandler(async (req, res) => {
   const { telefono, password, deviceId } = req.body;
   
   // MODO DEMO: Bypass si es el número de prueba

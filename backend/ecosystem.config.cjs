@@ -4,8 +4,8 @@ module.exports = {
       name: 'bcb-global-backend',
       script: 'src/index.mjs',
       cwd: '/var/www/bcb_global/backend',
-      instances: 1, 
-      exec_mode: 'fork',
+      instances: 'max', // Usar todos los núcleos disponibles
+      exec_mode: 'cluster', // Habilitar modo Cluster para alta concurrencia
       env: {
         NODE_ENV: 'production',
         PORT: 4000
@@ -20,7 +20,11 @@ module.exports = {
       log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
       merge_logs: true,
       autorestart: true,
-      watch: false
+      watch: false,
+      wait_ready: true,
+      listen_timeout: 10000,
+      kill_timeout: 5000,
+      exp_backoff_restart_delay: 100
     }
   ]
 };
