@@ -34,7 +34,6 @@ export async function processTelegramUpdate(update) {
 
     telegramLogicLogger.info(`Procesando click: ${data} de usuario ${telegramUser.id}`);
 
-    try {
     const parts = data.split('_');
     const type = parts[0];
     const action = parts[1];
@@ -110,7 +109,7 @@ export async function processTelegramUpdate(update) {
             estado: 'pagado',
             processed_by_admin_id: admin.id,
             processed_by_admin_name: adminName,
-            processed_at: new Date().toISOString()
+            processed_at: boliviaTime.getISOString()
           });
           
           const statusMsg = `✅ PAGADO por ${adminName}`;
@@ -147,7 +146,8 @@ export async function processTelegramUpdate(update) {
           await updateRetiro(id, { 
             estado: 'rechazado',
             rejected_by_admin_id: admin.id,
-            rejected_at: new Date().toISOString()
+            rejected_by_admin_name: adminName,
+            rejected_at: boliviaTime.getISOString()
           });
           
           // Luego devolvemos el saldo
@@ -160,7 +160,7 @@ export async function processTelegramUpdate(update) {
             monto: Number(retiro.monto),
             descripcion: `Reembolso por retiro rechazado (${id.substring(0,8)})`,
             referencia: `REJ-${id.substring(0,8)}`,
-            fecha: new Date().toISOString()
+            fecha: boliviaTime.getISOString()
           });
 
           const statusMsg = `❌ RECHAZADO por ${adminName} (Saldo devuelto)`;
@@ -219,7 +219,7 @@ export async function processTelegramUpdate(update) {
             estado: 'aprobada', 
             procesado_por_admin_id: admin.id, 
             procesado_por_admin_name: adminName,
-            procesado_at: new Date().toISOString() 
+            procesado_at: boliviaTime.getISOString() 
           });
           await handleLevelUpRewards(user.id, user.nivel_id, nivelDestino.id);
           // Distribuir comisiones por ascenso (Inversión)
@@ -233,7 +233,7 @@ export async function processTelegramUpdate(update) {
             monto: recarga.monto,
             descripcion: `Recarga de saldo aprobada`,
             referencia: `REC-${id.substring(0,8)}`,
-            fecha: boliviaTime.now().toISOString()
+            fecha: boliviaTime.getISOString()
           });
           const nuevoSaldo = Number((Number(user.saldo_principal || 0) + recarga.monto).toFixed(2));
           await updateUser(user.id, { saldo_principal: nuevoSaldo });
@@ -270,7 +270,7 @@ export async function processTelegramUpdate(update) {
           procesado_por_admin_id: admin.id,
           procesado_por_admin_name: adminName,
           admin_notas: motivo,
-          procesado_at: new Date().toISOString()
+          procesado_at: boliviaTime.getISOString()
         });
 
         const statusMsg = `❌ RECHAZADA por ${adminName}\n📝 Motivo: ${motivo}`;
@@ -331,34 +331,39 @@ async function handleDailySummary(message) {
 }
 
 async function editTelegramMessage(chatId, messageId, oldText, statusText, replyMarkup = { inline_keyboard: [] }) {
-  const tokens = [process.env.TELEGRAM_RECARGAS_TOKEN, process.env.TELEGRAM_RETIROS_TOKEN];
-  const newText = `${oldText}\n\n📢 <b>${statusText}</b>`;
+  const tokens = [
+    process.env.TELEGRAM_BOT_TOKEN_ADMIN,
+    process.env.TELEGRAM_BOT_TOKEN_RETIROS,
+    process.env.TELEGRAM_BOT_TOKEN_RECARGAS
+  ].filter(Boolean);
+
+  const cleanOldText = oldText?.replace(/📢 <b>.*?<\/b>/g, '').trim();
+  const newText = `${cleanOldText}\n\n📢 <b>${statusText}</b>`;
 
   for (const token of tokens) {
-    if (!token) continue;
     await safeTelegram(async () => {
-      const urlText = `https://api.telegram.org/bot${token}/editMessageText`;
-      const res = await fetch(urlText, {
+      // Intentar primero con Caption (para fotos de QR o comprobantes)
+      const resCaption = await fetch(`https://api.telegram.org/bot${token}/editMessageCaption`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           chat_id: chatId,
           message_id: messageId,
-          text: newText,
+          caption: newText,
           parse_mode: 'HTML',
           reply_markup: replyMarkup
         })
       });
 
-      if (!res.ok) {
-        const urlCaption = `https://api.telegram.org/bot${token}/editMessageCaption`;
-        await fetch(urlCaption, {
+      if (!resCaption.ok) {
+        // Si falla Caption, intentar con Text
+        await fetch(`https://api.telegram.org/bot${token}/editMessageText`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             chat_id: chatId,
             message_id: messageId,
-            caption: newText,
+            text: newText,
             parse_mode: 'HTML',
             reply_markup: replyMarkup
           })
@@ -369,9 +374,13 @@ async function editTelegramMessage(chatId, messageId, oldText, statusText, reply
 }
 
 async function answerCallback(callbackQueryId, text) {
-  const tokens = [process.env.TELEGRAM_RECARGAS_TOKEN, process.env.TELEGRAM_RETIROS_TOKEN];
+  const tokens = [
+    process.env.TELEGRAM_BOT_TOKEN_ADMIN,
+    process.env.TELEGRAM_BOT_TOKEN_RETIROS,
+    process.env.TELEGRAM_BOT_TOKEN_RECARGAS
+  ].filter(Boolean);
+
   for (const token of tokens) {
-    if (!token) continue;
     const success = await safeTelegram(async () => {
       const res = await fetch(`https://api.telegram.org/bot${token}/answerCallbackQuery`, {
         method: 'POST',
