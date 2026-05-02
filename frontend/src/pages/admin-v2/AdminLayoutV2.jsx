@@ -114,7 +114,7 @@ export default function AdminLayoutV2() {
           opacity: isSidebarOpen ? 1 : (windowWidth < 1024 ? 1 : 0)
         }}
         transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-        className="fixed lg:relative z-[100] h-screen bg-[#161926] border-r border-white/5 flex flex-col shadow-2xl overflow-hidden shrink-0"
+        className="fixed lg:relative z-[100] h-screen h-[100dvh] bg-[#161926] border-r border-white/5 flex flex-col shadow-2xl overflow-hidden shrink-0"
       >
         {/* Header Sidebar */}
         <div className="p-6 flex items-center gap-4 border-b border-white/5 bg-[#1a1e2e]">
@@ -128,7 +128,7 @@ export default function AdminLayoutV2() {
         </div>
 
         {/* Navigation Scrollable */}
-        <nav className="flex-1 overflow-y-auto p-4 space-y-8 no-scrollbar">
+        <nav className="flex-1 overflow-y-auto p-4 space-y-8 custom-scrollbar">
           {menuGroups.map((group, gIdx) => (group.items.length > 0 && (
             <div key={gIdx} className="space-y-2">
               <p className="px-4 text-[9px] font-black text-slate-500 uppercase tracking-[0.2em]">{group.title}</p>
@@ -184,7 +184,7 @@ export default function AdminLayoutV2() {
       </motion.aside>
 
       {/* Main Content Area */}
-      <main className="admin-main h-screen overflow-hidden relative">
+      <main className="admin-main h-screen h-[100dvh] overflow-hidden relative">
         {/* Top Header Fixed */}
         <header className={`
           z-50 h-16 sm:h-20 px-4 sm:px-8 flex items-center justify-between border-b border-white/5 transition-all duration-300 shrink-0
