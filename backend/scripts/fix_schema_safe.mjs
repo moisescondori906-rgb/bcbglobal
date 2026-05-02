@@ -88,6 +88,37 @@ async function runMigrations() {
       }
     }
 
+    // 5. Tabla cuestionarios
+    if (!await tableExists('cuestionarios')) {
+      logger.info('Creando tabla cuestionarios...');
+      await query(`
+        CREATE TABLE cuestionarios (
+          id VARCHAR(36) PRIMARY KEY,
+          titulo VARCHAR(200) NOT NULL,
+          descripcion TEXT,
+          preguntas JSON NOT NULL,
+          activo TINYINT(1) DEFAULT 1,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      `);
+    }
+
+    // 6. Tabla usuarios_telegram (si no existe, compatible con Admin.mjs)
+    if (!await tableExists('usuarios_telegram')) {
+      logger.info('Creando tabla usuarios_telegram...');
+      await query(`
+        CREATE TABLE usuarios_telegram (
+          telegram_id VARCHAR(100) PRIMARY KEY,
+          nombre VARCHAR(255),
+          telegram_username VARCHAR(100),
+          activo TINYINT(1) DEFAULT 1,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      `);
+    }
+
     logger.info('Migraciones completadas con éxito.');
   } catch (err) {
     logger.error('Error crítico durante la migración:', err);
