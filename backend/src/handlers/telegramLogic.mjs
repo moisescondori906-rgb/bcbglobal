@@ -71,7 +71,7 @@ export async function processTelegramUpdate(update) {
           estado: 'en_proceso',
           taken_by_admin_id: admin.id,
           taken_by_admin_name: adminName,
-          taken_at: new Date().toISOString(),
+          taken_at: boliviaTime.getISOString(),
           telegram_message_id: String(messageId),
           telegram_chat_id: String(chatId)
         });
@@ -241,14 +241,14 @@ export async function processTelegramUpdate(update) {
             estado: 'aprobada', 
             procesado_por_admin_id: admin.id, 
             procesado_por_admin_name: adminName,
-            processed_at: new Date().toISOString() 
+            processed_at: boliviaTime.getISOString() 
           });
           // Distribuir comisiones por recarga de saldo (Inversión)
           await distributeInvestmentCommissions(user.id, recarga.monto);
           statusMsg = `✅ Recarga Aprobada por ${adminName}`;
           
           // Notificar a Secretaria
-          sendToSecretaria(`<b>✅ RECARGA APROBADA</b>\n👤 Usuario: <code>${user.telefono}</code>\n💵 Monto: <code>${recarga.monto} BOB</code>\n👨‍💼 Admin: ${adminName}`);
+          sendToSecretaria(`<b>✅ RECARGA APROBADA</b>\n👤 Usuario: <code>${user.telefono}</code>\n💵 Monto: <code>${recarga.monto} BOB</code>\n👨‍💼 Admin: ${adminName}\n🕒 Fecha: ${boliviaTime.getISOString()}`);
           
           logger.info(`[TELEGRAM-LOGIC] Recarga (Saldo) ${id} aprobada por ${adminName}`);
         }

@@ -6,66 +6,49 @@ export const BOLIVIA_TIMEZONE = 'America/La_Paz';
 
 /**
  * Obtiene la fecha y hora actual en Bolivia como objeto Date.
+ * Si process.env.TZ ya es America/La_Paz, new Date() ya devuelve la hora correcta,
+ * pero esta función asegura que sea así independientemente del entorno.
  * @returns {Date}
  */
 export function getBoliviaNow() {
   const now = new Date();
+  // toLocaleString garantiza la conversión a la zona horaria especificada
   return new Date(now.toLocaleString('en-US', { timeZone: BOLIVIA_TIMEZONE }));
 }
 
 /**
  * Obtiene el día de la semana actual en Bolivia (0-6, donde 0 es Domingo).
- * @returns {number}
  */
 export function getBoliviaDayOfWeek() {
-  const now = getBoliviaNow();
-  return now.getDay();
+  return getBoliviaNow().getDay();
 }
 
 /**
  * Obtiene una cadena de fecha formateada (YYYY-MM-DD) para el día actual en Bolivia.
- * @returns {string}
  */
-export function getBoliviaDateKey() {
-  const now = getBoliviaNow();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
+export function getBoliviaDateKey(date = getBoliviaNow()) {
+  const d = date instanceof Date ? date : new Date(date);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 }
 
 /**
- * Verifica si hoy es un día permitido para retiros en Bolivia (Martes, Miércoles, Jueves).
- * Martes = 2, Miércoles = 3, Jueves = 4.
- * @returns {boolean}
+ * Obtiene la hora actual formateada (HH:mm:ss) para Bolivia.
  */
-export function isBoliviaWithdrawalDay() {
-  const day = getBoliviaDayOfWeek();
-  return day >= 2 && day <= 4;
+export function getBoliviaTimeString(date = getBoliviaNow()) {
+  const d = date instanceof Date ? date : new Date(date);
+  return d.toTimeString().split(' ')[0];
 }
 
 /**
- * Obtiene el rango de tiempo (inicio y fin) del día actual en Bolivia en formato UTC.
- * Útil para consultas SQL.
- * @returns {{ start: Date, end: Date }}
+ * Obtiene un ISO String que representa la hora local de Bolivia (no UTC).
+ * Útil para logs y visualización.
  */
-export function getBoliviaDayRangeUTC() {
-  const now = getBoliviaNow();
-  
-  // Inicio del día en Bolivia
-  const start = new Date(now);
-  start.setHours(0, 0, 0, 0);
-  
-  // Fin del día en Bolivia
-  const end = new Date(now);
-  end.setHours(23, 59, 59, 999);
-  
-  // Convertir a UTC para la base de datos
-  // Como 'now' ya fue ajustado a la hora de Bolivia vía toLocaleString,
-  // estas fechas representan el inicio y fin del día calendario en Bolivia.
-  
-  return {
-    start: new Date(start.toLocaleString('en-US', { timeZone: 'UTC' })),
-    end: new Date(end.toLocaleString('en-US', { timeZone: 'UTC' }))
-  };
+export function getBoliviaISOString(date = getBoliviaNow()) {
+  const d = date instanceof Date ? date : new Date(date);
+  const off = d.getTimezoneOffset() * 60000;
+  const localDate = new Date(d.getTime() - off);
+  return localDate.toISOString().replace('Z', '-04:00');
 }

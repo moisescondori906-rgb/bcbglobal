@@ -109,8 +109,8 @@ router.get('/earnings', asyncHandler(async (req, res) => {
     return res.json({
       summary: { total: user.saldo_principal, hoy: 50.40 },
       history: [
-        { id: '1', tipo_movimiento: 'tarea', monto: 1.80, created_at: new Date().toISOString(), descripcion: 'Tarea completada demo' },
-        { id: '2', tipo_movimiento: 'tarea_red', monto: 0.50, created_at: new Date().toISOString(), descripcion: 'Comisión red demo' }
+        { id: '1', tipo_movimiento: 'tarea', monto: 1.80, created_at: boliviaTime.getISOString(), descripcion: 'Tarea completada demo' },
+        { id: '2', tipo_movimiento: 'tarea_red', monto: 0.50, created_at: boliviaTime.getISOString(), descripcion: 'Comisión red demo' }
       ]
     });
   }
@@ -169,7 +169,7 @@ router.post('/tarjetas', asyncHandler(async (req, res) => {
 
 router.get('/mensajes', asyncHandler(async (req, res) => {
   const mensajes = await getMensajesGlobales().catch(() => [
-    { id: 'm1', titulo: 'Bienvenido Socio Demo', contenido: 'Este es un mensaje de prueba para visualización.', fecha: new Date().toISOString() }
+    { id: 'm1', titulo: 'Bienvenido Socio Demo', contenido: 'Este es un mensaje de prueba para visualización.', fecha: boliviaTime.getISOString() }
   ]);
   res.json(mensajes);
 }));

@@ -1,4 +1,4 @@
-import { findUserById } from '../../services/dbService.mjs';
+import { findUserById, boliviaTime } from '../../services/dbService.mjs';
 
 export const DEMO_USER_ID = 'DEMO-USER-ID';
 export const DEMO_USER_DATA = {
@@ -14,7 +14,7 @@ export const DEMO_USER_DATA = {
   rol: 'usuario',
   bloqueado: 0,
   tickets_ruleta: 5,
-  created_at: new Date().toISOString()
+  created_at: boliviaTime.getISOString()
 };
 
 export const ADMIN_DEMO_ID = 'ADMIN-DEMO-ID';
@@ -31,7 +31,7 @@ export const ADMIN_DEMO_DATA = {
   rol: 'admin',
   bloqueado: 0,
   tickets_ruleta: 0,
-  created_at: new Date().toISOString()
+  created_at: boliviaTime.getISOString()
 };
 
 /**

@@ -15,7 +15,7 @@ import logger, { createModuleLogger } from './utils/logger.mjs';
 import { errorHandler } from './handlers/errorHandler.mjs';
 import { initTelegramHandlers } from './services/telegramInitializer.mjs';
 import { query } from './config/db.mjs';
-import { syncLevels, preloadLevels, preloadConfig } from './services/dbService.mjs';
+import { syncLevels, preloadLevels, preloadConfig, boliviaTime } from './services/dbService.mjs';
 import { safeAsync } from './utils/safe.mjs';
 
 import validateEnv from './config/validateEnv.mjs';
@@ -110,7 +110,7 @@ app.get('/api/health', async (req, res) => {
     db: dbStatus,
     redis: redisStatus,
     uptime: Math.floor(process.uptime()),
-    timestamp: new Date().toISOString()
+    timestamp: boliviaTime.getISOString()
   };
 
   if (health.status === 'degraded') {
@@ -144,7 +144,7 @@ setInterval(async () => {
     const health = {
       db: false,
       redis: false,
-      timestamp: new Date().toISOString()
+      timestamp: boliviaTime.getISOString()
     };
 
     try {

@@ -18,11 +18,7 @@ import { Card } from '../components/ui/Card.jsx';
 import { Button } from '../components/ui/Button.jsx';
 import { Badge } from '../components/ui/Badge.jsx';
 
-// Helper para obtener la fecha actual en zona horaria Bolivia
-const getBoliviaDate = (date = new Date()) => {
-  const boliviaTime = date.toLocaleString('en-US', { timeZone: 'America/La_Paz' });
-  return new Date(boliviaTime);
-};
+import { getBoliviaNow } from '../utils/time';
 
 export default function TaskRoom() {
   const navigate = useNavigate();

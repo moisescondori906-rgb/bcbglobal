@@ -48,10 +48,6 @@ const DEFAULT_LEVELS = [
  */
 export const boliviaTime = {
   now: (date = new Date()) => {
-    // Si se pasa una fecha, la convertimos a la hora de Bolivia
-    if (date instanceof Date && !isNaN(date)) {
-      return new Date(date.toLocaleString('en-US', { timeZone: boliviaTimeHelper.BOLIVIA_TIMEZONE }));
-    }
     return boliviaTimeHelper.getBoliviaNow();
   },
   todayStr: () => {
@@ -60,33 +56,19 @@ export const boliviaTime = {
   yesterdayStr: () => {
     const d = boliviaTimeHelper.getBoliviaNow();
     d.setDate(d.getDate() - 1);
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
+    return boliviaTimeHelper.getBoliviaDateKey(d);
   },
   getDateString: (date = new Date()) => {
-    const d = (date instanceof Date && !isNaN(date)) 
-      ? new Date(date.toLocaleString('en-US', { timeZone: boliviaTimeHelper.BOLIVIA_TIMEZONE }))
-      : boliviaTimeHelper.getBoliviaNow();
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
+    return boliviaTimeHelper.getBoliviaDateKey(date);
   },
   getTimeString: (date = new Date()) => {
-    const d = (date instanceof Date && !isNaN(date)) 
-      ? new Date(date.toLocaleString('en-US', { timeZone: boliviaTimeHelper.BOLIVIA_TIMEZONE }))
-      : boliviaTimeHelper.getBoliviaNow();
-    const h = String(d.getHours()).padStart(2, '0');
-    const min = String(d.getMinutes()).padStart(2, '0');
-    return `${h}:${min}`;
+    return boliviaTimeHelper.getBoliviaTimeString(date);
+  },
+  getISOString: (date = new Date()) => {
+    return boliviaTimeHelper.getBoliviaISOString(date);
   },
   getDay: (date = new Date()) => {
-    const d = (date instanceof Date && !isNaN(date)) 
-      ? new Date(date.toLocaleString('en-US', { timeZone: boliviaTimeHelper.BOLIVIA_TIMEZONE }))
-      : boliviaTimeHelper.getBoliviaNow();
-    return d.getDay();
+    return boliviaTimeHelper.getBoliviaDayOfWeek();
   },
   getDayName: (date = new Date()) => {
     const days = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];

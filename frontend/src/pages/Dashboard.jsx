@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Wallet as WalletIcon, 
@@ -25,6 +26,7 @@ import {
   Smartphone as SmartphoneIcon
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { getBoliviaNow } from '../utils/time';
 import Layout from '../components/Layout';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -39,14 +41,15 @@ import FloatingQuestionnaire from '../components/FloatingQuestionnaire';
 import GlobalLoader from '../components/ui/GlobalLoader';
 import DownloadButton from '../components/DownloadButton';
 
-// Helper para obtener la fecha actual en zona horaria Bolivia
-const getBoliviaDate = (date = new Date()) => {
-  const boliviaTime = date.toLocaleString('en-US', { timeZone: 'America/La_Paz' });
-  return new Date(boliviaTime);
-};
-
 export default function Dashboard() {
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const [now, setNow] = useState(getBoliviaNow());
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(getBoliviaNow()), 1000);
+    return () => clearInterval(timer);
+  }, []);
   const [stats, setStats] = useState({ ingresos_hoy: 0, total_acumulado: 0 });
   const [niveles, setNiveles] = useState([]);
   const [loading, setLoading] = useState(true);
