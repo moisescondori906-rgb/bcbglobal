@@ -16,6 +16,23 @@ import { checkIdempotencyRedis, acquireLock, releaseLock } from './redisService.
 import logger from '../utils/logger.mjs';
 
 /**
+ * Helper para ocultar teléfono: +591******12345
+ */
+function maskPhone(phone) {
+  const raw = String(phone || '');
+  const digits = raw.replace(/\D/g, '');
+  const last5 = digits.slice(-5);
+
+  if (!last5) return 'Sin número';
+
+  if (digits.startsWith('591')) {
+    return `+591******${last5}`;
+  }
+
+  return `******${last5}`;
+}
+
+/**
  * Lógica Central de Telegram v10.0.0: ARQUITECTURA DE SERVICIOS UNIFICADA.
  * Ahora utiliza las funciones de dbService para garantizar consistencia y auditoría.
  */
@@ -251,9 +268,28 @@ export async function setupTelegramLogic() {
             // 5. NOTIFICAR A SECRETARÍA v10.7.0 (Solo si es Aceptado)
             if (isAceptar) {
               const resText = opType === 'retiro' ? 'RETIRO PAGADO' : 'RECARGA COMPLETADA';
+              let userInfo = '';
+              
+              if (opType === 'recarga') {
+                const data = await queryOne(`
+                  SELECT u.telefono, COALESCE(n.codigo, n.nombre, 'No especificado') AS nivel_nombre
+                  FROM compras_nivel r
+                  LEFT JOIN usuarios u ON u.id = r.usuario_id
+                  LEFT JOIN niveles n ON n.id = r.nivel_id
+                  WHERE r.id = ?
+                `, [refId]);
+
+                if (data) {
+                  const masked = maskPhone(data.telefono);
+                  userInfo = `📱 <b>Usuario:</b> <code>${masked}</code>\n` +
+                             `⭐ <b>Nivel solicitado:</b> ${data.nivel_nombre}\n`;
+                }
+              }
+
               const secMsg = `<b>✅ ${resText}</b>\n` +
                             `━━━━━━━━━━━━━━━━━━\n` +
                             `👤 <b>Operador:</b> ${adminName}\n` +
+                            userInfo +
                             `🆔 <b>Ref:</b> <code>${refId.substring(0, 8)}</code>\n` +
                             `🕒 <b>Finalizado:</b> ${boliviaTime.getTimeString()}\n` +
                             `━━━━━━━━━━━━━━━━━━\n` +
