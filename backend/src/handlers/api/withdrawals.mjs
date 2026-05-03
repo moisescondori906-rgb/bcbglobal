@@ -1,11 +1,12 @@
 import { Router } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import bcrypt from 'bcryptjs';
+import multer from 'multer';
 import { 
   getPublicContent, boliviaTime, findUserWithAuthSecrets,
   canWithdraw, requestWithdrawal
 } from '../../services/dbService.mjs';
-import { query } from '../../config/db.mjs';
+import { query, queryOne } from '../../config/db.mjs';
 import { authenticate } from '../../utils/middleware/auth.mjs';
 import { attachRequestUser } from '../../utils/middleware/requestContext.mjs';
 import { dynamicControlMiddleware } from '../../utils/middleware/dynamicControl.mjs';
@@ -18,8 +19,15 @@ import {
 import logger from '../../utils/logger.mjs';
 import redis from '../../services/redisService.mjs';
 import { asyncHandler } from '../../utils/asyncHandler.mjs';
+import { uploadImageBuffer } from '../../utils/fileStorage.mjs';
 
 const router = Router();
+
+// Configuración de multer para memoria (buffer)
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+});
 
 // Rate Limit Config: 2 intentos de retiro por minuto
 const WITHDRAW_RATE_LIMIT = 2;
@@ -53,39 +61,57 @@ router.get('/', asyncHandler(async (req, res) => {
   res.json(list);
 }));
 
-router.post('/', withdrawRateLimit, dynamicControlMiddleware('withdrawal'), asyncHandler(async (req, res) => {
-  const { monto, tipo_billetera, password_fondo, tarjeta_id, idempotency_key, qr_retiro } = req.body;
+router.post('/', upload.single('comprobante'), withdrawRateLimit, dynamicControlMiddleware('withdrawal'), asyncHandler(async (req, res) => {
+  const { monto, tipo_billetera, password_fondo, tarjeta_id, idempotency_key } = req.body;
   const user = req.requestUser;
 
   const iKey = idempotency_key || req.headers['x-idempotency-key'];
   if (!iKey) return res.status(400).json({ error: 'Falta clave de idempotencia' });
 
   const m = parseFloat(monto);
-  if (!MONTOS_PERMITIDOS.includes(m)) return res.status(400).json({ error: 'Monto no permitido' });
+  if (!m || isNaN(m)) return res.status(400).json({ error: 'Monto inválido' });
+  // Opcional: Validar contra MONTOS_PERMITIDOS si se desea restringir estrictamente
+  // if (!MONTOS_PERMITIDOS.includes(m)) return res.status(400).json({ error: 'Monto no permitido' });
 
   // 1. Verificar contraseña de fondo
+  if (!password_fondo) return res.status(400).json({ error: 'Ingresa tu contraseña de fondos para continuar.' });
+  
   const userAuth = await findUserWithAuthSecrets(user.id);
-  if (!userAuth.password_fondo_hash) return res.status(400).json({ error: 'Configura tu contraseña de fondo primero.' });
+  if (!userAuth.password_fondo_hash) return res.status(400).json({ error: 'Debes configurar tu contraseña de fondos antes de retirar.' });
+  
   const passOk = await bcrypt.compare(password_fondo, userAuth.password_fondo_hash);
-  if (!passOk) return res.status(401).json({ error: 'Contraseña de fondo incorrecta.' });
+  if (!passOk) return res.status(401).json({ error: 'Contraseña de fondos incorrecta.' });
 
-  // 2. VALIDACIÓN CENTRALIZADA (CALENDARIO, DÍAS POR NIVEL)
+  // 2. Verificar cuenta bancaria
+  if (!tarjeta_id) return res.status(400).json({ error: 'Debes registrar una cuenta bancaria antes de solicitar un retiro.' });
+  const bankAccount = await queryOne(`SELECT id FROM tarjetas_bancarias WHERE id = ? AND usuario_id = ? AND activa = 1`, [tarjeta_id, user.id]);
+  if (!bankAccount) return res.status(400).json({ error: 'Cuenta bancaria inválida.' });
+
+  // 3. Verificar imagen/comprobante obligatorio
+  if (!req.file) return res.status(400).json({ error: 'Debes subir una imagen o comprobante para solicitar el retiro.' });
+
+  // 4. VALIDACIÓN CENTRALIZADA (CALENDARIO, DÍAS POR NIVEL)
   const opStatus = await canWithdraw(user.id);
   if (!opStatus.ok) return res.status(403).json({ error: opStatus.message });
 
-  // 3. Ejecución Blindada en Service (ACID + 1 Retiro/Día + SELECT FOR UPDATE)
+  // 5. Subir imagen
+  const uploadResult = await uploadImageBuffer(req.file.buffer, { folder: 'retiros' });
+  const comprobante_url = uploadResult.secure_url;
+  const comprobante_public_id = uploadResult.public_id;
+
+  // 6. Ejecución Blindada en Service
   const result = await requestWithdrawal(user.id, { 
     monto: m, 
     tipo_billetera, 
     tarjeta_id, 
-    idempotencyKey: iKey 
+    idempotencyKey: iKey,
+    comprobante_url,
+    comprobante_public_id
   });
 
-  // 4. Alerta de Telegram (Resiliente y desacoplada)
-  // Obtener datos bancarios para el mensaje de Telegram
-  const tarjetas = await query(`SELECT * FROM tarjetas_bancarias WHERE id = ?`, [tarjeta_id]);
-  const tb = tarjetas[0] || {};
-
+  // 7. Alerta de Telegram
+  const tb = await queryOne(`SELECT * FROM tarjetas_bancarias WHERE id = ?`, [tarjeta_id]);
+  
   const message = formatRetiroMessage({
     telefono: user.nombre_usuario || user.telefono,
     nivel: 'Usuario', 
@@ -102,21 +128,10 @@ router.post('/', withdrawRateLimit, dynamicControlMiddleware('withdrawal'), asyn
           { text: "📝 Tomar Caso", callback_data: `retiro_tomar_${result.retiroId}` }
         ]
       ]
-    }
+    },
+    photo: req.file.buffer // Enviar la imagen directamente a Telegram
   };
 
-  // Si hay QR, enviarlo como foto
-  if (qr_retiro && qr_retiro.startsWith('data:image')) {
-    try {
-      const base64Data = qr_retiro.replace(/^data:image\/\w+;base64,/, '');
-      const buffer = Buffer.from(base64Data, 'base64');
-      options.photo = buffer;
-    } catch (err) {
-      logger.error('[TELEGRAM] Error al procesar QR para retiro:', err.message);
-    }
-  }
-
-  // Notificar de forma asíncrona y resiliente con safeTelegram
   sendToRetiros(message, options);
   sendToAdmin(message, options);
 

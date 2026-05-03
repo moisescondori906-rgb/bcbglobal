@@ -59,11 +59,14 @@ async function request(url, options = {}, retries = 2) {
   }
 
   const promise = (async () => {
+    const isFormData = options.body instanceof FormData;
     const headers = { 
-      'Content-Type': 'application/json', 
       'x-tenant-slug': 'bcb-global',
       ...options.headers 
     };
+    if (!isFormData) {
+      headers['Content-Type'] = 'application/json';
+    }
     const token = getToken();
     if (token) headers.Authorization = `Bearer ${token}`;
     
@@ -197,6 +200,10 @@ export const api = {
     mensajes: () => request('/users/mensajes'),
     changePassword: (data) => request('/users/change-password', { method: 'POST', body: JSON.stringify(data) }),
     changeFundPassword: (data) => request('/users/change-fund-password', { method: 'POST', body: JSON.stringify(data) }),
+    securityStatus: () => request('/users/security-status'),
+    setFundPassword: (data) => request('/users/fund-password', { method: 'POST', body: JSON.stringify(data) }),
+    createBankAccount: (data) => request('/users/bank-account', { method: 'POST', body: JSON.stringify(data) }),
+    getBankAccounts: () => request('/users/bank-accounts'),
   },
   tasks: {
     list: () => request('/tasks'),
@@ -215,7 +222,13 @@ export const api = {
   withdrawals: {
     montos: () => request('/withdrawals/montos'),
     list: () => request('/withdrawals'),
-    create: (data) => request('/withdrawals', { method: 'POST', body: JSON.stringify(data) }),
+    create: (data) => {
+      const isFormData = data instanceof FormData;
+      return request('/withdrawals', { 
+        method: 'POST', 
+        body: isFormData ? data : JSON.stringify(data) 
+      });
+    },
   },
   banners: () => request('/banners'),
   publicContent: () => request('/public-content'),

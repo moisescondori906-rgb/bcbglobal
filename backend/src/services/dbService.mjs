@@ -747,7 +747,7 @@ export async function createLevelPurchase(userId, nivelId, monto, comprobanteUrl
  * 3. Validación de 1 Retiro/Día usando Timezone Bolivia (America/La_Paz).
  * 4. Auditoría Forense Atómica.
  */
-export async function requestWithdrawal(userId, { monto, tipo_billetera, tarjeta_id, idempotencyKey }) {
+export async function requestWithdrawal(userId, { monto, tipo_billetera, tarjeta_id, idempotencyKey, comprobante_url, comprobante_public_id }) {
   const traceId = uuidv4();
   const operacion = 'WITHDRAW_REQUEST';
 
@@ -807,9 +807,16 @@ export async function requestWithdrawal(userId, { monto, tipo_billetera, tarjeta
 
     // fecha_dia se guarda en UTC pero la lógica de validación usa CONVERT_TZ
     await conn.query(
-      `INSERT INTO retiros (id, usuario_id, monto, monto_neto, comision_aplicada, tipo_billetera, estado, datos_bancarios, fecha_dia) 
-       VALUES (?, ?, ?, ?, ?, ?, 'pendiente', ?, ?)`,
-      [retiroId, userId, m, montoNeto, comisionMonto, tipo_billetera, JSON.stringify(tarjetas[0]), todayBolivia]
+      `INSERT INTO retiros (
+        id, usuario_id, monto, monto_neto, comision_aplicada, 
+        tipo_billetera, estado, datos_bancarios, cuenta_bancaria_id, 
+        comprobante_url, comprobante_public_id, password_fondo_validado, fecha_dia
+      ) VALUES (?, ?, ?, ?, ?, ?, 'pendiente', ?, ?, ?, ?, 1, ?)`,
+      [
+        retiroId, userId, m, montoNeto, comisionMonto, 
+        tipo_billetera, JSON.stringify(tarjetas[0]), tarjeta_id, 
+        comprobante_url, comprobante_public_id, todayBolivia
+      ]
     );
 
     // 5. MOVIMIENTO Y AUDITORÍA FORENSE

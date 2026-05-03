@@ -154,7 +154,13 @@ router.get('/team-report', asyncHandler(async (req, res) => {
 
 router.get('/tarjetas', asyncHandler(async (req, res) => {
   if (req.user.id === DEMO_USER_ID) return res.json([{ id: 'demo-card', nombre_banco: 'Banco Demo', numero_cuenta: '12345678', nombre_titular: 'Socio Demo' }]);
-  const tarjetas = await query(`SELECT * FROM tarjetas_bancarias WHERE usuario_id = ?`, [req.user.id]);
+  const tarjetas = await query(`SELECT * FROM tarjetas_bancarias WHERE usuario_id = ? AND activa = 1`, [req.user.id]);
+  res.json(tarjetas);
+}));
+
+router.get('/bank-accounts', asyncHandler(async (req, res) => {
+  if (req.user.id === DEMO_USER_ID) return res.json([{ id: 'demo-card', banco: 'Banco Demo', numero_cuenta: '12345678', titular: 'Socio Demo' }]);
+  const tarjetas = await query(`SELECT id, nombre_banco as banco, nombre_titular as titular, numero_cuenta, tipo_cuenta, ci_nit, principal FROM tarjetas_bancarias WHERE usuario_id = ? AND activa = 1`, [req.user.id]);
   res.json(tarjetas);
 }));
 
@@ -165,6 +171,57 @@ router.post('/tarjetas', asyncHandler(async (req, res) => {
   await query(`INSERT INTO tarjetas_bancarias (id, usuario_id, nombre_banco, numero_cuenta, nombre_titular) VALUES (?, ?, ?, ?, ?)`,
     [id, req.user.id, nombre_banco, numero_cuenta, nombre_titular]);
   res.json({ id, ok: true });
+}));
+
+router.post('/bank-account', asyncHandler(async (req, res) => {
+  if (req.user.id === DEMO_USER_ID) return res.json({ id: 'demo-card', success: true });
+  const { banco, titular, numero_cuenta, tipo_cuenta, ci_nit } = req.body;
+  
+  if (!banco || !titular || !numero_cuenta) {
+    return res.status(400).json({ error: 'Banco, titular y número de cuenta son obligatorios.' });
+  }
+
+  const id = uuidv4();
+  
+  // Verificar si es la primera cuenta para marcarla como principal
+  const existingCount = await queryOne(`SELECT COUNT(*) as total FROM tarjetas_bancarias WHERE usuario_id = ?`, [req.user.id]);
+  const isPrincipal = existingCount.total === 0 ? 1 : 0;
+
+  await query(`
+    INSERT INTO tarjetas_bancarias (id, usuario_id, nombre_banco, nombre_titular, numero_cuenta, tipo_cuenta, ci_nit, principal) 
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    [id, req.user.id, banco, titular, numero_cuenta, tipo_cuenta, ci_nit, isPrincipal]
+  );
+
+  res.json({ success: true, id, message: 'Cuenta bancaria registrada correctamente.' });
+}));
+
+router.post('/fund-password', asyncHandler(async (req, res) => {
+  const { password_fondo, confirm_password_fondo } = req.body;
+
+  if (!password_fondo || password_fondo.length < 6) {
+    return res.status(400).json({ error: 'La contraseña de fondos debe tener al menos 6 caracteres.' });
+  }
+  if (password_fondo !== confirm_password_fondo) {
+    return res.status(400).json({ error: 'Las contraseñas no coinciden.' });
+  }
+
+  const salt = await bcrypt.genSalt(10);
+  const hash = await bcrypt.hash(password_fondo, salt);
+
+  await query(`UPDATE usuarios SET password_fondo_hash = ? WHERE id = ?`, [hash, req.user.id]);
+
+  res.json({ success: true, message: 'Contraseña de fondos configurada correctamente.' });
+}));
+
+router.get('/security-status', asyncHandler(async (req, res) => {
+  const user = await queryOne(`SELECT password_fondo_hash FROM usuarios WHERE id = ?`, [req.user.id]);
+  const bankAccount = await queryOne(`SELECT id FROM tarjetas_bancarias WHERE usuario_id = ? AND activa = 1 LIMIT 1`, [req.user.id]);
+
+  res.json({
+    tiene_password_fondo: !!user?.password_fondo_hash,
+    tiene_cuenta_bancaria: !!bankAccount
+  });
 }));
 
 router.get('/mensajes', asyncHandler(async (req, res) => {
