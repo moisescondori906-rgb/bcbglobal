@@ -25,7 +25,7 @@ async function runSimulation() {
     reply_markup: {
       inline_keyboard: [
         [
-          { text: "📝 Tomar Caso (SIMULADO)", callback_data: `tomar:retiro:simulacion_id` }
+          { text: "📝 Tomar Caso (SIMULADO)", callback_data: `retiro_tomar_simulacion_id` }
         ]
       ]
     }
