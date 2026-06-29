@@ -1,0 +1,628 @@
+@import "tailwindcss";
+
+   @theme {
+  --color-bcb-primary: #1e1b4b; /* Indigo 950 - El azul que tenían */
+  --color-bcb-dark: #ffffff;    
+  --color-bcb-card: #ffffff;    
+  --color-bcb-surface: #f8fafc; 
+  --color-bcb-accent: #312e81;  /* Otro tono de azul para acentos */
+  --color-bcb-accent-hot: #4338ca; 
+  --color-bcb-muted: #000000;   /* Negro puro para texto secundario */
+  --color-bcb-success: #059669; 
+  --color-bcb-error: #dc2626;   
+  --color-bcb-border: #e2e8f0;  
+  --color-bcb-text-main: #0f172a;
+  --color-bcb-text-dim: #64748b;
+
+  /* Admin Theme - Premium Dark */
+  --color-admin-bg: #030303;
+  --color-admin-card: #09090b;
+  --color-admin-border: rgba(255, 255, 255, 0.06);
+  --color-admin-accent: #6366f1; /* Indigo 500 */
+  --color-admin-accent-glow: rgba(99, 102, 241, 0.15);
+  --color-admin-text: #fafafa;
+  --color-admin-muted: #71717a;
+  --color-admin-surface: #121214;
+
+  --shadow-admin-glow: 0 0 20px rgba(99, 102, 241, 0.1);
+  --shadow-admin-glow-strong: 0 0 40px rgba(99, 102, 241, 0.2);
+  
+  --radius-admin: 1rem;
+  --radius-admin-lg: 1.5rem;
+
+  --animate-marquee-slow: marquee 40s linear infinite;
+  --animate-pulse-subtle: pulse-subtle 3s ease-in-out infinite;
+}
+
+@keyframes pulse-subtle {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+@layer base {
+  html, body {
+    @apply w-full overflow-x-hidden text-black font-bold bg-transparent;
+    height: -webkit-fill-available;
+    color-scheme: light;
+    filter: none !important;
+    backdrop-filter: none !important;
+  }
+
+  /* Make text selection visible */
+  ::selection {
+    background-color: #1e1b4b;
+    color: #ffffff;
+  }
+
+  /* For WebKit browsers */
+  ::-moz-selection {
+    background-color: #1e1b4b;
+    color: #ffffff;
+  }
+
+  /* Asegurar máxima nitidez para todas las imágenes */
+  img {
+    filter: none !important;
+    image-rendering: auto;
+    image-rendering: crisp-edges;
+    image-rendering: pixelated;
+  }
+
+  /* Eliminado: ya no se forza h2 a blanco */
+
+  /* Forzar h3 a negro con !important */
+  h3 {
+    color: #000000 !important;
+  }
+
+  /* Forzar que los inputs tengan texto negro */
+  input, textarea, select, input:focus {
+    color: #000000 !important;
+    background-color: #ffffff !important;
+  }
+
+  /* Placeholders más visibles */
+  ::placeholder {
+    color: #94a3b8 !important; /* slate-400 */
+    opacity: 1 !important;
+  }
+
+  /* Excepciones para elementos que DEBEN ser blancos o de color */
+  .text-white, 
+  .text-white p, 
+  .text-white span,
+  .text-white h1,
+  .text-white h2,
+  button.bg-bcb-primary,
+  button.bg-bcb-primary span,
+  button.bg-bcb-primary p,
+  .bg-indigo-900,
+  .bg-indigo-900 span,
+  .bg-indigo-950,
+  .bg-indigo-950 span,
+  .bg-bcb-primary span,
+  .bg-bcb-primary p,
+  .bg-black span,
+  .bg-black p {
+    color: white !important;
+  }
+
+  /* Si estamos en el layout de admin, cambiar el color-scheme y forzar texto blanco */
+  .admin-layout {
+    color-scheme: dark;
+    background-color: var(--color-admin-bg);
+    color: white !important;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Selection styling for admin layout */
+  .admin-layout ::selection {
+    background-color: #6366f1;
+    color: #ffffff;
+  }
+  .admin-layout ::-moz-selection {
+    background-color: #6366f1;
+    color: #ffffff;
+  }
+
+  .admin-layout p, 
+  .admin-layout span, 
+  .admin-layout h1, 
+  .admin-layout h2, 
+  .admin-layout h3, 
+  .admin-layout h4, 
+  .admin-layout h5, 
+  .admin-layout h6,
+  .admin-layout label,
+  .admin-layout th,
+  .admin-layout td,
+  .admin-layout div:not(.admin-badge) {
+    color: #ffffff !important;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.2); /* Mejor contraste */
+    font-weight: 700; /* Aumentado a Bold para máxima visibilidad en móvil */
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Forzar visibilidad en labels de formularios - PRIORIDAD MÁXIMA */
+  .admin-layout label,
+  .admin-layout .text-slate-500,
+  .admin-layout .text-zinc-500,
+  .admin-layout .text-gray-500 {
+    color: #ffffff !important;
+    opacity: 1 !important;
+    font-weight: 900 !important; /* font-black */
+    text-transform: uppercase !important;
+    letter-spacing: 0.1em !important;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.8) !important;
+    display: block !important;
+  }
+
+  /* Asegurar que el selector de clase no gane al tag label */
+  .admin-layout [class*="text-slate-"],
+  .admin-layout [class*="text-zinc-"],
+  .admin-layout [class*="text-gray-"] {
+    color: #ffffff !important;
+    opacity: 1 !important;
+  }
+
+  /* Forzar visibilidad en celdas de tabla */
+  .admin-layout th {
+    @apply !text-white !font-black !uppercase !tracking-[0.2em] !bg-zinc-900/80;
+    border-bottom: 2px solid rgba(255,255,255,0.3) !important;
+    font-size: 11px !important;
+  }
+
+  .admin-layout td {
+    @apply !text-white !font-bold;
+    border-bottom: 1px solid rgba(255,255,255,0.1) !important;
+  }
+
+  /* Forzar visibilidad en elementos con opacidad de texto baja */
+  .admin-layout [class*="text-white/"],
+  .admin-layout [class*="text-zinc-"],
+  .admin-layout [class*="text-slate-"],
+  .admin-layout .text-admin-muted,
+  .admin-layout .text-zinc-400,
+  .admin-layout .text-zinc-500 {
+    color: #ffffff !important;
+    opacity: 1 !important;
+    font-weight: 800 !important;
+  }
+
+  .admin-layout .bg-zinc-900,
+  .admin-layout .bg-black\/40 {
+    background-color: #000000 !important; /* Fondo negro puro para máximo contraste con texto blanco */
+    border: 1px solid rgba(255,255,255,0.2) !important;
+  }
+
+  /* Forzar que los botones tengan texto blanco y sean legibles */
+  .admin-layout button {
+    color: white !important;
+    font-weight: 900 !important; /* font-black */
+    letter-spacing: 0.05em; /* Un poco más de espacio para legibilidad */
+    text-transform: uppercase;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+  }
+
+  .admin-layout .text-zinc-500,
+  .admin-layout .text-admin-muted,
+  .admin-layout .text-slate-500,
+  .admin-layout .text-gray-500,
+  .admin-layout .text-zinc-400,
+  .admin-layout .text-slate-400,
+  .admin-layout .text-gray-400 {
+    color: #ffffff !important; /* Blanco puro para máxima visibilidad */
+  }
+
+  .admin-layout .text-zinc-600,
+  .admin-layout .text-slate-600,
+  .admin-layout .text-gray-600,
+  .admin-layout .text-zinc-700,
+  .admin-layout .text-slate-700,
+  .admin-layout .text-gray-700,
+  .admin-layout .text-zinc-800,
+  .admin-layout .text-slate-800,
+  .admin-layout .text-gray-800,
+  .admin-layout .text-zinc-900,
+  .admin-layout .text-slate-900,
+  .admin-layout .text-gray-900 {
+    color: #f4f4f5 !important; /* zinc-100 */
+  }
+
+  /* Mejorar visibilidad de botones secundarios y bordes */
+  .admin-layout .admin-button-secondary {
+    @apply !bg-white/20 !border-white/40 !text-white;
+    backdrop-filter: none !important; /* Quitar blur de botones para nitidez */
+  }
+
+  .admin-layout .admin-card {
+    @apply !border-white/30;
+    background-color: #0c0c0e !important; /* Color sólido oscuro para evitar sangrado de blur */
+    backdrop-filter: none !important; /* Quitar blur de fondo para nitidez absoluta */
+    box-shadow: 0 10px 30px -10px rgba(0,0,0,0.7), 0 0 1px 1px rgba(255,255,255,0.1) !important;
+  }
+
+  /* Forzar visibilidad en contenedores div con fondos semitransparentes */
+  .admin-layout div[class*="bg-white/"], 
+  .admin-layout div[class*="bg-black/"],
+  .admin-layout div[class*="bg-zinc-"],
+  .admin-layout div[class*="bg-slate-"] {
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    background-color: rgba(255, 255, 255, 0.08) !important;
+  }
+
+  .admin-layout .admin-badge {
+    @apply !font-black !tracking-widest !uppercase !border-2;
+    text-shadow: none !important;
+  }
+
+  .admin-layout .admin-badge-success {
+    @apply !bg-emerald-500/20 !border-emerald-500/50 !text-emerald-400;
+  }
+
+  .admin-layout .admin-badge-error {
+    @apply !bg-rose-500/20 !border-rose-500/50 !text-rose-400;
+  }
+
+  .admin-layout .admin-badge-warning {
+    @apply !bg-amber-500/20 !border-amber-500/50 !text-amber-400;
+  }
+
+  .admin-layout .admin-badge-info {
+    @apply !bg-blue-500/20 !border-blue-500/50 !text-blue-400;
+  }
+
+  .admin-layout .admin-table-container {
+    @apply !border-white/30 !bg-[#09090b];
+    backdrop-filter: none !important;
+  }
+
+  .admin-layout .admin-table thead th {
+    @apply !bg-zinc-900 !text-white !font-black !uppercase !tracking-widest !border-b-2 !border-white/20;
+    padding: 1.5rem 1rem !important;
+  }
+
+  .admin-layout .admin-table tbody tr {
+    @apply !border-b !border-white/10 hover:!bg-white/5;
+  }
+
+  .admin-layout input, 
+  .admin-layout select, 
+  .admin-layout textarea {
+    color: white !important;
+    background-color: rgba(255, 255, 255, 0.03) !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+  }
+
+  .admin-layout select option {
+    background-color: #0a0a0a !important;
+    color: white !important;
+  }
+
+  body {
+    @apply text-slate-900 font-sans antialiased touch-manipulation;
+    -webkit-tap-highlight-color: transparent;
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+
+  /* Global Contrast Fixes - Only for App, not for Admin */
+  body:not(.admin-layout) {
+    .text-slate-400, .text-gray-400 { @apply !text-slate-600; }
+    .text-slate-300, .text-gray-300 { @apply !text-slate-500; }
+    .text-slate-500, .text-gray-500 { @apply !text-slate-800; }
+    .text-slate-200, .text-gray-200 { @apply !text-slate-400; }
+    
+    .text-\[7px\], .text-\[8px\], .text-\[9px\], .text-\[10px\], .text-xs {
+      @apply !font-black;
+    }
+
+    .bg-bcb-primary .text-white\/70, 
+    .bg-bcb-primary .text-white\/60, 
+    .bg-bcb-primary .text-white\/50 {
+      @apply !text-white; 
+    }
+    
+    .border-white\/5, .border-white\/10, .border-slate-100 {
+      @apply !border-slate-200;
+    }
+    .border-slate-200 {
+      @apply !border-slate-300;
+    }
+  }
+
+  #root {
+    @apply flex flex-col w-full mx-auto;
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+
+  /* --- MOBILE OPTIMIZATION & CACHE BUSTING LAYER --- */
+  @media (max-width: 768px) {
+    .admin-layout {
+      font-size: 16px !important; /* Evitar zoom automático en inputs de iOS */
+    }
+
+    .admin-layout p, 
+    .admin-layout span, 
+    .admin-layout div {
+      -webkit-text-stroke: 0.2px rgba(255,255,255,0.1); /* Forzar grosor en pantallas retina */
+      letter-spacing: 0.01em;
+    }
+
+    .admin-layout .admin-card {
+      @apply !rounded-2xl !p-5;
+      border-width: 1.5px !important; /* Bordes más visibles en móvil */
+    }
+
+    .admin-layout button {
+      @apply !h-14 !text-[11px]; /* Botones más grandes para dedos */
+      min-height: 44px;
+    }
+
+    .admin-layout input, 
+    .admin-layout select {
+      @apply !h-14 !text-base; /* Inputs más grandes para móvil */
+    }
+
+    /* Forzar que los textos pequeños sean legibles en móvil */
+    .admin-layout .text-[8px], 
+    .admin-layout .text-[9px], 
+    .admin-layout .text-[10px] {
+      @apply !text-[11px] !font-black !leading-tight;
+      color: #ffffff !important;
+    }
+  }
+
+  /* Sharpness for High DPI Screens (Mobile) */
+  @media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+    .admin-layout {
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+    .admin-layout p, .admin-layout span {
+      text-shadow: 0 0 1px rgba(255,255,255,0.1), 0 1px 2px rgba(0,0,0,0.5) !important;
+    }
+  }
+}
+
+/* Custom Scrollbar Premium - Definido fuera de layers para evitar errores de @apply */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+}
+.admin-layout .custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.05);
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+@layer components {
+  /* Premium Admin Components */
+  .admin-card {
+    @apply bg-admin-card border border-admin-border rounded-[var(--radius-admin-lg)] shadow-2xl relative overflow-hidden transition-all duration-300;
+    backdrop-filter: blur(20px);
+  }
+  
+  .admin-card-hover {
+    @apply hover:border-admin-accent/30 hover:shadow-admin-glow hover:-translate-y-0.5;
+  }
+
+  .admin-input {
+    @apply h-11 w-full px-4 rounded-xl bg-white/[0.03] border border-white/10 text-white text-sm focus:border-admin-accent/50 focus:ring-4 focus:ring-admin-accent/10 transition-all outline-none placeholder:text-zinc-600;
+  }
+
+  .admin-button-primary {
+    @apply h-11 px-6 rounded-xl bg-admin-accent text-white font-bold text-xs uppercase tracking-widest transition-all hover:brightness-110 hover:shadow-lg hover:shadow-admin-accent/20 active:scale-95 disabled:opacity-50 disabled:pointer-events-none;
+  }
+  
+  .admin-button-secondary {
+    @apply h-11 px-6 rounded-xl bg-white/5 border border-white/10 text-zinc-300 font-bold text-xs uppercase tracking-widest transition-all hover:bg-white/10 active:scale-95 disabled:opacity-50;
+  }
+
+  .admin-button-ghost {
+    @apply h-10 px-4 rounded-lg text-zinc-400 font-bold text-[10px] uppercase tracking-widest transition-all hover:bg-white/5 hover:text-white active:scale-95;
+  }
+
+  .admin-table-container {
+    @apply w-full overflow-hidden rounded-[var(--radius-admin-lg)] border border-admin-border bg-admin-card/50 backdrop-blur-md shadow-2xl;
+  }
+
+  .admin-table-wrapper {
+    @apply w-full overflow-x-auto;
+  }
+
+  .admin-table {
+    @apply w-full text-left border-collapse;
+  }
+
+  .admin-table th {
+    @apply px-6 py-4 text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] border-b border-admin-border bg-black/20;
+  }
+
+  .admin-table td {
+    @apply px-6 py-4 text-sm text-zinc-300 border-b border-admin-border transition-colors;
+  }
+  
+  .admin-table tr:hover td {
+    @apply bg-white/[0.01];
+  }
+  
+  .admin-badge {
+    @apply px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border transition-all;
+  }
+  
+  .admin-badge-success {
+    @apply bg-emerald-500/10 text-emerald-500 border-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.05)];
+  }
+  
+  .admin-badge-error {
+    @apply bg-rose-500/10 text-rose-500 border-rose-500/20 shadow-[0_0_10px_rgba(244,63,94,0.05)];
+  }
+  
+  .admin-badge-warning {
+    @apply bg-amber-500/10 text-amber-500 border-amber-500/20 shadow-[0_0_10px_rgba(245,158,11,0.05)];
+  }
+  
+  .admin-badge-info {
+    @apply bg-admin-accent/10 text-admin-accent border-admin-accent/20 shadow-[0_0_10px_rgba(99,102,241,0.05)];
+  }
+
+  /* Contenedor móvil para App de Usuario */
+  .mobile-root-container {
+    max-width: 480px;
+    margin: 0 auto;
+    width: 100%;
+    min-height: 100vh;
+    background: transparent;
+  }
+
+  input, select, textarea {
+    @apply h-14 w-full px-5 rounded-2xl bg-white border-2 border-slate-300 text-slate-900 text-base font-bold focus:border-bcb-primary focus:ring-4 focus:ring-bcb-primary/10 transition-all outline-none placeholder:text-slate-400 shadow-sm;
+  }
+
+  /* Estilos específicos para el select dentro de PhoneInputWithCountry */
+  .PhoneInputWithCountry select {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%23334155' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M6 8l4 4 4-4'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.6rem center;
+    background-size: 1.2em 1.2em;
+    padding-right: 2.5rem;
+    padding-left: 1rem;
+    width: auto;
+    border: none;
+    height: 100%;
+    border-radius: 0;
+    box-shadow: none;
+    @apply focus:ring-0 focus:border-transparent bg-transparent text-slate-900 font-black;
+  }
+
+  .PhoneInputWithCountry select option {
+    background-color: #ffffff;
+    color: #0f172a;
+  }
+
+  button {
+    @apply transition-all active:scale-[0.97] min-h-[44px] font-black uppercase tracking-widest;
+  }
+}
+
+@layer components {
+  .app-container {
+    @apply min-h-screen min-h-[100dvh] w-full flex flex-col relative text-slate-900;
+    padding-bottom: calc(85px + env(safe-area-inset-bottom));
+  }
+
+  .glass-card {
+    @apply bg-white border-2 border-slate-100 rounded-[2rem] shadow-xl shadow-slate-300/50;
+  }
+
+  .btn-primary {
+    @apply h-14 w-full flex items-center justify-center gap-2 rounded-2xl bg-bcb-primary text-white font-black text-sm transition-all shadow-lg shadow-bcb-primary/30 hover:brightness-110 active:translate-y-0.5;
+  }
+
+  .btn-secondary {
+    @apply h-14 w-full flex items-center justify-center gap-2 rounded-2xl bg-white border-2 border-slate-200 text-slate-900 font-black text-sm transition-all shadow-sm hover:bg-slate-50;
+  }
+
+  .nav-blur {
+    @apply bg-white border-t-2 border-slate-100;
+    padding-bottom: env(safe-area-inset-bottom);
+    box-shadow: 0 -10px 25px -5px rgba(0,0,0,0.05);
+  }
+
+  .nav-item {
+    @apply flex flex-col items-center gap-1 py-2 px-3 transition-all relative font-black uppercase text-[9px];
+  }
+
+  .nav-item-active {
+    @apply text-bcb-primary;
+  }
+
+  /* Premium Components */
+  .bcb-card {
+    @apply bg-white border-2 border-slate-100 rounded-[2.5rem] p-4 sm:p-6 shadow-xl shadow-slate-300/40;
+  }
+
+  .bcb-aurora {
+    @apply relative overflow-hidden;
+  }
+
+  .bcb-input {
+    @apply h-14 w-full px-5 rounded-2xl bg-slate-50 border border-bcb-border text-slate-900 text-base focus:border-bcb-primary/50 focus:ring-4 focus:ring-bcb-primary/10 transition-all outline-none placeholder:text-bcb-muted;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .responsive-table-container {
+    @apply w-full overflow-x-auto -mx-4 px-4;
+  }
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Custom Animations */
+.animate-in {
+  animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  25% { transform: translate(5%, 5%) scale(1.05); }
+  50% { transform: translate(-3%, 3%) scale(1.02); }
+  75% { transform: translate(3%, -5%) scale(1.03); }
+}
+
+.animate-fade {
+  animation: fade 0.3s ease-out forwards;
+}
+
+@keyframes fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes pulse-slow {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.05); }
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 2s infinite ease-in-out;
+}
+
