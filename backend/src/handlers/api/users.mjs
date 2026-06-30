@@ -248,7 +248,7 @@ router.post('/tarjetas', asyncHandler(async (req, res) => {
   const existingAccount = await queryOne(`SELECT id FROM tarjetas_bancarias WHERE numero_cuenta = ?`, [numero_cuenta]);
   if (existingAccount) {
     return res.status(400).json({ 
-      error: 'Datos duplicados: Este número de cuenta ya está registrado. Solo se permite una cuenta por número de cuenta bancaria.',
+      error: 'Esta cuenta bancaria ya está registrada.',
       code: 'DUPLICATE_BANK_ACCOUNT'
     });
   }
@@ -279,7 +279,7 @@ router.post('/bank-account', asyncHandler(async (req, res) => {
   const existingAccount = await queryOne(`SELECT id FROM tarjetas_bancarias WHERE numero_cuenta = ?`, [numero_cuenta]);
   if (existingAccount) {
     return res.status(400).json({ 
-      error: 'Datos duplicados: Este número de cuenta ya está registrado. Solo se permite una cuenta por número de cuenta bancaria.',
+      error: 'Esta cuenta bancaria ya está registrada.',
       code: 'DUPLICATE_BANK_ACCOUNT'
     });
   }
@@ -293,8 +293,7 @@ router.post('/bank-account', asyncHandler(async (req, res) => {
   await query(`
     INSERT INTO tarjetas_bancarias (id, usuario_id, nombre_banco, nombre_titular, numero_cuenta, tipo_cuenta, ci_nit, principal, activa) 
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)`,
-    [id, req.user.id, banco, titular, numero_cuenta, tipo_cuenta, ci_nit, isPrincipal]
-  );
+    [id, req.user.id, banco, titular, numero_cuenta, tipo_cuenta, ci_nit, isPrincipal]);
 
   res.json({ 
     success: true, 

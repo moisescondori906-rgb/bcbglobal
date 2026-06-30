@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { api } from '../lib/api';
 import { initSocket, disconnectSocket } from '../lib/socket';
+import { getDeviceInfo, getOrCreateDeviceId } from '../utils/deviceFingerprint';
 
 const AuthContext = createContext(null);
 
@@ -48,15 +49,6 @@ export function AuthProvider({ children }) {
     sessionStorage.removeItem('BCB GLOBAL_popup_seen');
     sessionStorage.removeItem('cv_global_popup_seen');
     setUser(null);
-  }, []);
-
-  const getDeviceId = useCallback(() => {
-    let id = localStorage.getItem('deviceId');
-    if (!id) {
-      id = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-      localStorage.setItem('deviceId', id);
-    }
-    return id;
   }, []);
 
   const loadUser = useCallback(async (force = false) => {
@@ -150,22 +142,26 @@ export function AuthProvider({ children }) {
   }, [loadUser, checkVersion]);
 
   const login = useCallback(async (telefono, password) => {
-    const deviceId = getDeviceId();
-    const { user: u, token } = await api.auth.login(telefono, password, deviceId);
+    const deviceInfo = await getDeviceInfo();
+    const { user: u, token } = await api.auth.login(telefono, password, deviceInfo.deviceId);
     localStorage.setItem('token', token);
     localStorage.setItem('user', JSON.stringify(u));
     setUser(u);
     return u;
-  }, [getDeviceId]);
+  }, []);
 
   const register = useCallback(async (data) => {
-    const deviceId = getDeviceId();
-    const { user: u, token } = await api.auth.register({ ...data, deviceId });
+    const deviceInfo = await getDeviceInfo();
+    const { user: u, token } = await api.auth.register({ 
+      ...data, 
+      deviceId: deviceInfo.deviceId,
+      fingerprint: deviceInfo.fingerprint 
+    });
     localStorage.setItem('token', token);
     localStorage.setItem('user', JSON.stringify(u));
     setUser(u);
     return u;
-  }, [getDeviceId]);
+  }, []);
 
   const refreshUser = useCallback(() => loadUser(true), [loadUser]);
 

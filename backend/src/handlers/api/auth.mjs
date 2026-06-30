@@ -30,17 +30,18 @@ router.post('/register', registerLimiter, asyncHandler(async (req, res) => {
   }
 
   const inviteCode = String(codigo_invitacion || '').trim().toUpperCase();
+  const canonicalTelefono = getCanonicalTelefono(telefono);
 
   // 1. Validaciones en paralelo con Fingerprinting y Device ID check
-  const [existingUser, inviter, levels, ipCheck, fpCheck, deviceCount] = await Promise.all([
+  const [existingUser, inviter, levels, ipCheck, fpCheck, deviceUsers] = await Promise.all([
     findUserByTelefono(telefono),
     queryOne(`SELECT id FROM usuarios WHERE codigo_invitacion = ?`, [inviteCode]),
     getLevels(),
     // Protección Anti-Abuso: IP + Fingerprint
     redis.get(`onboarding:ip:${req.ip}`),
     fingerprint ? redis.get(`onboarding:fp:${fingerprint}`) : null,
-    // Check how many accounts are on this device
-    deviceId ? query(`SELECT COUNT(*) as count FROM usuarios WHERE last_device_id = ?`, [deviceId]) : null
+    // Obtener usuarios existentes en el dispositivo para validar duplicados
+    deviceId ? query(`SELECT id, telefono FROM usuarios WHERE last_device_id = ?`, [deviceId]) : []
   ]);
 
   if ((ipCheck && parseInt(ipCheck) >= 3) || (fpCheck && parseInt(fpCheck) >= 1)) {
@@ -53,13 +54,13 @@ router.post('/register', registerLimiter, asyncHandler(async (req, res) => {
   // Límite: solo 1 usuario por número de teléfono
   if (existingUser) {
     return res.status(400).json({ 
-      error: 'Datos duplicados: Este número de teléfono ya está registrado. Solo se permite una cuenta por teléfono.',
+      error: 'Este número de teléfono ya está registrado.',
       code: 'DUPLICATE_PHONE'
     });
   }
 
-  // Prevent more than 2 accounts per device
-  const currentDeviceCount = deviceCount && deviceCount[0] ? deviceCount[0].count : 0;
+  // Validadar límite de 2 cuentas por dispositivo
+  const currentDeviceCount = Array.isArray(deviceUsers) ? deviceUsers.length : 0;
   if (currentDeviceCount >= 2) {
     // Bloquear este dispositivo permanentemente
     if (fingerprint) {
@@ -69,7 +70,7 @@ router.post('/register', registerLimiter, asyncHandler(async (req, res) => {
       await redis.set(`onboarding:device:${deviceId}`, '2', 'EX', 86400 * 365 * 10); // Bloquear por 10 años
     }
     return res.status(400).json({ 
-      error: 'Este dispositivo ya tiene el máximo de 2 cuentas permitidas. No se pueden crear más cuentas desde este dispositivo.',
+      error: 'Este dispositivo ya alcanzó el límite máximo de cuentas permitidas.',
       code: 'DEVICE_LIMIT_REACHED'
     });
   }
@@ -82,6 +83,18 @@ router.post('/register', registerLimiter, asyncHandler(async (req, res) => {
       code: 'DEVICE_BLOCKED'
     });
   }
+
+  // Si ya hay una cuenta en el dispositivo, verificar que el teléfono sea diferente
+  if (currentDeviceCount === 1 && deviceUsers && deviceUsers[0]) {
+    const existingUserPhone = getCanonicalTelefono(deviceUsers[0].telefono);
+    if (existingUserPhone === canonicalTelefono) {
+      return res.status(400).json({ 
+        error: 'Este número de teléfono ya está registrado en este dispositivo.',
+        code: 'DUPLICATE_PHONE_ON_DEVICE'
+      });
+    }
+  }
+
   if (!inviter) return res.status(400).json({ error: 'Código de invitación inválido' });
 
   // 1.1 Límite de 15 usuarios "Internar" por invitado (v12.2.0)
@@ -108,7 +121,6 @@ router.post('/register', registerLimiter, asyncHandler(async (req, res) => {
   
   // REGLA ACTUALIZADA: Los usuarios AHORA pueden invitar, pero no recibirán comisiones (manejado en distributeInvestmentCommissions)
   const codigo = Math.random().toString(36).slice(2, 10).toUpperCase();
-  const canonicalTelefono = getCanonicalTelefono(telefono);
   
   const user = {
     id: uuidv4(),
@@ -127,6 +139,7 @@ router.post('/register', registerLimiter, asyncHandler(async (req, res) => {
     tickets_ruleta: 1,
     primer_ascenso_completado: false,
     last_device_id: deviceId || null,
+    fingerprint: fingerprint || null,
     tenant_id: req.tenantId || 'default-tenant-uuid',
     status: 'pending_verification' // Nuevo estado para Onboarding
   };
