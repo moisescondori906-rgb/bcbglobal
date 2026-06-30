@@ -61,6 +61,7 @@ export default function TaskRoom() {
   const [quizError, setQuizError] = useState(false);
   const [videoLoading, setVideoLoading] = useState(false);
   const videoRef = useRef(null);
+  const preloadedVideosRef = useRef(new Map()); // Almacenamos videos pre-cargados
 
   // Generar opciones aleatorias para el cuestionario
   const generateQuiz = (task) => {
@@ -113,23 +114,64 @@ export default function TaskRoom() {
     return () => clearInterval(interval);
   }, [activeTask]);
 
+  // Pre-cargar videos de tareas cuando estén disponibles
+  useEffect(() => {
+    if (data?.tareas && data.tareas.length > 0) {
+      data.tareas.forEach(task => {
+        const videoUrl = api.getMediaUrl(task.video_url);
+        if (!preloadedVideosRef.current.has(videoUrl)) {
+          // Creamos un elemento video en memoria para pre-cargar
+          const preloadVideo = document.createElement('video');
+          preloadVideo.src = videoUrl;
+          preloadVideo.muted = true;
+          preloadVideo.preload = 'auto';
+          preloadVideo.playsInline = true;
+          preloadVideo.style.display = 'none';
+          
+          // Iniciamos la carga
+          preloadVideo.load();
+          
+          // Almacenamos en ref para reutilizar luego
+          preloadedVideosRef.current.set(videoUrl, preloadVideo);
+        }
+      });
+    }
+  }, [data?.tareas]);
+
   useEffect(() => {
     if (activeTask && videoRef.current) {
+      const videoElement = videoRef.current;
       setVideoLoading(true);
-      videoRef.current.currentTime = 0;
+
+      // Intentamos reproducir inmediatamente, sin esperar a canplay
+      // Esto hace que se reproduzca al tiro
+      videoElement.muted = true;
+      videoElement.playsInline = true;
+      videoElement.preload = 'auto';
+      videoElement.currentTime = 0;
       
+      // Intentamos reproducir sin esperar eventos
+      videoElement.play().catch(err => {
+        console.log('Autoplay prevented, waiting for user interaction', err);
+      });
+      
+      // Pero también escuchamos canplaythrough para quitar el loading rápido
       const handleCanPlay = () => {
         setVideoLoading(false);
-        videoRef.current.play().catch(() => {
-          videoRef.current.muted = true;
-          videoRef.current.play();
-        });
-        videoRef.current.removeEventListener('canplay', handleCanPlay);
       };
       
-      videoRef.current.addEventListener('canplay', handleCanPlay);
+      videoElement.addEventListener('canplay', handleCanPlay);
+      videoElement.addEventListener('canplaythrough', handleCanPlay);
       
-      videoRef.current.load(); // Forzar carga inmediata
+      // Si el video ya está cargado, quitar loading inmediatamente
+      if (videoElement.readyState >= 3) {
+        setVideoLoading(false);
+      }
+      
+      return () => {
+        videoElement.removeEventListener('canplay', handleCanPlay);
+        videoElement.removeEventListener('canplaythrough', handleCanPlay);
+      };
     }
   }, [activeTask?.id]);
 

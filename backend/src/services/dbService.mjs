@@ -1,7 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { query, queryOne, transaction } from '../config/db.mjs';
 import logger from '../utils/logger.mjs';
-import * as peruTimeHelper from '../utils/peruTime.mjs';
+import * as boliviaTimeHelper from '../utils/boliviaTime.mjs';
 import redis from './redisService.mjs';
 import { emitToAll, emitToUser } from './socketService.mjs';
 import { deleteLocalFile } from '../utils/fileStorage.mjs';
@@ -29,7 +29,7 @@ const DEFAULT_CONFIG = {
   horario_retiro: { enabled: true, hora_inicio: '09:00', hora_fin: '18:00', dias_semana: [1,2,3,4,5] },
   restricciones_horario_activas: false,
   marquee_text: 'Bienvenido a BCB Global Institutional — Inversión Publicitaria Líder en Bolivia',
-  soporte_canal_url: 'https://t.me/bcb_peru_oficial',
+  soporte_canal_url: 'https://t.me/bcb_bolivia_oficial',
   soporte_gerente_url: 'https://wa.me/59190000000',
   soporte_bot_url: '',
   ruleta_activa: true,
@@ -56,41 +56,40 @@ const DEFAULT_LEVELS = [
 /**
  * Utilidades para fechas en zona horaria de Bolivia (America/La_Paz)
  */
-export const peruTime = {
+export const boliviaTime = {
   now: (date = new Date()) => {
-    return peruTimeHelper.getPeruNow();
+    return boliviaTimeHelper.getBoliviaNow();
   },
   todayStr: () => {
-    return peruTimeHelper.getPeruDateKey();
+    return boliviaTimeHelper.getBoliviaDateKey();
   },
   yesterdayStr: () => {
-    const d = peruTimeHelper.getPeruNow();
+    const d = boliviaTimeHelper.getBoliviaNow();
     d.setDate(d.getDate() - 1);
-    return peruTimeHelper.getPeruDateKey(d);
+    return boliviaTimeHelper.getBoliviaDateKey(d);
   },
   getDateString: (date = new Date()) => {
-    return peruTimeHelper.getPeruDateKey(date);
+    return boliviaTimeHelper.getBoliviaDateKey(date);
   },
   getTimeString: (date = new Date()) => {
-    return peruTimeHelper.getPeruTimeString(date);
+    return boliviaTimeHelper.getBoliviaTimeString(date);
   },
   getISOString: (date = new Date()) => {
-    return peruTimeHelper.getPeruISOString(date);
+    return boliviaTimeHelper.getBoliviaISOString(date);
   },
   getDay: (date = new Date()) => {
-    return peruTimeHelper.getPeruDayOfWeek();
+    return boliviaTimeHelper.getBoliviaDayOfWeek();
   },
   getDayName: (date = new Date()) => {
-    const days = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-    return days[peruTime.getDay(date)];
+    return boliviaTimeHelper.getBoliviaDayName(date);
   },
   isTimeInWindow: (timeStr, start = '00:00', end = '23:59') => {
-    if (start <= end) {
-      return (timeStr >= start && timeStr <= end);
-    }
-    return (timeStr >= start || timeStr <= end);
+    return boliviaTimeHelper.isTimeInWindow(timeStr, start, end);
   }
 };
+
+// Alias para compatibilidad hacia atrás
+export const peruTime = boliviaTime;
 
 // ========================
 // 0. CALENDARIO OPERATIVO (Validaciones Centralizadas)

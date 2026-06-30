@@ -15,12 +15,15 @@ import logger, { createModuleLogger } from './utils/logger.mjs';
 import { errorHandler } from './handlers/errorHandler.mjs';
 import { initTelegramHandlers } from './services/telegramInitializer.mjs';
 import { query } from './config/db.mjs';
-import { syncLevels, preloadLevels, preloadConfig, peruTime } from './services/dbService.mjs';
+import { syncLevels, preloadLevels, preloadConfig, boliviaTime, peruTime } from './services/dbService.mjs';
 
 // Función para obtener la fecha y hora actual en Bolivia
 export function getBoliviaNow() {
-  return peruTime.now();
+  return boliviaTime.now();
 }
+
+// Alias para compatibilidad
+export const getPeruNow = getBoliviaNow;
 
 import { safeAsync } from './utils/safe.mjs';
 import { initSocket } from './services/socketService.mjs';
@@ -136,13 +139,13 @@ app.get('/api/health', async (req, res) => {
   }
 
   const health = {
-    status: (dbStatus === 'ok' && redisStatus === 'ok') ? 'ok' : 'degraded',
-    version: API_VERSION,
-    db: dbStatus,
-    redis: redisStatus,
-    uptime: Math.floor(process.uptime()),
-    timestamp: peruTime.getISOString()
-  };
+      status: (dbStatus === 'ok' && redisStatus === 'ok') ? 'ok' : 'degraded',
+      version: API_VERSION,
+      db: dbStatus,
+      redis: redisStatus,
+      uptime: Math.floor(process.uptime()),
+      timestamp: boliviaTime.getISOString()
+    };
 
   if (health.status === 'degraded') {
     res.status(207).json(health); 
@@ -175,7 +178,7 @@ setInterval(async () => {
     const health = {
       db: false,
       redis: false,
-      timestamp: peruTime.getISOString()
+      timestamp: boliviaTime.getISOString()
     };
 
     try {
