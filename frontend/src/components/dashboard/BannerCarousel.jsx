@@ -62,7 +62,7 @@ export default function BannerCarousel({ banners = [] }) {
           <img
             src={api.getMediaUrl(validBanners[slide]?.imagen_url)}
             alt={validBanners[slide]?.titulo || 'Promoción'}
-            className="w-full h-full object-contain"
+            className="w-full h-full object-cover"
             loading={slide === 0 ? 'eager' : 'lazy'}
             fetchPriority={slide === 0 ? 'high' : 'low'}
             decoding="async"

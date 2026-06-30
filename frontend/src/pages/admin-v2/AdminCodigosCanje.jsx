@@ -2,7 +2,6 @@
 import { useState, useEffect } from 'react';
 import { Plus, Trash2, Copy, CheckCircle2, Trophy, Users, Calendar } from 'lucide-react';
 import { api } from '../../lib/api';
-import { getLevels } from '../../lib/displayLevel';
 
 export default function AdminCodigosCanje() {
   const [codes, setCodes] = useState([]);
