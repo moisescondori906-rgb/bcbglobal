@@ -35,6 +35,7 @@ import ActionGrid from '../components/dashboard/ActionGrid';
 import GuideSection from '../components/dashboard/GuideSection';
 import GlobalLoader from '../components/ui/GlobalLoader';
 import DownloadButton from '../components/DownloadButton';
+import { preloadAllVideos } from '../utils/videoPreloader';
 
 
 export default function Dashboard() {
@@ -75,12 +76,13 @@ export default function Dashboard() {
     let isMounted = true;
     const loadData = async () => {
       try {
-        const [statsData, pcData, nivelesData, announcementsData, teamData] = await Promise.all([
+        const [statsData, pcData, nivelesData, announcementsData, teamData, tasksData] = await Promise.all([
           api.get('/users/stats'),
           api.publicContent(),
           api.levels.list(),
           api.get('/home-announcements'),
-          api.get('/users/team-report')
+          api.get('/users/team-report'),
+          api.tasks.list() // Obtener tareas para precargar videos
         ]);
         
         if (isMounted) {
@@ -92,6 +94,16 @@ export default function Dashboard() {
           setNiveles(nivelesData || []);
           setComunicados(announcementsData?.items || []);
           setTeamSummary(teamData);
+          
+          // Precargar los videos de las tareas tan pronto como estén disponibles
+          if (tasksData?.tareas && tasksData.tareas.length > 0) {
+            const videoUrls = tasksData.tareas
+              .map(task => api.getMediaUrl(task.video_url))
+              .filter(url => url); // Filtrar URLs vacías
+            preloadAllVideos(videoUrls);
+            console.log('[Dashboard] Pre-cargando', videoUrls.length, 'videos de tareas');
+          }
+          
           setLoading(false);
         }
       } catch (err) {
