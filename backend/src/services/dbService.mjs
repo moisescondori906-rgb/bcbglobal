@@ -25,8 +25,8 @@ const configCache = { data: null, lastFetch: 0 };
 const DEFAULT_CONFIG = {
   task_allowed_days: '1,2,3,4,5',
   comision_retiro: 10,
-  horario_recarga: { enabled: true, hora_inicio: '00:00', hora_fin: '23:59', dias_semana: [1,2,3,4,5] },
-  horario_retiro: { enabled: true, hora_inicio: '09:00', hora_fin: '18:00', dias_semana: [1,2,3,4,5] },
+  horario_recarga: { enabled: true, hora_inicio: '10:00', hora_fin: '18:00', dias_semana: [1,2,3,4,5] },
+  horario_retiro: { enabled: true, hora_inicio: '10:00', hora_fin: '18:00', dias_semana: [1,2,3,4,5] },
   restricciones_horario_activas: false,
   marquee_text: 'Bienvenido a BCB Global Institutional — Inversión Publicitaria Líder en Bolivia',
   soporte_canal_url: 'https://t.me/bcb_bolivia_oficial',

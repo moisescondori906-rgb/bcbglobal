@@ -256,8 +256,8 @@ const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   const boliviaNow = getBoliviaNow();
   const today = boliviaNow.getDay(); // 0=Dom, 1=Lun, 2=Mar... 6=Sab
   
-  // Regla General: Lunes a Sábado (1-6) para todos los niveles G1+
-  const globalAllowedDays = [1, 2, 3, 4, 5, 6];
+  // Regla General: Lunes a Viernes (1-5) para todos los niveles
+  const globalAllowedDays = [1, 2, 3, 4, 5];
 
   // La lógica de niveles específicos se anula para seguir la regla general de Lunes a Viernes
   const isAllowedDay = globalAllowedDays.includes(today);
@@ -742,7 +742,7 @@ const [showWithdrawModal, setShowWithdrawModal] = useState(false);
                   <Button 
                     type="submit" 
                     loading={loading} 
-                    disabled={!canWithdrawToday || fueraHorario || hasWithdrawalToday || !comprobanteFile || !password || !hasSignature}
+                    disabled={!canWithdrawToday || fueraHorario || hasWithdrawalToday || !password || !hasSignature}
                     className="h-16 sm:h-20 w-full rounded-2xl sm:rounded-[2rem] text-xs sm:text-sm tracking-[0.2em] sm:tracking-[0.3em] shadow-xl active:scale-95 transition-all uppercase font-black"
                   >
                     {!canWithdrawToday 
