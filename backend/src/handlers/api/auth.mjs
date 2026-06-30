@@ -32,8 +32,8 @@ router.post('/register', registerLimiter, asyncHandler(async (req, res) => {
   const inviteCode = String(codigo_invitacion || '').trim().toUpperCase();
 
   // 1. Validaciones en paralelo con Fingerprinting y Device ID check
-  const [exists, inviter, levels, ipCheck, fpCheck, deviceCount] = await Promise.all([
-    findUserByTelefono(telefono),
+  const [usersByPhone, inviter, levels, ipCheck, fpCheck, deviceCount] = await Promise.all([
+    query(`SELECT COUNT(*) as count FROM usuarios WHERE telefono = ?`, [getCanonicalTelefono(telefono)]),
     queryOne(`SELECT id FROM usuarios WHERE codigo_invitacion = ?`, [inviteCode]),
     getLevels(),
     // Protección Anti-Abuso: IP + Fingerprint
@@ -50,16 +50,46 @@ router.post('/register', registerLimiter, asyncHandler(async (req, res) => {
     });
   }
 
-  // Prevent more than 2 accounts per device (internally), but show message saying 1
+  // Límite máximo de 2 usuarios por teléfono
+  const currentPhoneCount = usersByPhone && usersByPhone[0] ? usersByPhone[0].count : 0;
+  if (currentPhoneCount >= 2) {
+    // Bloquear este dispositivo permanentemente
+    if (fingerprint) {
+      await redis.set(`onboarding:fp:${fingerprint}`, '2', 'EX', 86400 * 365 * 10); // Bloquear por 10 años
+    }
+    if (deviceId) {
+      await redis.set(`onboarding:device:${deviceId}`, '2', 'EX', 86400 * 365 * 10); // Bloquear por 10 años
+    }
+    return res.status(400).json({ 
+      error: 'Este teléfono ya tiene el máximo de 2 cuentas permitidas. No se pueden crear más cuentas con este número.',
+      code: 'PHONE_LIMIT_REACHED'
+    });
+  }
+
+  // Prevent more than 2 accounts per device
   const currentDeviceCount = deviceCount && deviceCount[0] ? deviceCount[0].count : 0;
   if (currentDeviceCount >= 2) {
+    // Bloquear este dispositivo permanentemente
+    if (fingerprint) {
+      await redis.set(`onboarding:fp:${fingerprint}`, '2', 'EX', 86400 * 365 * 10); // Bloquear por 10 años
+    }
+    if (deviceId) {
+      await redis.set(`onboarding:device:${deviceId}`, '2', 'EX', 86400 * 365 * 10); // Bloquear por 10 años
+    }
     return res.status(400).json({ 
-      error: 'Este dispositivo ya tiene una cuenta registrada. Solo se permite una cuenta por dispositivo.',
+      error: 'Este dispositivo ya tiene el máximo de 2 cuentas permitidas. No se pueden crear más cuentas desde este dispositivo.',
       code: 'DEVICE_LIMIT_REACHED'
     });
   }
 
-  if (exists) return res.status(400).json({ error: 'Teléfono ya registrado' });
+  // Verificar si el dispositivo está bloqueado por límite anterior
+  const deviceBlocked = deviceId ? await redis.get(`onboarding:device:${deviceId}`) : null;
+  if (deviceBlocked && parseInt(deviceBlocked) >= 2) {
+    return res.status(400).json({ 
+      error: 'Este dispositivo está bloqueado para crear nuevas cuentas por haber alcanzado el límite.',
+      code: 'DEVICE_BLOCKED'
+    });
+  }
   if (!inviter) return res.status(400).json({ error: 'Código de invitación inválido' });
 
   // 1.1 Límite de 15 usuarios "Internar" por invitado (v12.2.0)
