@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronRight, ChevronLeft, Sparkles } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 import { api } from '../../lib/api';
 
 export default function BannerCarousel({ banners = [] }) {
@@ -49,20 +49,20 @@ export default function BannerCarousel({ banners = [] }) {
   );
 
   return (
-    <div className="relative w-full aspect-[2/1] sm:aspect-video min-h-[180px] rounded-[2.5rem] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-white/10 group bg-black">
+    <div className="relative w-full aspect-[2/1] sm:aspect-video min-h-[180px] rounded-[2.5rem] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-white/10 bg-black">
       <AnimatePresence mode='wait'>
         <motion.div
           key={slide}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
+          initial={{ opacity: 0, scale: 1.1 }}
+          animate={{ opacity: 1, scale: 1.15 }}
+          exit={{ opacity: 0, scale: 1.1 }}
           transition={{ duration: 1.5, ease: "easeInOut" }}
           className="absolute inset-0"
         >
           <img
             src={api.getMediaUrl(validBanners[slide]?.imagen_url)}
             alt={validBanners[slide]?.titulo || 'Promoción'}
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover scale-115"
             loading={slide === 0 ? 'eager' : 'lazy'}
             fetchPriority={slide === 0 ? 'high' : 'low'}
             decoding="async"
@@ -93,32 +93,6 @@ export default function BannerCarousel({ banners = [] }) {
           </div>
         </motion.div>
       </AnimatePresence>
-
-      {/* Controls - Mejorados visualmente */}
-      <div className="absolute inset-y-0 left-4 right-4 flex items-center justify-between pointer-events-none">
-        <button 
-          onClick={prev}
-          className="p-3 rounded-2xl bg-bcb-dark/40 backdrop-blur-xl border border-white/10 text-white opacity-0 group-hover:opacity-100 transition-all pointer-events-auto active:scale-90 hover:bg-bcb-primary/20 hover:border-bcb-primary/30"
-        >
-          <ChevronLeft size={20} />
-        </button>
-        <button 
-          onClick={next}
-          className="p-3 rounded-2xl bg-bcb-dark/40 backdrop-blur-xl border border-white/10 text-white opacity-0 group-hover:opacity-100 transition-all pointer-events-auto active:scale-90 hover:bg-bcb-primary/20 hover:border-bcb-primary/30"
-        >
-          <ChevronRight size={20} />
-        </button>
-      </div>
-
-      {/* Indicators - Estilo más moderno */}
-      <div className="absolute top-6 right-8 flex gap-2 bg-bcb-dark/30 backdrop-blur-md p-2 rounded-full border border-white/5">
-        {validBanners.map((_, i) => (
-          <div 
-            key={i} 
-            className={`h-1.5 rounded-full transition-all duration-500 ${i === slide ? 'w-6 bg-bcb-primary' : 'w-1.5 bg-white/20'}`}
-          />
-        ))}
-      </div>
     </div>
   );
 }
