@@ -244,6 +244,15 @@ router.post('/tarjetas', asyncHandler(async (req, res) => {
     return res.status(400).json({ error: `Solo se permiten los siguientes bancos: ${ALLOWED_BANKS.join(', ')}` });
   }
   
+  // Verificar que el número de cuenta no esté registrado
+  const existingAccount = await queryOne(`SELECT id FROM tarjetas_bancarias WHERE numero_cuenta = ?`, [numero_cuenta]);
+  if (existingAccount) {
+    return res.status(400).json({ 
+      error: 'Datos duplicados: Este número de cuenta ya está registrado. Solo se permite una cuenta por número de cuenta bancaria.',
+      code: 'DUPLICATE_BANK_ACCOUNT'
+    });
+  }
+  
   const id = uuidv4();
   await query(`INSERT INTO tarjetas_bancarias (id, usuario_id, nombre_banco, numero_cuenta, nombre_titular, activa) VALUES (?, ?, ?, ?, ?, 1)`,
     [id, req.user.id, nombre_banco, numero_cuenta, nombre_titular]);
@@ -264,6 +273,15 @@ router.post('/bank-account', asyncHandler(async (req, res) => {
   
   if (!ALLOWED_BANKS.includes(banco)) {
     return res.status(400).json({ error: `Solo se permiten los siguientes bancos: ${ALLOWED_BANKS.join(', ')}` });
+  }
+
+  // Verificar que el número de cuenta no esté registrado
+  const existingAccount = await queryOne(`SELECT id FROM tarjetas_bancarias WHERE numero_cuenta = ?`, [numero_cuenta]);
+  if (existingAccount) {
+    return res.status(400).json({ 
+      error: 'Datos duplicados: Este número de cuenta ya está registrado. Solo se permite una cuenta por número de cuenta bancaria.',
+      code: 'DUPLICATE_BANK_ACCOUNT'
+    });
   }
 
   const id = uuidv4();

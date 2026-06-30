@@ -32,8 +32,8 @@ router.post('/register', registerLimiter, asyncHandler(async (req, res) => {
   const inviteCode = String(codigo_invitacion || '').trim().toUpperCase();
 
   // 1. Validaciones en paralelo con Fingerprinting y Device ID check
-  const [usersByPhone, inviter, levels, ipCheck, fpCheck, deviceCount] = await Promise.all([
-    query(`SELECT COUNT(*) as count FROM usuarios WHERE telefono = ?`, [getCanonicalTelefono(telefono)]),
+  const [existingUser, inviter, levels, ipCheck, fpCheck, deviceCount] = await Promise.all([
+    findUserByTelefono(telefono),
     queryOne(`SELECT id FROM usuarios WHERE codigo_invitacion = ?`, [inviteCode]),
     getLevels(),
     // Protección Anti-Abuso: IP + Fingerprint
@@ -50,19 +50,11 @@ router.post('/register', registerLimiter, asyncHandler(async (req, res) => {
     });
   }
 
-  // Límite máximo de 2 usuarios por teléfono
-  const currentPhoneCount = usersByPhone && usersByPhone[0] ? usersByPhone[0].count : 0;
-  if (currentPhoneCount >= 2) {
-    // Bloquear este dispositivo permanentemente
-    if (fingerprint) {
-      await redis.set(`onboarding:fp:${fingerprint}`, '2', 'EX', 86400 * 365 * 10); // Bloquear por 10 años
-    }
-    if (deviceId) {
-      await redis.set(`onboarding:device:${deviceId}`, '2', 'EX', 86400 * 365 * 10); // Bloquear por 10 años
-    }
+  // Límite: solo 1 usuario por número de teléfono
+  if (existingUser) {
     return res.status(400).json({ 
-      error: 'Este teléfono ya tiene el máximo de 2 cuentas permitidas. No se pueden crear más cuentas con este número.',
-      code: 'PHONE_LIMIT_REACHED'
+      error: 'Datos duplicados: Este número de teléfono ya está registrado. Solo se permite una cuenta por teléfono.',
+      code: 'DUPLICATE_PHONE'
     });
   }
 
