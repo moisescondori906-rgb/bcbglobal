@@ -8,8 +8,7 @@ import {
   ShieldCheck, Play, Check, Clock, Wallet, 
   ArrowRight, X, Sparkles, AlertCircle, 
   ClipboardList, Trophy, Target, TrendingUp,
-  ChevronRight, Heart, Coffee, Sun, Home, Calendar,
-  Volume2, VolumeX
+  ChevronRight, Heart, Coffee, Sun, Home, Calendar
 } from 'lucide-react';
 import { useAndroidBackHandler } from '../hooks/useAndroidBackHandler.js';
 import { cn } from '../lib/utils/cn';
@@ -61,16 +60,8 @@ export default function TaskRoom() {
   const [correctAnswer, setCorrectAnswer] = useState('');
   const [quizError, setQuizError] = useState(false);
   const [videoLoading, setVideoLoading] = useState(false);
-  const [isMuted, setIsMuted] = useState(true);
   const videoRef = useRef(null);
   const preloadedVideosRef = useRef(new Map()); // Almacenamos videos pre-cargados
-
-  const toggleMute = () => {
-    if (videoRef.current) {
-      videoRef.current.muted = !videoRef.current.muted;
-      setIsMuted(!isMuted);
-    }
-  };
 
   // Generar opciones aleatorias para el cuestionario
   const generateQuiz = (task) => {
@@ -154,7 +145,7 @@ export default function TaskRoom() {
 
       // Intentamos reproducir inmediatamente, sin esperar a canplay
       // Esto hace que se reproduzca al tiro
-      videoElement.muted = isMuted;
+      videoElement.muted = false;
       videoElement.playsInline = true;
       videoElement.preload = 'auto';
       videoElement.currentTime = 0;
@@ -182,7 +173,7 @@ export default function TaskRoom() {
         videoElement.removeEventListener('canplaythrough', handleCanPlay);
       };
     }
-  }, [activeTask?.id, isMuted]);
+  }, [activeTask?.id]);
 
   useEffect(() => {
     let interval;
@@ -372,7 +363,7 @@ export default function TaskRoom() {
                 onEnded={handleVideoEnd}
                 playsInline
                 autoPlay
-                muted={isMuted}
+                muted={false}
                 preload="auto"
                 controls={false}
               />
@@ -383,23 +374,6 @@ export default function TaskRoom() {
                   <div className="w-12 h-12 border-4 border-white/20 border-t-white rounded-full animate-spin mb-3" />
                   <p className="text-xs font-black text-white uppercase tracking-widest">Buscando videos promocionales para poder cobrar...</p>
                 </div>
-              )}
-
-              {!videoFinished && !showResult && !videoLoading && (
-                <div className="absolute top-4 right-4 px-3 py-1.5 bg-bcb-dark/60 backdrop-blur-md rounded-xl border border-white/10 flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 bg-bcb-primary rounded-full animate-ping" />
-                  <span className="text-xs font-black text-white">{timer}s</span>
-                </div>
-              )}
-
-              {/* Botón de control de audio */}
-              {!videoLoading && (
-                <button 
-                  onClick={toggleMute}
-                  className="absolute bottom-4 right-4 p-3 bg-bcb-dark/60 backdrop-blur-md rounded-full border border-white/10 hover:bg-bcb-dark/80 transition-all hover:scale-110"
-                >
-                  {isMuted ? <VolumeX size={20} className="text-white" /> : <Volume2 size={20} className="text-white" />}
-                </button>
               )}
 
             </div>
