@@ -26,7 +26,9 @@ import {
   Lock as LockIcon,
   Plus as PlusIcon,
   Building2 as BuildingIcon,
-  X as XIcon
+  X as XIcon,
+  QrCode as QrCodeIcon,
+  Upload as UploadIcon
 } from 'lucide-react';
 import { isScheduleOpen, getperuNow as getBoliviaNow } from '../lib/schedule';
 
@@ -53,6 +55,7 @@ export default function Withdrawal() {
   const [niveles, setNiveles] = useState([]);
   const [hasWithdrawalToday, setHasWithdrawalToday] = useState(false);
   const [hasSignature, setHasSignature] = useState(true); // Ya viene por defecto
+  const [qrImage, setQrImage] = useState(null); // Para la imagen QR opcional
 
   const isInternar = userLevel?.codigo === 'internar' || userLevel?.codigo === 'pasantia';
   const COMISION_RETIRO = isInternar ? 0 : (pc?.comision_retiro || 10) / 100; // 0% comision para pasantes, 10% para VIP
@@ -666,11 +669,11 @@ const [showWithdrawModal, setShowWithdrawModal] = useState(false);
                           onClick={() => setTarjetaId(t.id)}
                         >
                           <div className="flex items-center gap-3">
-                            <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center", active ? "bg-white/10 text-white" : "bg-blue-500/10 text-blue-500")}>
+                            <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center", active ? "bg-white/10 text-black" : "bg-blue-500/10 text-black")}>
                               <BuildingIcon size={20} />
                             </div>
                             <div>
-                              <p className={cn("text-[9px] font-black uppercase tracking-widest", active ? "text-white/60" : "text-bcb-muted")}>{t.banco}</p>
+                              <p className={cn("text-[9px] font-black uppercase tracking-widest", active ? "text-black/60" : "text-black")}>{t.banco}</p>
                               <p className="text-sm font-black text-gray-900">{t.numero_cuenta}</p>
                             </div>
                           </div>
@@ -684,6 +687,62 @@ const [showWithdrawModal, setShowWithdrawModal] = useState(false);
                       );
                     })}
                   </div>
+                </section>
+
+                {/* Subir QR (Opcional) */}
+                <section className="space-y-5 sm:space-y-6">
+                  <div className="flex items-center gap-2 sm:gap-3 px-1">
+                    <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-500 border border-purple-500/20 shadow-lg">
+                      <QrCodeIcon size={14} className="sm:w-[16px] sm:h-[16px]" />
+                    </div>
+                    <h2 className="text-[10px] sm:text-[11px] font-black text-gray-900 uppercase tracking-[0.2em] sm:tracking-[0.3em]">4. Comprobante QR (Opcional)</h2>
+                  </div>
+                  
+                  <Card className="p-4 sm:p-6 border-black/5 bg-white shadow-sm">
+                    <div className="space-y-4">
+                      {qrImage ? (
+                        <div className="relative">
+                          <img 
+                            src={qrImage} 
+                            alt="Comprobante QR" 
+                            className="w-full h-48 object-contain rounded-2xl border-2 border-purple-100" 
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setQrImage(null)}
+                            className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                          >
+                            <XIcon size={16} />
+                          </button>
+                        </div>
+                      ) : (
+                        <label className="flex flex-col items-center justify-center gap-3 py-8 border-2 border-dashed border-slate-200 rounded-2xl cursor-pointer hover:border-purple-300 hover:bg-purple-50 transition-all">
+                          <UploadIcon size={32} className="text-slate-400" />
+                          <div className="text-center space-y-1">
+                            <p className="text-[10px] font-black text-slate-700 uppercase tracking-widest">
+                              Haz clic para subir tu QR
+                            </p>
+                            <p className="text-[8px] text-slate-500 uppercase tracking-widest">
+                              PNG, JPG o WEBP (opcional)
+                            </p>
+                          </div>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                const reader = new FileReader();
+                                reader.onload = (e) => setQrImage(e.target.result);
+                                reader.readAsDataURL(file);
+                              }
+                            }}
+                          />
+                        </label>
+                      )}
+                    </div>
+                  </Card>
                 </section>
 
                 {/* Mensaje para pasantes */}
@@ -709,7 +768,7 @@ const [showWithdrawModal, setShowWithdrawModal] = useState(false);
                     <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-500 border border-amber-500/20 shadow-lg">
                       <LockIcon size={14} className="sm:w-[16px] sm:h-[16px]" />
                     </div>
-                    <h2 className="text-[10px] sm:text-[11px] font-black text-gray-900 uppercase tracking-[0.2em] sm:tracking-[0.3em]">4. Confirmación</h2>
+                    <h2 className="text-[10px] sm:text-[11px] font-black text-gray-900 uppercase tracking-[0.2em] sm:tracking-[0.3em]">5. Confirmación</h2>
                   </div>
                   
                   <div className="space-y-4">
