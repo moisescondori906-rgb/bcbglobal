@@ -38,7 +38,7 @@ export default function Layout({ children }) {
       <FloatingQuestionnaire />
 
       {!isAuthPage && (
-        <nav className="fixed bottom-0 left-0 right-0 w-full bg-gradient-to-t from-slate-900/95 via-slate-800/90 to-slate-800/80 backdrop-blur-2xl py-4 sm:py-5 px-5 sm:px-7 z-50 flex items-center justify-around border-t border-white/10 shadow-[0_-20px_60px_-20px_rgba(0,0,0,0.8)] rounded-t-[3xl">
+        <nav className="fixed bottom-0 left-0 right-0 w-full bg-white/40 backdrop-blur-md py-3 sm:py-4 px-4 sm:px-6 z-50 flex items-center justify-around border-t-2 border-slate-200/50 shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.1)]">
           {navItems.map((item) => {
             const isActive = location.pathname === item.to;
             const Icon = item.icon;
@@ -47,26 +47,32 @@ export default function Layout({ children }) {
                 key={item.to}
                 to={item.to}
                 className={cn(
-                  "nav-item group relative flex-1 flex flex-col items-center justify-center py-2",
-                  isActive ? "text-white" : "text-slate-400"
+                  "nav-item group relative flex-1 flex flex-col items-center justify-center py-1",
+                  isActive ? "text-indigo-900" : "text-slate-500"
                 )}
               >
                 <div className={cn(
-                  "transition-all duration-300 p-2 rounded-2xl",
-                  isActive ? "bg-gradient-to-br from-indigo-600 to-purple-600 scale-110 shadow-lg shadow-indigo-500/50 border border-indigo-400/30" : "scale-100 group-active:scale-95"
+                  "transition-all duration-300 p-1.5 rounded-xl",
+                  isActive ? "bg-gradient-to-br from-indigo-50 to-purple-50 scale-110 shadow-md border border-indigo-100" : "scale-100 group-active:scale-95"
                 )}>
-                  <Icon className="w-5 h-5 sm:w-6 sm:h-6" strokeWidth={isActive ? 2.5 : 2} />
+                  <Icon 
+                    className={cn(
+                      "w-5 h-5 sm:w-6 sm:h-6 transition-all duration-300",
+                      isActive ? "fill-indigo-500/20" : "fill-transparent"
+                    )} 
+                    strokeWidth={isActive ? 2.75 : 2} 
+                  />
                 </div>
                 <span className={cn(
-                  "text-[7px] sm:text-[10px] font-bold uppercase tracking-[0.25em] mt-1.5 transition-colors leading-none text-center",
-                  isActive ? "text-white opacity-100" : "text-slate-400 opacity-80"
+                  "text-[6.5px] sm:text-[9px] font-black uppercase tracking-widest mt-1 transition-colors leading-none text-center",
+                  isActive ? "text-indigo-900 opacity-100" : "text-slate-600 opacity-90"
                 )}>
                   {item.label}
                 </span>
                 {isActive && (
                   <motion.div
                     layoutId="active-indicator"
-                    className="absolute bottom-[-10px] w-12 h-1.5 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full shadow-lg shadow-indigo-500/60"
+                    className="absolute top-0 w-8 h-1 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full shadow-md shadow-indigo-500/40"
                   />
                 )}
               </NavLink>
