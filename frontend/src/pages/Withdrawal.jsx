@@ -128,7 +128,13 @@ const [showWithdrawModal, setShowWithdrawModal] = useState(false);
         if (isMounted) {
           const boliviaNow = getBoliviaNow();
           const todayStr = boliviaNow.getFullYear() + '-' + String(boliviaNow.getMonth() + 1).padStart(2, '0') + '-' + String(boliviaNow.getDate()).padStart(2, '0');
-          const alreadyDone = Array.isArray(withdrawalsRes) && withdrawalsRes.some(w => w.estado !== 'rechazado' && w.created_at && w.created_at.split('T')[0] === todayStr);
+          
+          // Para pasantes: cualquier retiro hecho (no solo de hoy)
+          // Para otros usuarios: solo retiros de hoy
+          const alreadyDone = isInternar 
+            ? Array.isArray(withdrawalsRes) && withdrawalsRes.some(w => w.estado !== 'rechazado')
+            : Array.isArray(withdrawalsRes) && withdrawalsRes.some(w => w.estado !== 'rechazado' && w.created_at && w.created_at.split('T')[0] === todayStr);
+            
           setHasWithdrawalToday(alreadyDone);
         }
       }
@@ -478,13 +484,18 @@ const [showWithdrawModal, setShowWithdrawModal] = useState(false);
               )}
 
               {hasWithdrawalToday && (
-                <Card className="p-4 sm:p-6 border-amber-500/20 bg-amber-500/5 flex items-start sm:items-center gap-3 sm:gap-4">
-                  <ClockIcon size={20} className="text-amber-500 shrink-0 mt-0.5 sm:mt-0" />
-                  <p className="text-[9px] sm:text-[10px] font-black text-amber-500 uppercase tracking-widest leading-relaxed">
-                    Solo puedes realizar 1 retiro por día.
-                  </p>
-                </Card>
-              )}
+                  <Card className="p-4 sm:p-6 border-amber-500/20 bg-amber-500/5 flex items-start sm:items-center gap-3 sm:gap-4">
+                    <ClockIcon size={20} className="text-amber-500 shrink-0 mt-0.5 sm:mt-0" />
+                    <div className="space-y-1">
+                      <p className="text-[9px] sm:text-[10px] font-black text-amber-500 uppercase tracking-widest leading-relaxed">
+                        {isInternar 
+                          ? "Ya realizaste tu único retiro como pasante. Para seguir retirando, asciende a nivel global."
+                          : "Solo puedes realizar 1 retiro por día."
+                        }
+                      </p>
+                    </div>
+                  </Card>
+                )}
 
               {/* Imagen al final y completa */}
               <div className="w-full rounded-[2.5rem] overflow-hidden border border-white/10 shadow-2xl bg-white/5">
@@ -595,34 +606,55 @@ const [showWithdrawModal, setShowWithdrawModal] = useState(false);
                   </div>
                   
                   <div className="space-y-4">
-                    <div className="relative group">
-                      <div className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400 font-black text-lg">Bs</div>
-                      <input
-                        type="number"
-                        value={monto || ''}
-                        onChange={(e) => setMonto(Number(e.target.value))}
-                        placeholder="Ingresa la cantidad"
-                        className="w-full h-16 pl-14 pr-6 rounded-2xl border-2 border-slate-100 bg-white text-lg font-black text-black outline-none focus:border-bcb-primary/30 transition-all shadow-sm"
-                      />
-                    </div>
+                    {isInternar ? (
+                      /* Para pasantes: monto fijo de 10 Bs, no editable */
+                      <div className="relative group">
+                        <div className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400 font-black text-lg">Bs</div>
+                        <input
+                          type="text"
+                          value="10"
+                          disabled
+                          className="w-full h-16 pl-14 pr-6 rounded-2xl border-2 border-slate-200 bg-slate-50 text-lg font-black text-slate-700 outline-none cursor-not-allowed shadow-sm"
+                        />
+                        <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                          <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest bg-slate-100 px-3 py-1 rounded-full">
+                            Monto Fijo
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      /* Para otros usuarios: monto editable */
+                      <>
+                        <div className="relative group">
+                          <div className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400 font-black text-lg">Bs</div>
+                          <input
+                            type="number"
+                            value={monto || ''}
+                            onChange={(e) => setMonto(Number(e.target.value))}
+                            placeholder="Ingresa la cantidad"
+                            className="w-full h-16 pl-14 pr-6 rounded-2xl border-2 border-slate-100 bg-white text-lg font-black text-black outline-none focus:border-bcb-primary/30 transition-all shadow-sm"
+                          />
+                        </div>
 
-                    <div className="grid grid-cols-3 gap-2.5 sm:gap-3">
-                      {montos.map(m => (
-                        <button
-                          key={m}
-                          type="button"
-                          onClick={() => setMonto(m)}
-                          className={cn(
-                            "h-12 sm:h-16 rounded-xl sm:rounded-[1.5rem] border text-[10px] sm:text-[11px] font-black uppercase tracking-widest transition-all duration-300",
-                            monto === m 
-                              ? "bg-bcb-primary border-bcb-primary text-white shadow-lg sm:shadow-[0_15px_30px_rgba(220,38,38,0.2)] scale-[1.05]" 
-                              : "bg-white border-black/5 text-bcb-muted hover:bg-black/5 shadow-sm"
-                          )}
-                        >
-                          {m}
-                        </button>
-                      ))}
-                    </div>
+                        <div className="grid grid-cols-3 gap-2.5 sm:gap-3">
+                          {montos.map(m => (
+                            <button
+                              key={m}
+                              type="button"
+                              onClick={() => setMonto(m)}
+                              className={cn(
+                                "h-12 sm:h-16 rounded-xl sm:rounded-[1.5rem] border text-[10px] sm:text-[11px] font-black uppercase tracking-widest transition-all duration-300",
+                                monto === m 
+                                  ? "bg-bcb-primary border-bcb-primary text-white shadow-lg sm:shadow-[0_15px_30px_rgba(220,38,38,0.2)] scale-[1.05]" 
+                                  : "bg-white border-black/5 text-bcb-muted hover:bg-black/5 shadow-sm"
+                              )}
+                            >
+                              {m}
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    )}
 
                     {/* Resumen de Comisión */}
                     <AnimatePresence>
@@ -746,7 +778,7 @@ const [showWithdrawModal, setShowWithdrawModal] = useState(false);
                 </section>
 
                 {/* Mensaje para pasantes */}
-                {isInternar && (
+                {isInternar && !hasWithdrawalToday && (
                   <section className="space-y-5 sm:space-y-6">
                     <Card className="p-4 sm:p-6 bg-blue-50 border-2 border-blue-200 shadow-sm">
                       <div className="flex items-start gap-3">
@@ -754,7 +786,7 @@ const [showWithdrawModal, setShowWithdrawModal] = useState(false);
                         <div>
                           <h3 className="text-[10px] sm:text-[11px] font-black text-blue-900 uppercase tracking-widest mb-2">Información Importante</h3>
                           <p className="text-[9px] sm:text-[10px] text-blue-800 leading-relaxed">
-                            Como usuario pasante, solo puedes realizar un retiro de 10 Bs. El monto se ha establecido automáticamente.
+                            Como usuario pasante, solo puedes realizar UN retiro de 10 Bs. El monto es fijo y no se puede modificar. Después de este retiro, deberás ascender a nivel global para seguir retirando.
                           </p>
                         </div>
                       </div>
