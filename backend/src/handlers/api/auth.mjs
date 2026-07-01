@@ -97,22 +97,6 @@ router.post('/register', registerLimiter, asyncHandler(async (req, res) => {
 
   if (!inviter) return res.status(400).json({ error: 'Código de invitación inválido' });
 
-  // 1.1 Límite de 15 usuarios "Internar" por invitado (v12.2.0)
-  const internarLevel = levels.find(l => String(l.codigo).toLowerCase() === 'internar' || String(l.id) === 'l1');
-  if (internarLevel) {
-    const internarCount = await queryOne(`
-      SELECT COUNT(*) as total FROM usuarios 
-      WHERE invitado_por = ? AND nivel_id = ?
-    `, [inviter.id, internarLevel.id]);
-    
-    if (internarCount.total >= 15) {
-      return res.status(400).json({ 
-        error: 'El anfitrión ya tiene el límite de 15 usuarios Pasantes alcanzado. Debe liberar espacio para agregar nuevos.',
-        code: 'INTERNAR_LIMIT_REACHED'
-      });
-    }
-  }
-
   // SaaS Check: Límite de usuarios por plan
   if (req.tenantId) {
     const canAddUser = await BillingService.checkLimits(req.tenantId, 'users_count');
