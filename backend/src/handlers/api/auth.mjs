@@ -2,7 +2,7 @@ import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
-import { findUserByTelefono, createUser, getLevels, updateUser, getCanonicalTelefono } from '../../services/dbService.mjs';
+import { findUserByTelefono, createUser, getLevels, updateUser, getCanonicalTelefono, giveTicketsPorRegistro } from '../../services/dbService.mjs';
 import { query, queryOne } from '../../config/db.mjs';
 import { sendToAdmin } from '../../services/telegramBot.mjs';
 import { BillingService } from '../../services/billingService.mjs';
@@ -145,6 +145,15 @@ router.post('/register', registerLimiter, asyncHandler(async (req, res) => {
   };
   
   await createUser(user); 
+  
+  // Otorgar ticket por registro
+  try {
+    await giveTicketsPorRegistro(user.id);
+    logger.info(`[Auth-Register] Ticket otorgado a nuevo usuario: ${user.id}`);
+  } catch (ticketErr) {
+    logger.error(`[Auth-Register] Error al otorgar ticket: ${ticketErr.message}`);
+    // No bloqueamos el registro por error en tickets
+  }
   
   // 3. Persistir Fingerprint y Bloquear IPs sospechosas
   await Promise.all([

@@ -986,43 +986,19 @@ export async function approveLevelPurchase(compraId, adminId, idempotencyKey = n
       [targetLevel.id, ticketsToAdd, compra.usuario_id]
     );
 
-    // 4. REGALAR TICKETS A INVITADOR SOLO SI ES PRIMERA COMPRA DE NIVEL VIP
+    // 4. OTORGAR TICKETS AL INVITADOR USANDO EL SISTEMA AUTOMÁTICO
+    let resultadoTickets = null;
     if (user.invitado_por) {
-      // Verificar si es la primera compra completada de nivel del usuario
-      const [completasCount] = await conn.query(
-        `SELECT COUNT(*) as total FROM compras_nivel 
-         WHERE usuario_id = ? AND estado = 'completada' AND id != ?`,
-        [compra.usuario_id, compraId]
+      // Llamamos a la función que crea los tickets, historial y actualiza todo
+      resultadoTickets = await giveTicketsPorAscensoInvitado(
+        user.invitado_por, 
+        compra.usuario_id, 
+        targetLevel.codigo, 
+        conn
       );
-      const yaTieneCompraVip = completasCount[0].total > 0;
-
-      // Solo regalamos tickets si es la PRIMERA compra completada de nivel
-      if (!yaTieneCompraVip) {
-        let ticketsParaInvitador = 0;
-        // Global 1 o Global 2 → 1 ticket
-        if (targetLevel.codigo === 'global1' || targetLevel.codigo === 'global2') {
-          ticketsParaInvitador = 1;
-        }
-        // Global 3 → 2 tickets
-        else if (targetLevel.codigo === 'global3') {
-          ticketsParaInvitador = 2;
-        }
-
-        if (ticketsParaInvitador > 0) {
-          await conn.query(
-            `UPDATE usuarios SET tickets_ruleta = tickets_ruleta + ? WHERE id = ?`,
-            [ticketsParaInvitador, user.invitado_por]
-          );
-          // Notificación al invitador
-          emitToUser(user.invitado_por, 'user:tickets_gifted', {
-            cantidad: ticketsParaInvitador,
-            razon: `Tu invitado compró ${targetLevel.nombre} por primera vez`,
-          });
-        }
-      }
     }
 
-    // Notificación en tiempo real v12.0.0
+    // Notificación en tiempo real al usuario que ascendió
     emitToUser(compra.usuario_id, 'user:level_up', { 
       nuevo_nivel: targetLevel.nombre,
       tickets_ganados: ticketsToAdd,
@@ -1043,7 +1019,7 @@ export async function approveLevelPurchase(compraId, adminId, idempotencyKey = n
 
     userCache.delete(compra.usuario_id);
 
-    const res = { success: true, traceId, message: `Ascenso a ${targetLevel.nombre} completado` };
+    const res = { success: true, traceId, message: `Ascenso a ${targetLevel.nombre} completado`, ticketsInvitador: resultadoTickets };
     
     if (idempotencyKey) {
       await conn.query(
@@ -1053,6 +1029,26 @@ export async function approveLevelPurchase(compraId, adminId, idempotencyKey = n
     }
 
     return res;
+  }).then(async (result) => {
+    // Después de la transacción, creamos la notificación para el invitador (si aplica)
+    if (result.ticketsInvitador && result.ticketsInvitador.cantidadTickets > 0) {
+      // Obtenemos la información del usuario y el nivel
+      const [userCompraRows] = await query(`SELECT * FROM usuarios WHERE id = ?`, [compra.usuario_id]);
+      const userCompra = userCompraRows?.[0];
+      
+      if (userCompra && userCompra.invitado_por) {
+        const [levelInfo] = await query(`
+          SELECT nombre FROM niveles WHERE codigo = ?
+        `, [result.ticketsInvitador.nivelAlcanzado]);
+        const nombreNivel = levelInfo?.nombre || result.ticketsInvitador.nivelAlcanzado;
+        
+        const tituloNotificacion = '¡Felicidades!';
+        const mensajeNotificacion = `Has recibido ${result.ticketsInvitador.cantidadTickets} Ticket${result.ticketsInvitador.cantidadTickets > 1 ? 's' : ''} de Sorteo porque tu invitado ascendió a ${nombreNivel}.`;
+        await createNotification(userCompra.invitado_por, tituloNotificacion, mensajeNotificacion);
+      }
+    }
+    
+    return result;
   });
 }
 
@@ -1925,6 +1921,282 @@ export async function createTaskActivity(data) {
   await query(`INSERT INTO actividad_tareas (id, usuario_id, tarea_id, monto_ganado, fecha_dia) VALUES (?, ?, ?, ?, ?)`,
     [id, data.usuario_id, data.tarea_id, data.monto_ganado, data.fecha_dia]);
   return { id, ...data };
+}
+
+// ========================
+// 7. SISTEMA DE TICKETS DE SORTEO
+// ========================
+
+/**
+ * Genera un ticket de sorteo para un usuario
+ */
+export async function createTicketSorteo(userId, motivo) {
+  const id = uuidv4();
+  const codigo = `TK-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+  
+  await query(`
+    INSERT INTO tickets_sorteo (id, codigo, usuario_id, motivo, estado)
+    VALUES (?, ?, ?, ?, 'Activo')
+  `, [id, codigo, userId, motivo]);
+  
+  return { id, codigo, usuario_id: userId, motivo, estado: 'Activo' };
+}
+
+/**
+ * Obtiene todos los tickets de un usuario
+ */
+export async function getTicketsByUser(userId) {
+  return await query(`
+    SELECT t.*, u.nombre_usuario
+    FROM tickets_sorteo t
+    JOIN usuarios u ON t.usuario_id = u.id
+    WHERE t.usuario_id = ?
+    ORDER BY t.created_at DESC
+  `, [userId]);
+}
+
+/**
+ * Obtiene todos los tickets (admin)
+ */
+export async function getAllTicketsSorteo() {
+  return await query(`
+    SELECT t.*, u.nombre_usuario, u.telefono
+    FROM tickets_sorteo t
+    JOIN usuarios u ON t.usuario_id = u.id
+    ORDER BY t.created_at DESC
+  `);
+}
+
+/**
+ * Registra una recompensa en el historial
+ */
+export async function createHistorialRecompensa(data) {
+  const id = uuidv4();
+  
+  await query(`
+    INSERT INTO historial_recompensas (
+      id, usuario_receptor, usuario_generador, nivel_alcanzado, 
+      cantidad_tickets, motivo, estado
+    ) VALUES (?, ?, ?, ?, ?, ?, 'Completado')
+  `, [
+    id, 
+    data.usuario_receptor, 
+    data.usuario_generador || null, 
+    data.nivel_alcanzado || null, 
+    data.cantidad_tickets, 
+    data.motivo
+  ]);
+  
+  return { id, ...data, estado: 'Completado' };
+}
+
+/**
+ * Crea una notificación para un usuario
+ */
+export async function createNotification(userId, titulo, mensaje) {
+  const id = uuidv4();
+  
+  await query(`
+    INSERT INTO notificaciones (id, usuario_id, titulo, mensaje, leida)
+    VALUES (?, ?, ?, ?, 0)
+  `, [id, userId, titulo, mensaje]);
+  
+  // Notificar en tiempo real
+  emitToUser(userId, 'user:new_notification', {
+    id,
+    titulo,
+    mensaje
+  });
+  
+  return { id, usuario_id: userId, titulo, mensaje, leida: false };
+}
+
+/**
+ * Obtiene el historial de recompensas de un usuario
+ */
+export async function getHistorialRecompensasByUser(userId) {
+  return await query(`
+    SELECT h.*, 
+           u1.nombre_usuario as nombre_receptor,
+           u2.nombre_usuario as nombre_generador
+    FROM historial_recompensas h
+    JOIN usuarios u1 ON h.usuario_receptor = u1.id
+    LEFT JOIN usuarios u2 ON h.usuario_generador = u2.id
+    WHERE h.usuario_receptor = ?
+    ORDER BY h.created_at DESC
+  `, [userId]);
+}
+
+/**
+ * Otorga tickets a un usuario por registro
+ */
+export async function giveTicketsPorRegistro(userId) {
+  try {
+    // 1 ticket por registro
+    const ticket = await createTicketSorteo(userId, 'Registro de usuario');
+    
+    // Registrar en historial
+    await createHistorialRecompensa({
+      usuario_receptor: userId,
+      cantidad_tickets: 1,
+      motivo: 'Registro de usuario'
+    });
+    
+    // Actualizar tickets_ruleta en la tabla usuarios
+    await query(`UPDATE usuarios SET tickets_ruleta = tickets_ruleta + 1 WHERE id = ?`, [userId]);
+    
+    // Crear notificación
+    const tituloNotificacion = '¡Bienvenido!';
+    const mensajeNotificacion = 'Has recibido 1 Ticket de Sorteo por completar tu registro.';
+    await createNotification(userId, tituloNotificacion, mensajeNotificacion);
+    
+    return ticket;
+  } catch (err) {
+    logger.error(`[Tickets-Registro] Error: ${err.message}`);
+    throw err;
+  }
+}
+
+/**
+ * Otorga tickets al invitador por ascenso de su invitado
+ */
+export async function giveTicketsPorAscensoInvitado(invitadorId, invitadoId, nivelAlcanzado, conn = null) {
+  try {
+    const db = conn || query;
+    
+    // Obtener el nombre del nivel para las notificaciones
+    let levelInfo;
+    if (conn) {
+      const [levelRows] = await conn.query(`
+        SELECT nombre FROM niveles WHERE codigo = ? OR id = ?
+      `, [nivelAlcanzado.toLowerCase(), nivelAlcanzado]);
+      levelInfo = levelRows[0];
+    } else {
+      levelInfo = await queryOne(`
+        SELECT nombre FROM niveles WHERE codigo = ? OR id = ?
+      `, [nivelAlcanzado.toLowerCase(), nivelAlcanzado]);
+    }
+    const nombreNivel = levelInfo?.nombre || nivelAlcanzado;
+    
+    // Verificar si ya se otorgaron tickets por este ascenso (evitar duplicados)
+    let existing;
+    if (conn) {
+      const [existingRows] = await conn.query(`
+        SELECT * FROM historial_recompensas 
+        WHERE usuario_receptor = ? 
+          AND usuario_generador = ? 
+          AND nivel_alcanzado = ? 
+          AND motivo LIKE 'Invitado ascendió a%'
+      `, [invitadorId, invitadoId, nivelAlcanzado.toLowerCase()]);
+      existing = existingRows;
+    } else {
+      existing = await query(`
+        SELECT * FROM historial_recompensas 
+        WHERE usuario_receptor = ? 
+          AND usuario_generador = ? 
+          AND nivel_alcanzado = ? 
+          AND motivo LIKE 'Invitado ascendió a%'
+      `, [invitadorId, invitadoId, nivelAlcanzado.toLowerCase()]);
+    }
+    
+    if (existing && existing.length > 0) {
+      logger.info(`[Tickets-Ascenso] Tickets ya otorgados previamente para este ascenso.`);
+      return null;
+    }
+    
+    // Determinar cantidad de tickets según nivel
+    let cantidadTickets = 0;
+    let motivoTicket = '';
+    let motivoHistorial = '';
+    const nivelCodigo = String(nivelAlcanzado).toLowerCase();
+    
+    if (nivelCodigo === 'global1') {
+      cantidadTickets = 1;
+      motivoTicket = 'Invitado ascendió a Global 1';
+      motivoHistorial = 'Invitado ascendió a Global 1';
+    } else if (nivelCodigo === 'global2') {
+      cantidadTickets = 1;
+      motivoTicket = 'Invitado ascendió a Global 2';
+      motivoHistorial = 'Invitado ascendió a Global 2';
+    } else if (nivelCodigo === 'global3') {
+      cantidadTickets = 3;
+      motivoTicket = 'Invitado ascendió a Global 3';
+      motivoHistorial = 'Invitado ascendió a Global 3';
+    }
+    
+    if (cantidadTickets === 0) {
+      return null;
+    }
+    
+    // Otorgar tickets
+    for (let i = 0; i < cantidadTickets; i++) {
+      const ticketId = uuidv4();
+      const ticketCodigo = `TK-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+      
+      if (conn) {
+        await conn.query(`
+          INSERT INTO tickets_sorteo (id, codigo, usuario_id, motivo, estado)
+          VALUES (?, ?, ?, ?, 'Activo')
+        `, [ticketId, ticketCodigo, invitadorId, motivoTicket]);
+      } else {
+        await query(`
+          INSERT INTO tickets_sorteo (id, codigo, usuario_id, motivo, estado)
+          VALUES (?, ?, ?, ?, 'Activo')
+        `, [ticketId, ticketCodigo, invitadorId, motivoTicket]);
+      }
+    }
+    
+    // Registrar en historial
+    const historialId = uuidv4();
+    if (conn) {
+      await conn.query(`
+        INSERT INTO historial_recompensas (
+          id, usuario_receptor, usuario_generador, nivel_alcanzado, 
+          cantidad_tickets, motivo, estado
+        ) VALUES (?, ?, ?, ?, ?, ?, 'Completado')
+      `, [
+        historialId, 
+        invitadorId, 
+        invitadoId, 
+        nivelCodigo, 
+        cantidadTickets, 
+        motivoHistorial
+      ]);
+    } else {
+      await createHistorialRecompensa({
+        usuario_receptor: invitadorId,
+        usuario_generador: invitadoId,
+        nivel_alcanzado: nivelCodigo,
+        cantidad_tickets: cantidadTickets,
+        motivo: motivoHistorial
+      });
+    }
+    
+    // Actualizar tickets_ruleta en la tabla usuarios
+    if (conn) {
+      await conn.query(`UPDATE usuarios SET tickets_ruleta = tickets_ruleta + ? WHERE id = ?`, [cantidadTickets, invitadorId]);
+    } else {
+      await query(`UPDATE usuarios SET tickets_ruleta = tickets_ruleta + ? WHERE id = ?`, [cantidadTickets, invitadorId]);
+    }
+    
+    // Crear notificación (fuera de la transacción si es que estamos en una)
+    if (!conn) {
+      const tituloNotificacion = '¡Felicidades!';
+      const mensajeNotificacion = `Has recibido ${cantidadTickets} Ticket${cantidadTickets > 1 ? 's' : ''} de Sorteo porque tu invitado ascendió a ${nombreNivel}.`;
+      await createNotification(invitadorId, tituloNotificacion, mensajeNotificacion);
+    }
+    
+    // Notificar en tiempo real
+    emitToUser(invitadorId, 'user:tickets_gifted', {
+      cantidad: cantidadTickets,
+      razon: `Tu invitado alcanzó el nivel ${nombreNivel}`
+    });
+    
+    return { cantidadTickets, nivelAlcanzado: nivelCodigo };
+  } catch (err) {
+    logger.error(`[Tickets-Ascenso] Error: ${err.message}`);
+    throw err;
+  }
 }
 
 

@@ -8,7 +8,8 @@ import {
   peruTime, distributeInvestmentCommissions, refreshGlobalContent, refreshPublicContent, 
   invalidateLevelsCache, preloadLevels, syncLevels,
   getMensajesGlobales, createMensajeGlobal, deleteMensajeGlobal,
-  getDailyWithdrawalSummary, getDailyOperatorSummary
+  getDailyWithdrawalSummary, getDailyOperatorSummary,
+  giveTicketsPorAscensoInvitado
 } from '../../services/dbService.mjs';
 import { query, queryOne, transaction } from '../../config/db.mjs';
 import { authenticate, requireAdmin } from '../../utils/middleware/auth.mjs';

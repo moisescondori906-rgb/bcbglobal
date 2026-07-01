@@ -4,7 +4,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { authenticate, requireAdmin } from '../../utils/middleware/auth.mjs';
 import { attachRequestUser } from '../../utils/middleware/requestContext.mjs';
 import { 
-  getPremiosRuleta, getSorteosGanadores, getGlobalContent, addUserEarnings, getLevels
+  getPremiosRuleta, getSorteosGanadores, getGlobalContent, addUserEarnings, getLevels,
+  getTicketsByUser, getAllTicketsSorteo, getHistorialRecompensasByUser
 } from '../../services/dbService.mjs';
 import { query, queryOne, transaction } from '../../config/db.mjs';
 import { asyncHandler } from '../../utils/asyncHandler.mjs';
@@ -187,8 +188,32 @@ router.post('/girar', authenticate, attachRequestUser, asyncHandler(async (req, 
 }));
 
 // ========================
+// ENDPOINTS DE TICKETS
+// ========================
+
+// Obtener tickets del usuario autenticado
+router.get('/tickets', authenticate, attachRequestUser, asyncHandler(async (req, res) => {
+  const user = req.requestUser;
+  const tickets = await getTicketsByUser(user.id);
+  res.json(tickets);
+}));
+
+// Obtener historial de recompensas del usuario autenticado
+router.get('/tickets/historial', authenticate, attachRequestUser, asyncHandler(async (req, res) => {
+  const user = req.requestUser;
+  const historial = await getHistorialRecompensasByUser(user.id);
+  res.json(historial);
+}));
+
+// ========================
 // ENDPOINTS ADMINISTRATIVOS
 // ========================
+
+// Obtener todos los tickets (admin)
+router.get('/admin/tickets', authenticate, requireAdmin, asyncHandler(async (req, res) => {
+  const tickets = await getAllTicketsSorteo();
+  res.json(tickets);
+}));
 
 router.get('/admin/config-personalizada', authenticate, requireAdmin, asyncHandler(async (req, res) => {
   const configs = await query(`

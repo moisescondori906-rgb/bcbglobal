@@ -272,6 +272,9 @@ export const api = {
     premios: () => request('/sorteo/premios'),
     historial: () => request('/sorteo/historial'),
     girar: (data) => request('/sorteo/girar', { method: 'POST', body: JSON.stringify(data) }),
+    tickets: () => request('/sorteo/tickets'),
+    ticketsHistorial: () => request('/sorteo/tickets/historial'),
+    adminTickets: () => request('/sorteo/admin/tickets'),
   },
   admin: {
     dashboard: () => request('/admin/dashboard'),
