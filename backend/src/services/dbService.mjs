@@ -1019,7 +1019,14 @@ export async function approveLevelPurchase(compraId, adminId, idempotencyKey = n
 
     userCache.delete(compra.usuario_id);
 
-    const res = { success: true, traceId, message: `Ascenso a ${targetLevel.nombre} completado`, ticketsInvitador: resultadoTickets };
+    const res = { 
+      success: true, 
+      traceId, 
+      message: `Ascenso a ${targetLevel.nombre} completado`, 
+      ticketsInvitador: resultadoTickets,
+      usuarioId: compra.usuario_id,
+      nivelId: targetLevel.id
+    };
     
     if (idempotencyKey) {
       await conn.query(
@@ -1033,7 +1040,7 @@ export async function approveLevelPurchase(compraId, adminId, idempotencyKey = n
     // Después de la transacción, creamos la notificación para el invitador (si aplica)
     if (result.ticketsInvitador && result.ticketsInvitador.cantidadTickets > 0) {
       // Obtenemos la información del usuario y el nivel
-      const [userCompraRows] = await query(`SELECT * FROM usuarios WHERE id = ?`, [compra.usuario_id]);
+      const [userCompraRows] = await query(`SELECT * FROM usuarios WHERE id = ?`, [result.usuarioId]);
       const userCompra = userCompraRows?.[0];
       
       if (userCompra && userCompra.invitado_por) {
