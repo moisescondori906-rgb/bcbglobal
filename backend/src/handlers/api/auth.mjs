@@ -97,6 +97,9 @@ router.post('/register', registerLimiter, asyncHandler(async (req, res) => {
 
   if (!inviter) return res.status(400).json({ error: 'Código de invitación inválido' });
 
+  // Obtener el nivel inicial (internar) para nuevos usuarios
+  const internarLevel = levels.find(l => String(l.codigo).toLowerCase() === 'internar' || String(l.id) === 'l1');
+
   // SaaS Check: Límite de usuarios por plan
   if (req.tenantId) {
     const canAddUser = await BillingService.checkLimits(req.tenantId, 'users_count');
