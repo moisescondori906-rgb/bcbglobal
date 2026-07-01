@@ -24,6 +24,8 @@ conn.on('ready', () => {
     cd backend
     node scripts/add-one-use-per-user-column.mjs || true
     node scripts/fix-schema-safe.mjs || true
+    echo "🗄️ Ejecutando migración de tickets..."
+    node scripts/migrate-tickets.mjs || true
     echo "📦 Configurando Backend..."
     npm install
     echo "🔄 Reiniciando proceso PM2..."
