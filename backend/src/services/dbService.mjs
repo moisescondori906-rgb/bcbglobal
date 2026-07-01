@@ -1383,9 +1383,12 @@ export async function getDailyOperatorSummary(dateStr = peruTime.todayStr()) {
 }
 
 /**
- * distributeInvestmentCommissions v7.0.6: Distribución de 3 niveles con regla de jerarquía
+ * distributeInvestmentCommissions v8.0.0: Distribución de 3 niveles con regla de jerarquía e idempotencia
+ * @param userId - ID del usuario que realizó la inversión
+ * @param amount - Monto de la inversión
+ * @param purchaseId - ID de la compra (para idempotencia y prevención de duplicados)
  */
-export async function distributeInvestmentCommissions(userId, amount) {
+export async function distributeInvestmentCommissions(userId, amount, purchaseId = null) {
   try {
     const user = await findUserById(userId);
     if (!user || !user.invitado_por) return;
@@ -1465,6 +1468,23 @@ export async function distributeInvestmentCommissions(userId, amount) {
           }
         }
 
+        // --- VALIDACIÓN DE IDEMPOTENCIA ---
+        // Verificar si esta comisión ya fue acreditada antes de continuar
+        if (purchaseId) {
+          const [existingComm] = await conn.query(`
+            SELECT id FROM historial_comisiones 
+            WHERE usuario_invitador = ? 
+              AND usuario_subordinado = ? 
+              AND nivel_red = ? 
+              AND referencia_compra = ?`,
+            [uplineId, userId, config.key, purchaseId]
+          );
+          if (existingComm.length > 0) {
+            logger.info(`[COMMISSIONS] Comisión Nivel ${config.key} para ${uplineData.nombre_usuario} ya existe. Saltando (idempotencia).`);
+            return;
+          }
+        }
+
         const commission = Number((amount * config.percent).toFixed(2));
         if (commission > 0) {
           const oldBalance = Number(uplineData.saldo_comisiones);
@@ -1485,7 +1505,32 @@ export async function distributeInvestmentCommissions(userId, amount) {
             [traceId, uplineId, commission, oldBalance, newBalance, movimientoId]
           );
           
+          // --- REGISTRO EN HISTORIAL DETALLADO ---
+          const historialId = uuidv4();
+          await conn.query(`
+            INSERT INTO historial_comisiones (
+              id, usuario_invitador, usuario_subordinado, nivel_red, 
+              monto_comision, monto_inversion, porcentaje_aplicado, 
+              estado, referencia_compra
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, 'acreditada', ?)`,
+            [
+              historialId, uplineId, userId, config.key,
+              commission, amount, Number((config.percent * 100).toFixed(2)),
+              purchaseId
+            ]
+          );
+
           userCache.delete(uplineId);
+          
+          // Notificación en tiempo real (v12.0.0)
+          emitToUser(uplineId, 'balance:updated', {
+            tipo_billetera: 'comisiones',
+            nuevo_saldo: newBalance,
+            monto: commission,
+            operacion: 'comision_inversion'
+          });
+          
+          logger.info(`[COMMISSIONS] Acreditada comisión Nivel ${config.key} de ${commission} Bs. a ${uplineData.nombre_usuario} (${uplineId})`);
         }
       });
     }

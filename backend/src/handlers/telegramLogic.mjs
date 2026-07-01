@@ -234,7 +234,7 @@ export async function processTelegramUpdate(update) {
             await updateUser(user.id, updates);
             await handleLevelUpRewards(user.id, user.nivel_id, nivelDestino.id, id);
             // Distribuir comisiones por ascenso (Inversión)
-            await distributeInvestmentCommissions(user.id, recarga.monto);
+            await distributeInvestmentCommissions(user.id, recarga.monto, id);
             statusMsg = `✅ Ascenso Aprobado por ${adminName} a ${nivelDestino.nombre}`;
             logger.info(`[Telegram Logic] Recarga (VIP) ${id} completada por ${adminName}`);
           } else {
@@ -250,7 +250,7 @@ export async function processTelegramUpdate(update) {
             await updateUser(user.id, { saldo_principal: nuevoSaldo });
             
             // Distribuir comisiones por recarga de saldo (Inversión)
-            await distributeInvestmentCommissions(user.id, recarga.monto);
+            await distributeInvestmentCommissions(user.id, recarga.monto, id);
             statusMsg = `✅ Recarga Aprobada por ${adminName}`;
             
             // Notificar a Secretaria

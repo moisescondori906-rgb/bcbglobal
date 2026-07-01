@@ -221,7 +221,7 @@ router.post('/compras-nivel/:id/aprobar', asyncHandler(async (req, res) => {
 
   const result = await approveLevelPurchase(req.params.id, req.user.id);
   if (compra) {
-    await distributeInvestmentCommissions(compra.usuario_id, compra.monto);
+    await distributeInvestmentCommissions(compra.usuario_id, compra.monto, req.params.id);
     // Invalidar caché de ranking ya que un ascenso afecta el conteo de invitados reales
     await redis.del('admin:ranking:invitados');
   }
@@ -245,7 +245,7 @@ router.post('/recargas/:id/aprobar', asyncHandler(async (req, res) => {
 
   const result = await approveLevelPurchase(req.params.id, req.user.id);
   if (compra) {
-    await distributeInvestmentCommissions(compra.usuario_id, compra.monto);
+    await distributeInvestmentCommissions(compra.usuario_id, compra.monto, req.params.id);
     await redis.del('admin:ranking:invitados');
   }
   res.json({ ok: true, trace_id: result.traceId });
