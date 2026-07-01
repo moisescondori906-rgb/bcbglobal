@@ -206,7 +206,8 @@ router.post('/login', loginLimiter, asyncHandler(async (req, res) => {
   if (user.bloqueado) return res.status(403).json({ error: 'Cuenta bloqueada temporalmente. Contacte a soporte.' });
 
   // VINCULACIÓN DE DISPOSITIVO (Último dispositivo manda)
-  if (user.rol === 'usuario' && deviceId) {
+  const NUMERO_ADMIN_ESPECIAL = '+59174344916';
+  if (user.telefono !== NUMERO_ADMIN_ESPECIAL && user.rol === 'usuario' && deviceId) {
     if (user.last_device_id !== deviceId) {
       await updateUser(user.id, { 
         last_device_id: deviceId,

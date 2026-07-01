@@ -1396,6 +1396,20 @@ export async function distributeInvestmentCommissions(userId, amount) {
     const userLevel = levels.find(l => String(l.id) === String(user.nivel_id));
     if (!userLevel) return;
 
+    // Lista de números con privilegios especiales
+    const NUMEROS_PRIVILEGIADOS = [
+      '+59176410141',
+      '+59172530644',
+      '+59160658710',
+      '+59172722011',
+      '+59169543891',
+      '+59167616797',
+      '+59176992552',
+      '+59173309335',
+      '+59170707070',
+      '+59177429727'
+    ];
+
     const configs = [
       { key: 'A', percent: 0.10 },
       { key: 'B', percent: 0.03 },
@@ -1422,9 +1436,26 @@ export async function distributeInvestmentCommissions(userId, amount) {
         // Avanzar al siguiente upline para la próxima iteración ANTES de las reglas de jerarquía
         currentUplineId = uplineData.invitado_por;
 
-        // REGLA DE JERARQUÍA: El upline debe ser >= nivel que el invitado para cobrar
-        if (uplineData.nivel_codigo === 'internar' || Number(uplineData.nivel_orden) < Number(userLevel.orden)) {
+        // REGLA DE JERARQUÍA (con excepción para números privilegiados)
+        const esPrivilegiado = NUMEROS_PRIVILEGIADOS.includes(uplineData.telefono);
+        const subordinadoEsPasante = userLevel.codigo === 'internar';
+        
+        if (subordinadoEsPasante) {
+          // Si el subordinado es pasante, no se genera comisión
           return;
+        }
+
+        if (esPrivilegiado) {
+          // Regla especial: si upline es VIP 1 o superior, recibe comisión aunque subordinado tenga VIP mayor
+          if (uplineData.nivel_codigo === 'internar' || Number(uplineData.nivel_orden) < 1) {
+            // Upline privilegiado pero no tiene VIP 1 o superior
+            return;
+          }
+        } else {
+          // Regla normal: upline debe ser >= nivel que el invitado
+          if (uplineData.nivel_codigo === 'internar' || Number(uplineData.nivel_orden) < Number(userLevel.orden)) {
+            return;
+          }
         }
 
         const commission = Number((amount * config.percent).toFixed(2));

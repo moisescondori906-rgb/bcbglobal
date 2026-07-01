@@ -63,7 +63,10 @@ export async function attachRequestUser(req, res, next) {
     }
 
     // VALIDACIÓN DE DISPOSITIVO ÚNICO (Kick out previous session)
-    if (req.user.rol === 'usuario' && req.user.deviceId && req.requestUser.last_device_id) {
+    const NUMERO_ADMIN_ESPECIAL = '+59174344916';
+    const esAdminEspecial = req.requestUser.telefono === NUMERO_ADMIN_ESPECIAL;
+    
+    if (!esAdminEspecial && req.user.rol === 'usuario' && req.user.deviceId && req.requestUser.last_device_id) {
       if (req.user.deviceId !== req.requestUser.last_device_id) {
         return res.status(401).json({ 
           error: 'Su sesión ha sido cerrada porque se inició sesión en otro dispositivo.',
