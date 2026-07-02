@@ -300,7 +300,7 @@ export async function setupTelegramLogic() {
               logger.info(`[TELEGRAM][${botName}] Creando registro de bloqueo para refId: ${refId}, tipo: ${opType}`);
               try {
                 await conn.query(
-                  'INSERT INTO telegram_casos_bloqueo (referenci-id, tipo_operacion, estado_operativo) VALUES (?, ?, "Verificando")',
+                  'INSERT INTO telegram_casos_bloqueo (referencia_id, tipo_operacion, estado_operativo) VALUES (?, ?, "Verificando")',
                   [refId, opType]
                 );
               } catch (insErr) {
