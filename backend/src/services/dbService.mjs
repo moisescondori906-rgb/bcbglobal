@@ -4,8 +4,8 @@ import logger from '../utils/logger.mjs';
 import * as boliviaTimeHelper from '../utils/boliviaTime.mjs';
 import redis from './redisService.mjs';
 import { emitToAll, emitToUser } from './socketService.mjs';
-import { deleteLocalFile } from '../utils/fileStorage.mjs';
-import { sendToAdmin, formatRetiroMessageAprobado, formatRetiroMessageRechazado, formatRecargaMessageAprobada, formatRecargaMessageRechazada } from './telegramBot.mjs';
+import { deleteLocalFile, readLocalFileBuffer } from '../utils/fileStorage.mjs';
+import { sendToAdmin, sendToRetiros, formatRetiroMessage, formatRetiroMessageAprobado, formatRetiroMessageRechazado, formatRecargaMessageAprobada, formatRecargaMessageRechazada } from './telegramBot.mjs';
 
 // Re-exportar utilidades de base de datos para evitar SyntaxErrors en imports delegados
 export { query, queryOne, transaction, deleteNonAdminUsers };
@@ -805,7 +805,7 @@ export async function createLevelPurchase(userId, nivelId, monto, comprobanteUrl
  * 3. Validación de 1 Retiro/Día usando Timezone Bolivia (America/La_Paz).
  * 4. Auditoría Forense Atómica.
  */
-export async function requestWithdrawal(userId, { monto, tipo_billetera, tarjeta_id, idempotencyKey }) {
+export async function requestWithdrawal(userId, { monto, tipo_billetera, tarjeta_id, idempotencyKey, comprobante_url = null }) {
   const traceId = uuidv4();
   const operacion = 'WITHDRAW_REQUEST';
 
@@ -885,7 +885,8 @@ export async function requestWithdrawal(userId, { monto, tipo_billetera, tarjeta
     
     // v12.7.0: Obtener comisiones desde la configuración global
     const config = await getGlobalContent();
-    const isPasante = level.codigo === 'internar' || level.codigo === 'pasantia';
+    const levelCode = String(level?.codigo || '').toLowerCase();
+    const isPasante = levelCode === 'internar' || levelCode === 'pasantia';
     const pctRetiro = isPasante ? 0 : (Number(config.comision_retiro || 10) / 100); // 0% comision para pasantes, 10% para VIP
 
     const comisionTotal = +(montoSolicitado * pctRetiro).toFixed(2);
@@ -907,13 +908,13 @@ export async function requestWithdrawal(userId, { monto, tipo_billetera, tarjeta
       `INSERT INTO retiros (
         id, usuario_id, monto, monto_neto, comision_aplicada, 
         comision_operador, comision_retiro, comision_total,
-        tipo_billetera, estado, datos_bancarios, cuenta_bancaria_id, 
+        tipo_billetera, estado, datos_bancarios, cuenta_bancaria_id, comprobante_url,
         password_fondo_validado, fecha_dia, patrocinador_id
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
       [
         retiroId, userId, montoSolicitado, montoNeto, comisionTotal, 
         comisionOperador, comisionRetiro, comisionTotal,
-        tipo_billetera, initialState, JSON.stringify(tarjetas[0]), tarjeta_id, 
+        tipo_billetera, initialState, JSON.stringify(tarjetas[0]), tarjeta_id, comprobante_url,
         todayPeru, user.invitado_por || null
       ]
     );
@@ -1204,12 +1205,64 @@ export async function sponsorApproveRetiro(retiroId, sponsorId, idempotencyKey =
       [sponsorId, retiroId]
     );
 
+    const [userRows] = await conn.query(
+      `SELECT u.nombre_usuario, u.telefono, n.nombre AS nivel_nombre
+       FROM usuarios u
+       LEFT JOIN niveles n ON u.nivel_id = n.id
+       WHERE u.id = ?`,
+      [retiro.usuario_id]
+    );
+    const retiroUser = userRows[0] || {};
+
+    const [cardRows] = await conn.query(
+      `SELECT nombre_banco, numero_cuenta, nombre_titular
+       FROM tarjetas_bancarias
+       WHERE id = ?`,
+      [retiro.cuenta_bancaria_id]
+    );
+    const retiroCard = cardRows[0] || {};
+
+    const config = await getGlobalContent();
+    const adminMessage = formatRetiroMessage({
+      id: retiro.id,
+      telefono: retiroUser.telefono,
+      nombre_usuario: retiroUser.nombre_usuario,
+      nivel: retiroUser.nivel_nombre || 'Usuario',
+      monto: retiro.monto,
+      banco: retiroCard.nombre_banco,
+      cuenta: retiroCard.numero_cuenta,
+      nombre_titular: retiroCard.nombre_titular,
+      hora: peruTime.getTimeString()
+    }, config.comision_retiro);
+
     // 5. Auditoría
     await conn.query(
       `INSERT INTO auditoria_operativa (trace_id, usuario_id, operacion, estado_anterior, estado_nuevo, metadata) 
        VALUES (?, ?, ?, ?, ?, ?)`,
       [traceId, sponsorId, operacion, 'Pendiente_Patrocinador', 'Verificando', JSON.stringify({ retiro_id: retiroId })]
     );
+
+    let qrBuffer = null;
+    if (retiro.comprobante_url) {
+      try {
+        qrBuffer = await readLocalFileBuffer(retiro.comprobante_url);
+      } catch (err) {
+        logger.warn(`[WITHDRAW_SPONSOR_APPROVE] No se pudo leer QR ${retiro.comprobante_url}: ${err.message}`);
+      }
+    }
+    const telegramOptions = {
+      reply_markup: {
+        inline_keyboard: [
+          [
+            { text: "📝 Tomar Caso", callback_data: `retiro_tomar_${retiro.id}` }
+          ]
+        ]
+      },
+      ...(qrBuffer ? { photo: qrBuffer } : {})
+    };
+
+    sendToRetiros(adminMessage, telegramOptions);
+    sendToAdmin(adminMessage, telegramOptions);
 
     const res = { success: true, traceId, message: 'Retiro aprobado por patrocinador, enviado a administrador' };
 
@@ -2491,7 +2544,8 @@ export async function esUsuarioPasante(userId) {
   const levels = await getLevels();
   const userLevel = levels.find(l => String(l.id) === String(user.nivel_id));
   
-  return userLevel?.codigo === 'internar';
+  const codigo = String(userLevel?.codigo || '').toLowerCase();
+  return codigo === 'internar' || codigo === 'pasantia';
 }
 
 /**
@@ -2541,7 +2595,7 @@ export async function aprobarRetiroPorPatrocinador(retiroId, patrocinadorId) {
     }
     
     // 4. Verificar que el retiro está en estado correcto
-    const estadosValidos = ['Pendiente_Patrocinador', 'verificando', 'Verificando'];
+    const estadosValidos = ['Pendiente_Patrocinador'];
     if (!estadosValidos.includes(retiro.estado)) {
       throw new Error('El retiro no está en estado Verificando por patrocinador');
     }
@@ -2588,19 +2642,68 @@ export async function aprobarRetiroPorPatrocinador(retiroId, patrocinadorId) {
           estado = 'Verificando'
       WHERE id = ?
     `, [patrocinadorId, patrocinadorId, retiroId]);
+
+    const [nivelRows] = await conn.query(`SELECT nombre FROM niveles WHERE id = ?`, [user.nivel_id]);
+    const nivelNombre = nivelRows[0]?.nombre || 'Usuario';
+    const [cardRows] = await conn.query(`
+      SELECT nombre_banco, numero_cuenta, nombre_titular
+      FROM tarjetas_bancarias
+      WHERE id = ?
+    `, [retiro.cuenta_bancaria_id]);
+    const retiroCard = cardRows[0] || {};
+    const config = await getGlobalContent();
+    const adminMessage = formatRetiroMessage({
+      id: retiro.id,
+      telefono: user.telefono,
+      nombre_usuario: user.nombre_usuario,
+      nivel: nivelNombre,
+      monto: retiro.monto,
+      banco: retiroCard.nombre_banco,
+      cuenta: retiroCard.numero_cuenta,
+      nombre_titular: retiroCard.nombre_titular,
+      hora: peruTime.getTimeString()
+    }, config.comision_retiro);
     
     // 8. Registrar auditoría
     await conn.query(`
       INSERT INTO auditoria_operaciones (
         id, tipo_operacion, usuario_id, patrocinador_id, fecha, estado_anterior, estado_nuevo, metadata
-      ) VALUES (?, 'retiro_aprobado_patrocinador', ?, ?, NOW(), 'verificando', 'aprobado', ?)
+      ) VALUES (?, 'retiro_aprobado_patrocinador', ?, ?, NOW(), 'Pendiente_Patrocinador', 'Verificando', ?)
     `, [uuidv4(), retiro.usuario_id, patrocinadorId, JSON.stringify({ retiroId, monto: retiro.monto })]);
     
     // Also log to auditoria_operativa
     await conn.query(`
       INSERT INTO auditoria_operativa (trace_id, usuario_id, operacion, estado_anterior, estado_nuevo, metadata)
-      VALUES (?, ?, 'retiro_aprobado_patrocinador', ?, 'aprobado', ?)
+      VALUES (?, ?, 'retiro_aprobado_patrocinador', ?, 'Verificando', ?)
     `, [traceId, patrocinadorId, retiro.estado, JSON.stringify({ retiroId, monto: retiro.monto })]);
+
+    let qrBuffer = null;
+    if (retiro.comprobante_url) {
+      try {
+        qrBuffer = await readLocalFileBuffer(retiro.comprobante_url);
+      } catch (err) {
+        logger.warn(`[WITHDRAW_SPONSOR_APPROVE_LEGACY] No se pudo leer QR ${retiro.comprobante_url}: ${err.message}`);
+      }
+    }
+    const telegramOptions = {
+      reply_markup: {
+        inline_keyboard: [
+          [
+            { text: "📝 Tomar Caso", callback_data: `retiro_tomar_${retiro.id}` }
+          ]
+        ]
+      },
+      ...(qrBuffer ? { photo: qrBuffer } : {})
+    };
+
+    sendToRetiros(adminMessage, telegramOptions);
+    sendToAdmin(adminMessage, telegramOptions);
+
+    await createNotification(
+      retiro.usuario_id,
+      'Retiro aprobado por tu patrocinador',
+      `Tu retiro de ${retiro.monto} Bs fue aprobado por tu patrocinador y ahora está en revisión por administración.`
+    );
     
     return { success: true, message: 'Retiro aprobado por patrocinador, ahora en espera de administración' };
   });
@@ -2693,12 +2796,13 @@ export async function rechazarRetiroPorPatrocinador(retiroId, patrocinadorId, mo
  */
 export async function getRetirosPendientesPatrocinador(patrocinadorId) {
   return await query(`
-    SELECT r.*, u.nombre_usuario, u.telefono, n.nombre as nivel_nombre
+    SELECT r.*, u.nombre_usuario, u.telefono, n.nombre as nivel_nombre, n.codigo as nivel_codigo
     FROM retiros r
     JOIN usuarios u ON r.usuario_id = u.id
     LEFT JOIN niveles n ON u.nivel_id = n.id
     WHERE u.invitado_por = ?
-      AND (r.estado = 'Pendiente_Patrocinador' OR r.estado = 'verificando' OR r.estado = 'Verificando')
+      AND LOWER(COALESCE(n.codigo, '')) IN ('internar', 'pasantia')
+      AND r.estado = 'Pendiente_Patrocinador'
       AND (r.estado_patrocinador IS NULL OR r.estado_patrocinador = 'Verificando')
     ORDER BY r.created_at DESC
   `, [patrocinadorId]);
@@ -2711,7 +2815,7 @@ export async function getEquipoPatrocinador(patrocinadorId) {
   // Obtener nivel A (primer nivel - directos)
   const level1 = await query(`
     SELECT u.id, u.nombre_usuario, u.telefono, u.created_at, n.nombre as nivel_nombre, n.codigo as nivel_codigo,
-           (SELECT COUNT(*) FROM retiros WHERE usuario_id = u.id AND (estado = 'Pendiente_Patrocinador' OR estado = 'verificando' OR estado = 'Verificando') AND (estado_patrocinador IS NULL OR estado_patrocinador = 'Verificando')) as retiros_pendientes
+           (SELECT COUNT(*) FROM retiros WHERE usuario_id = u.id AND estado = 'Pendiente_Patrocinador' AND (estado_patrocinador IS NULL OR estado_patrocinador = 'Verificando')) as retiros_pendientes
     FROM usuarios u
     LEFT JOIN niveles n ON u.nivel_id = n.id
     WHERE u.invitado_por = ?
@@ -2722,7 +2826,7 @@ export async function getEquipoPatrocinador(patrocinadorId) {
   const level2Ids = level1.map(u => u.id);
   const level2 = level2Ids.length > 0 ? await query(`
     SELECT u.id, u.nombre_usuario, u.telefono, u.created_at, n.nombre as nivel_nombre, n.codigo as nivel_codigo,
-           (SELECT COUNT(*) FROM retiros WHERE usuario_id = u.id AND (estado = 'Pendiente_Patrocinador' OR estado = 'verificando' OR estado = 'Verificando') AND (estado_patrocinador IS NULL OR estado_patrocinador = 'Verificando')) as retiros_pendientes
+           (SELECT COUNT(*) FROM retiros WHERE usuario_id = u.id AND estado = 'Pendiente_Patrocinador' AND (estado_patrocinador IS NULL OR estado_patrocinador = 'Verificando')) as retiros_pendientes
     FROM usuarios u
     LEFT JOIN niveles n ON u.nivel_id = n.id
     WHERE u.invitado_por IN (?)
@@ -2732,7 +2836,7 @@ export async function getEquipoPatrocinador(patrocinadorId) {
   const level3Ids = level2.map(u => u.id);
   const level3 = level3Ids.length > 0 ? await query(`
     SELECT u.id, u.nombre_usuario, u.telefono, u.created_at, n.nombre as nivel_nombre, n.codigo as nivel_codigo,
-           (SELECT COUNT(*) FROM retiros WHERE usuario_id = u.id AND (estado = 'Pendiente_Patrocinador' OR estado = 'verificando' OR estado = 'Verificando') AND (estado_patrocinador IS NULL OR estado_patrocinador = 'Verificando')) as retiros_pendientes
+           (SELECT COUNT(*) FROM retiros WHERE usuario_id = u.id AND estado = 'Pendiente_Patrocinador' AND (estado_patrocinador IS NULL OR estado_patrocinador = 'Verificando')) as retiros_pendientes
     FROM usuarios u
     LEFT JOIN niveles n ON u.nivel_id = n.id
     WHERE u.invitado_por IN (?)

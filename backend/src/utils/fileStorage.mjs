@@ -117,3 +117,8 @@ export async function deleteLocalFile(filepath) {
     return false;
   }
 }
+
+export async function readLocalFileBuffer(filepath) {
+  const fullPath = path.join(UPLOADS_DIR, filepath.replace('/uploads/', ''));
+  return await fs.readFile(fullPath);
+}

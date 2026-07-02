@@ -208,6 +208,7 @@ const [showWithdrawModal, setShowWithdrawModal] = useState(false);
         tipo_billetera: tipoBilletera,
         password_fondo: password,
         tarjeta_id: tarjetaId,
+        comprobante_url: qrImage,
         idempotency_key: idempotencyKey
       };
 
@@ -907,4 +908,3 @@ const [showWithdrawModal, setShowWithdrawModal] = useState(false);
     </Layout>
   );
 }
-

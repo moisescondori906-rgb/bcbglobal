@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import Layout from '../components/Layout.jsx';
 import Header from '../components/Header.jsx';
@@ -163,6 +163,8 @@ export default function Team() {
   
   const [pendingWithdrawals, setPendingWithdrawals] = useState([]);
   const [withdrawalsLoading, setWithdrawalsLoading] = useState(false);
+  const teamSnapshotRef = useRef('');
+  const pendingWithdrawalsSnapshotRef = useRef('');
 
   const fetchTeam = async (isSilent = false) => {
     if (!isSilent && !data) setLoading(true);
@@ -171,8 +173,12 @@ export default function Team() {
         api.users.teamReport(),
         api.get('/users/stats')
       ]);
-      setData(teamRes);
-      setStats(statsRes);
+      const nextSnapshot = `${JSON.stringify(teamRes || {})}::${JSON.stringify(statsRes || {})}`;
+      if (teamSnapshotRef.current !== nextSnapshot) {
+        teamSnapshotRef.current = nextSnapshot;
+        setData(teamRes);
+        setStats(statsRes);
+      }
     } catch (err) {
       console.error('Error fetching team/stats:', err);
       if (!data) setData({ resumen: {}, niveles: [] });
@@ -195,19 +201,24 @@ export default function Team() {
 
   useEffect(() => {
     fetchTeam();
-    const interval = setInterval(() => fetchTeam(true), 5000);
+    const interval = setInterval(() => fetchTeam(true), 15000);
     return () => clearInterval(interval);
   }, []);
 
-  const fetchPendingWithdrawals = async () => {
-    setWithdrawalsLoading(true);
+  const fetchPendingWithdrawals = async (isSilent = false) => {
+    if (!isSilent && pendingWithdrawals.length === 0) setWithdrawalsLoading(true);
     try {
       const res = await api.get('/users/my-team/pending-withdrawals');
-      setPendingWithdrawals(res || []);
+      const nextItems = res || [];
+      const nextSnapshot = JSON.stringify(nextItems);
+      if (pendingWithdrawalsSnapshotRef.current !== nextSnapshot) {
+        pendingWithdrawalsSnapshotRef.current = nextSnapshot;
+        setPendingWithdrawals(nextItems);
+      }
     } catch (err) {
       console.error('Error fetching pending withdrawals:', err);
     } finally {
-      setWithdrawalsLoading(false);
+      if (!isSilent) setWithdrawalsLoading(false);
     }
   };
 
@@ -234,8 +245,8 @@ export default function Team() {
     fetchPendingWithdrawals();
     const interval = setInterval(() => {
       fetchReferrals(true);
-      fetchPendingWithdrawals();
-    }, 5000);
+      fetchPendingWithdrawals(true);
+    }, 15000);
     return () => clearInterval(interval);
   }, [selectedNivel]);
 
@@ -637,4 +648,3 @@ export default function Team() {
     </Layout>
   );
 }
-

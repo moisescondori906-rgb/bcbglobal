@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import bcrypt from 'bcryptjs';
 import { 
   getGlobalContent, peruTime, findUserWithAuthSecrets,
-  canWithdraw, requestWithdrawal, getLevels
+  canWithdraw, requestWithdrawal, getLevels, createNotification
 } from '../../services/dbService.mjs';
 import { query, queryOne } from '../../config/db.mjs';
 import { authenticate } from '../../utils/middleware/auth.mjs';
@@ -12,13 +12,13 @@ import { dynamicControlMiddleware } from '../../utils/middleware/dynamicControl.
 import { 
   sendToRetiros, 
   sendToAdmin, 
-  sendToSecretaria, 
   sendToTelegramUser,
   formatRetiroMessage 
 } from '../../services/telegramBot.mjs';
 import logger from '../../utils/logger.mjs';
 import redis from '../../services/redisService.mjs';
 import { asyncHandler } from '../../utils/asyncHandler.mjs';
+import { uploadImageBuffer } from '../../utils/fileStorage.mjs';
 
 const router = Router();
 
@@ -63,7 +63,7 @@ router.get('/', asyncHandler(async (req, res) => {
 }));
 
 router.post('/', withdrawRateLimit, dynamicControlMiddleware('withdrawal'), asyncHandler(async (req, res) => {
-  const { monto, tipo_billetera, password_fondo, tarjeta_id, idempotency_key } = req.body;
+  const { monto, tipo_billetera, password_fondo, tarjeta_id, idempotency_key, comprobante_url } = req.body;
   const user = req.requestUser;
 
   const iKey = idempotency_key || req.headers['x-idempotency-key'];
@@ -90,15 +90,40 @@ router.post('/', withdrawRateLimit, dynamicControlMiddleware('withdrawal'), asyn
   const opStatus = await canWithdraw(user.id);
   if (!opStatus.ok) return res.status(403).json({ error: opStatus.message });
 
-  // 4. Ejecución Blindaje en Service
+  // 4. Procesar comprobante QR opcional
+  let finalComprobanteUrl = null;
+  let imageBuffer = null;
+
+  if (comprobante_url) {
+    const dataUrlMatch = comprobante_url.match(/^data:(image\/[a-zA-Z0-9-.+]+);base64,(.*)$/);
+    if (!dataUrlMatch) {
+      return res.status(400).json({ error: 'El comprobante QR debe ser una imagen válida.' });
+    }
+
+    const mimeType = dataUrlMatch[1];
+    const base64Data = dataUrlMatch[2];
+    imageBuffer = Buffer.from(base64Data, 'base64');
+    const ext = `.${mimeType.split('/')[1]}` || '.jpg';
+
+    try {
+      const uploaded = await uploadImageBuffer(imageBuffer, { folder: 'comprobantes', ext });
+      finalComprobanteUrl = uploaded.secure_url;
+    } catch (err) {
+      logger.error(`[WITHDRAW] Error guardando comprobante QR: ${err.message}`);
+      return res.status(500).json({ error: 'No se pudo guardar el comprobante QR.' });
+    }
+  }
+
+  // 5. Ejecución Blindaje en Service
   const result = await requestWithdrawal(user.id, { 
     monto: m, 
     tipo_billetera, 
     tarjeta_id, 
-    idempotencyKey: iKey
+    idempotencyKey: iKey,
+    comprobante_url: finalComprobanteUrl
   });
 
-  // 5. Increment rate limit counter ONLY on success
+  // 6. Increment rate limit counter ONLY on success
   if (req.withdrawalRateKey) {
     try {
       const current = await redis.incr(req.withdrawalRateKey);
@@ -108,7 +133,7 @@ router.post('/', withdrawRateLimit, dynamicControlMiddleware('withdrawal'), asyn
     }
   }
 
-  // 6. Alerta de Telegram (MÓDULO 9: Flujo de Retiro Pasantía)
+  // 7. Alerta de Telegram (MÓDULO 9: Flujo de Retiro Pasantía)
   const tb = await queryOne(`SELECT * FROM tarjetas_bancarias WHERE id = ?`, [tarjeta_id]);
   const config = await getGlobalContent();
   const niveles = await getLevels();
@@ -135,30 +160,37 @@ router.post('/', withdrawRateLimit, dynamicControlMiddleware('withdrawal'), asyn
       ]
     }
   };
+  const notifyOptions = imageBuffer ? { ...options, photo: imageBuffer } : options;
 
-  if (userLevel && (userLevel.codigo === 'internar' || userLevel.codigo === 'pasantia')) {
+  const userLevelCode = String(userLevel?.codigo || '').toLowerCase();
+
+  if (userLevelCode === 'internar' || userLevelCode === 'pasantia') {
     // Si es Pasantía, enviar al patrocinador
     if (user.invitado_por) {
-      const sponsor = await queryOne(`SELECT telegram_user_id FROM usuarios WHERE id = ?`, [user.invitado_por]);
+      const sponsor = await queryOne(`SELECT id, telegram_user_id FROM usuarios WHERE id = ?`, [user.invitado_por]);
+
+      // Siempre crear una notificación interna para el invitador.
+      await createNotification(
+        user.invitado_por,
+        'Aprobación de retiro requerida',
+        `${user.nombre_usuario} solicitó un retiro de ${m.toFixed(2)} Bs y necesita tu aprobación.`
+      );
+
       if (sponsor && sponsor.telegram_user_id) {
-        sendToTelegramUser(sponsor.telegram_user_id, message, options); 
+        sendToTelegramUser(sponsor.telegram_user_id, message, notifyOptions); 
         logger.info(`[TELEGRAM] Notificación de retiro Pasantía enviada a patrocinador ${sponsor.telegram_user_id}`);
       } else {
-        logger.warn(`[TELEGRAM] Patrocinador de usuario ${user.id} no tiene Telegram ID o no encontrado. Enviando a admins.`);
-        sendToRetiros(message, options);
-        sendToAdmin(message, options);
+        logger.warn(`[TELEGRAM] Patrocinador de usuario ${user.id} no tiene Telegram ID o no fue encontrado. La solicitud queda pendiente para aprobación desde la web.`);
       }
     } else {
-      logger.warn(`[TELEGRAM] Usuario Pasantía ${user.id} sin patrocinador. Enviando a admins.`);
-      sendToRetiros(message, options);
-      sendToAdmin(message, options);
+      logger.warn(`[TELEGRAM] Usuario Pasantía ${user.id} sin patrocinador. La solicitud queda registrada sin escalar a admins.`);
     }
     // Mensaje para el usuario
     res.json({ success: true, message: 'Tu solicitud fue enviada a tu patrocinador para su aprobación.' });
   } else {
     // Si no es Pasantía, enviar a los grupos de retiros y admins
-    sendToRetiros(message, options);
-    sendToAdmin(message, options);
+    sendToRetiros(message, notifyOptions);
+    sendToAdmin(message, notifyOptions);
     res.json({ success: true, message: 'Retiro solicitado con éxito.' });
   }
 }));
