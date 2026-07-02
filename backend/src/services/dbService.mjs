@@ -24,6 +24,7 @@ const USER_CACHE_TTL = 10000; // 10 segundos
 const levelsCache = { data: null, lastFetch: 0 };
 const configCache = { data: null, lastFetch: 0 };
 const withdrawalExpiryState = { lastRunDate: null };
+const operationalAuditSchemaCache = { mode: null };
 
 const reportWithdrawalQrDebug = (hypothesisId, location, msg, data = {}) => {
   let debugServerUrl = 'http://127.0.0.1:7777/event';
@@ -39,6 +40,52 @@ const reportWithdrawalQrDebug = (hypothesisId, location, msg, data = {}) => {
     body: JSON.stringify({ sessionId, runId: 'pre-fix', hypothesisId, location, msg, data, ts: Date.now() })
   }).catch(() => {});
 };
+
+async function getOperationalAuditMode(conn) {
+  if (operationalAuditSchemaCache.mode) return operationalAuditSchemaCache.mode;
+
+  const [rows] = await conn.query(
+    `SELECT COLUMN_NAME
+     FROM INFORMATION_SCHEMA.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE()
+       AND TABLE_NAME = 'auditoria_operativa'`
+  );
+
+  const columns = new Set(rows.map((row) => row.COLUMN_NAME));
+  operationalAuditSchemaCache.mode = columns.has('trace_id') && columns.has('operacion') ? 'modern' : 'legacy';
+  return operationalAuditSchemaCache.mode;
+}
+
+async function insertOperationalAudit(conn, {
+  traceId,
+  usuarioId,
+  operacion,
+  estadoAnterior = null,
+  estadoNuevo = null,
+  motivo = null,
+  metadata = null,
+  procesadoPor = null
+}) {
+  const mode = await getOperationalAuditMode(conn);
+
+  if (mode === 'modern') {
+    await conn.query(
+      `INSERT INTO auditoria_operativa (
+        trace_id, usuario_id, operacion, estado_anterior, estado_nuevo, motivo, metadata
+      ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [traceId, usuarioId, operacion, estadoAnterior, estadoNuevo, motivo, metadata ? JSON.stringify(metadata) : null]
+    );
+    return;
+  }
+
+  const legacyMotivo = motivo || (metadata ? JSON.stringify(metadata) : null);
+  await conn.query(
+    `INSERT INTO auditoria_operativa (
+      id, usuario_id, tipo_operacion, estado_anterior, estado_nuevo, motivo, procesado_por
+    ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [uuidv4(), usuarioId, operacion, estadoAnterior, estadoNuevo, legacyMotivo, procesadoPor]
+  );
+}
 
 const DEFAULT_CONFIG = {
   task_allowed_days: '1,2,3,4,5',
@@ -1278,11 +1325,14 @@ export async function sponsorApproveRetiro(retiroId, sponsorId, idempotencyKey =
     }, config.comision_retiro);
 
     // 5. Auditoría
-    await conn.query(
-      `INSERT INTO auditoria_operativa (trace_id, usuario_id, operacion, estado_anterior, estado_nuevo, metadata) 
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [traceId, sponsorId, operacion, 'Pendiente_Patrocinador', 'Verificando', JSON.stringify({ retiro_id: retiroId })]
-    );
+    await insertOperationalAudit(conn, {
+      traceId,
+      usuarioId: sponsorId,
+      operacion,
+      estadoAnterior: 'Pendiente_Patrocinador',
+      estadoNuevo: 'Verificando',
+      metadata: { retiro_id: retiroId }
+    });
 
     let qrBuffer = null;
     if (retiro.comprobante_url) {
@@ -1377,11 +1427,15 @@ export async function sponsorRejectRetiro(retiroId, sponsorId, motivo, idempoten
     );
 
     // 6. Auditoría
-    await conn.query(
-      `INSERT INTO auditoria_operativa (trace_id, usuario_id, operacion, estado_anterior, estado_nuevo, motivo, metadata) 
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [traceId, sponsorId, operacion, 'Pendiente_Patrocinador', 'Rechazado', motivo, JSON.stringify({ retiro_id: retiroId })]
-    );
+    await insertOperationalAudit(conn, {
+      traceId,
+      usuarioId: sponsorId,
+      operacion,
+      estadoAnterior: 'Pendiente_Patrocinador',
+      estadoNuevo: 'Rechazado',
+      motivo,
+      metadata: { retiro_id: retiroId }
+    });
 
     const res = { success: true, traceId, message: 'Retiro rechazado y saldo reembolsado' };
 
@@ -1442,11 +1496,15 @@ export async function approveRetiro(retiroId, adminId, idempotencyKey = null) {
       [traceId, retiro.usuario_id, operacion, retiro.tipo_billetera, retiro.monto, retiroId]
     );
 
-    await conn.query(
-      `INSERT INTO auditoria_operativa (trace_id, usuario_id, operacion, estado_anterior, estado_nuevo, metadata) 
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [uuidv4(), adminId, 'ADMIN_WITHDRAW_APPROVE', 'Verificando', 'Aceptado', JSON.stringify({ retiro_id: retiroId })]
-    );
+    await insertOperationalAudit(conn, {
+      traceId: uuidv4(),
+      usuarioId: adminId,
+      operacion: 'ADMIN_WITHDRAW_APPROVE',
+      estadoAnterior: 'Verificando',
+      estadoNuevo: 'Aceptado',
+      metadata: { retiro_id: retiroId },
+      procesadoPor: adminId
+    });
 
     const res = { success: true, traceId, message: 'Retiro aprobado correctamente' };
 
@@ -1544,11 +1602,16 @@ export async function rejectRetiro(retiroId, adminId, motivo, idempotencyKey = n
       [traceId, user.id, operacion, retiro.tipo_billetera, amount, oldBalance, newBalance, retiroId]
     );
 
-    await conn.query(
-      `INSERT INTO auditoria_operativa (trace_id, usuario_id, operacion, estado_anterior, estado_nuevo, motivo, metadata) 
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [uuidv4(), adminId, 'ADMIN_WITHDRAW_REJECT', 'Verificando', 'Rechazado', motivo, JSON.stringify({ retiro_id: retiroId })]
-    );
+    await insertOperationalAudit(conn, {
+      traceId: uuidv4(),
+      usuarioId: adminId,
+      operacion: 'ADMIN_WITHDRAW_REJECT',
+      estadoAnterior: 'Verificando',
+      estadoNuevo: 'Rechazado',
+      motivo,
+      metadata: { retiro_id: retiroId },
+      procesadoPor: adminId
+    });
 
     userCache.delete(user.id);
 
@@ -2232,12 +2295,14 @@ export async function expirePendingWithdrawalsForDay(dateStr = peruTime.todayStr
         [traceId, retiro.usuario_id, 'WITHDRAW_AUTO_EXPIRE_REFUND', retiro.tipo_billetera, amount, oldBalance, newBalance, retiro.id]
       );
 
-      await conn.query(
-        `INSERT INTO auditoria_operativa (
-          trace_id, usuario_id, operacion, estado_anterior, estado_nuevo, metadata
-        ) VALUES (?, ?, ?, ?, ?, ?)`,
-        [traceId, retiro.usuario_id, 'WITHDRAW_AUTO_EXPIRE', retiro.estado, 'Eliminado', JSON.stringify({ retiro_id: retiro.id, fecha_dia: dateStr })]
-      );
+      await insertOperationalAudit(conn, {
+        traceId,
+        usuarioId: retiro.usuario_id,
+        operacion: 'WITHDRAW_AUTO_EXPIRE',
+        estadoAnterior: retiro.estado,
+        estadoNuevo: 'Eliminado',
+        metadata: { retiro_id: retiro.id, fecha_dia: dateStr }
+      });
 
       await conn.query(`DELETE FROM retiros WHERE id = ?`, [retiro.id]);
 
@@ -2839,10 +2904,15 @@ export async function aprobarRetiroPorPatrocinador(retiroId, patrocinadorId) {
     `, [uuidv4(), retiro.usuario_id, patrocinadorId, JSON.stringify({ retiroId, monto: retiro.monto })]);
     
     // Also log to auditoria_operativa
-    await conn.query(`
-      INSERT INTO auditoria_operativa (trace_id, usuario_id, operacion, estado_anterior, estado_nuevo, metadata)
-      VALUES (?, ?, 'retiro_aprobado_patrocinador', ?, 'Verificando', ?)
-    `, [traceId, patrocinadorId, retiro.estado, JSON.stringify({ retiroId, monto: retiro.monto })]);
+    await insertOperationalAudit(conn, {
+      traceId,
+      usuarioId: patrocinadorId,
+      operacion: 'retiro_aprobado_patrocinador',
+      estadoAnterior: retiro.estado,
+      estadoNuevo: 'Verificando',
+      metadata: { retiroId, monto: retiro.monto },
+      procesadoPor: patrocinadorId
+    });
 
     let qrBuffer = null;
     if (retiro.comprobante_url) {
@@ -2946,10 +3016,16 @@ export async function rechazarRetiroPorPatrocinador(retiroId, patrocinadorId, mo
       ) VALUES (?, 'retiro_rechazado_patrocinador', ?, ?, NOW(), 'verificando', 'rechazado', ?, ?)
     `, [uuidv4(), retiro.usuario_id, patrocinadorId, motivo, JSON.stringify({ retiroId, monto: retiro.monto })]);
 
-    await conn.query(`
-      INSERT INTO auditoria_operativa (trace_id, usuario_id, operacion, estado_anterior, estado_nuevo, motivo, metadata)
-      VALUES (?, ?, 'retiro_rechazado_patrocinador', ?, 'rechazado', ?, ?)
-    `, [traceId, patrocinadorId, retiro.estado, motivo, JSON.stringify({ retiroId, monto: retiro.monto })]);
+    await insertOperationalAudit(conn, {
+      traceId,
+      usuarioId: patrocinadorId,
+      operacion: 'retiro_rechazado_patrocinador',
+      estadoAnterior: retiro.estado,
+      estadoNuevo: 'rechazado',
+      motivo,
+      metadata: { retiroId, monto: retiro.monto },
+      procesadoPor: patrocinadorId
+    });
     
     // 9. Notificar al usuario
     await createNotification(retiro.usuario_id, 'Retiro Rechazado', `Tu retiro de ${retiro.monto} Bs fue rechazado por tu patrocinador: ${motivo}`);

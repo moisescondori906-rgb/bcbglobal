@@ -29,3 +29,19 @@ Status: OPEN
 
 ## Próximo paso
 - Inspección de código y preparación de instrumentación mínima basada en evidencia.
+
+## Evidencia nueva
+- En producción, `auditoria_operativa` tiene esquema legado:
+  - `id VARCHAR(36)` como PK
+  - `tipo_operacion` en vez de `operacion`
+  - no existe `trace_id`
+  - no existe `metadata`
+- El backend actual intentaba insertar con `trace_id`, `operacion` y sin `id`, lo que rompe el flujo antes de completar algunas acciones de retiro.
+
+## Estado de hipótesis
+- H1 `comprobante_url` faltante: inconclusa
+- H2 QR no persistido: inconclusa
+- H3 Telegram no acepta foto: inconclusa
+- H4 Relectura del archivo QR falla: inconclusa
+- H5 Ruta final descarta `photo`: inconclusa
+- H6 Desfase de esquema en `auditoria_operativa` rompe el flujo de retiros: confirmada
