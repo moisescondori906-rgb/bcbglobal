@@ -9,7 +9,7 @@ ALTER TABLE retiros
 ADD COLUMN tomado_por_telegram_user_id VARCHAR(100),
 ADD COLUMN tomado_por_nombre VARCHAR(100),
 ADD COLUMN tomado_en DATETIME,
-ADD COLUMN estado_operativo ENUM('pendiente', 'tomado', 'aceptado', 'rechazado') DEFAULT 'pendiente',
+ADD COLUMN estado_operativo ENUM('Verificando', 'Tomado', 'Aceptado', 'Rechazado') DEFAULT 'Verificando',
 ADD COLUMN resuelto_por_telegram_user_id VARCHAR(100),
 ADD COLUMN resuelto_por_nombre VARCHAR(100),
 ADD COLUMN resuelto_en DATETIME;
@@ -18,7 +18,7 @@ ALTER TABLE compras_nivel
 ADD COLUMN tomado_por_telegram_user_id VARCHAR(100),
 ADD COLUMN tomado_por_nombre VARCHAR(100),
 ADD COLUMN tomado_en DATETIME,
-ADD COLUMN estado_operativo ENUM('pendiente', 'tomado', 'aceptado', 'rechazado') DEFAULT 'pendiente',
+ADD COLUMN estado_operativo ENUM('Verificando', 'Tomado', 'Aceptado', 'Rechazado') DEFAULT 'Verificando',
 ADD COLUMN resuelto_por_telegram_user_id VARCHAR(100),
 ADD COLUMN resuelto_por_nombre VARCHAR(100),
 ADD COLUMN resuelto_en DATETIME;

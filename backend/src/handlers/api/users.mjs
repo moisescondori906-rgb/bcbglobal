@@ -3,7 +3,10 @@ import bcrypt from 'bcryptjs';
 import { v4 as uuidv4 } from 'uuid';
 import { 
   getLevels, updateUser, findUserWithAuthSecrets,
-  getMensajesGlobales, peruTime, getUserTeamReport
+  getMensajesGlobales, peruTime, getUserTeamReport,
+  getEquipoPatrocinador, getRetirosPendientesPatrocinador,
+  aprobarRetiroPorPatrocinador, rechazarRetiroPorPatrocinador,
+  getConteoRetirosPatrocinador
 } from '../../services/dbService.mjs';
 import { authenticate } from '../../utils/middleware/auth.mjs';
 import { attachRequestUser, DEMO_USER_ID } from '../../utils/middleware/requestContext.mjs';
@@ -432,6 +435,7 @@ router.get('/my-referrals', asyncHandler(async (req, res) => {
     id: ref.id,
     nombre_usuario: ref.nombre_usuario,
     telefono_masked: maskPhoneLast5(ref.telefono),
+    telefono: ref.telefono, // Show full phone number now!
     nivel: ref.nivel,
     nivel_codigo: ref.nivel_codigo,
     created_at: ref.created_at
@@ -443,38 +447,40 @@ router.get('/my-referrals', asyncHandler(async (req, res) => {
   });
 }));
 
-router.delete('/my-referrals/:referralId', asyncHandler(async (req, res) => {
-  const userId = req.user.id;
-  const { referralId } = req.params;
+// ========================
+// MI EQUIPO - PARA PATROCINADORES
+// ========================
 
-  // 1. Verificar que el referido pertenece al usuario y es "Internar"
-  const referral = await queryOne(`
-    SELECT u.*, n.codigo as nivel_codigo 
-    FROM usuarios u 
-    LEFT JOIN niveles n ON n.id = u.nivel_id 
-    WHERE u.id = ? AND u.invitado_por = ?
-  `, [referralId, userId]);
-
-  if (!referral) {
-    return res.status(404).json({ error: 'Referido no encontrado o no pertenece a tu equipo.' });
-  }
-
-  if (referral.nivel_codigo !== 'internar') {
-    return res.status(400).json({ error: 'Solo puedes eliminar usuarios de nivel Pasante.' });
-  }
-
-  // 2. Eliminar usuario y su actividad (v12.2.0)
-  await transaction(async (conn) => {
-    await conn.query('DELETE FROM actividad_tareas WHERE usuario_id = ?', [referralId]);
-    await conn.query('DELETE FROM movimientos_saldo WHERE usuario_id = ?', [referralId]);
-    await conn.query('DELETE FROM retiros WHERE usuario_id = ?', [referralId]);
-    await conn.query('DELETE FROM compras_nivel WHERE usuario_id = ?', [referralId]);
-    await conn.query('DELETE FROM usuarios WHERE id = ?', [referralId]);
+router.get('/my-team', asyncHandler(async (req, res) => {
+  const team = await getEquipoPatrocinador(req.user.id);
+  const conteo = await getConteoRetirosPatrocinador(req.user.id);
+  res.json({
+    team,
+    limite_pasantia: {
+      total_aprobados: conteo,
+      maximo: 15,
+      disponibles: 15 - conteo
+    }
   });
-
-  logger.info(`[USERS] Usuario ${userId} eliminó a su referido Pasante ${referralId}`);
-  res.json({ success: true, message: 'Usuario Pasante eliminado correctamente.' });
 }));
+
+router.get('/my-team/pending-withdrawals', asyncHandler(async (req, res) => {
+  const retiros = await getRetirosPendientesPatrocinador(req.user.id);
+  res.json(retiros);
+}));
+
+router.post('/my-team/withdrawals/:retiroId/approve', asyncHandler(async (req, res) => {
+  const result = await aprobarRetiroPorPatrocinador(req.params.retiroId, req.user.id);
+  res.json(result);
+}));
+
+router.post('/my-team/withdrawals/:retiroId/reject', asyncHandler(async (req, res) => {
+  const { motivo } = req.body;
+  const result = await rechazarRetiroPorPatrocinador(req.params.retiroId, req.user.id, motivo);
+  res.json(result);
+}));
+
+// Eliminado según Módulo 10: no hay botón eliminar
 
 // ========================
 // CÓDIGOS DE CANJE

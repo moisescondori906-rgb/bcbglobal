@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import bcrypt from 'bcryptjs';
 import { 
   getGlobalContent, peruTime, findUserWithAuthSecrets,
-  canWithdraw, requestWithdrawal
+  canWithdraw, requestWithdrawal, getLevels
 } from '../../services/dbService.mjs';
 import { query, queryOne } from '../../config/db.mjs';
 import { authenticate } from '../../utils/middleware/auth.mjs';
@@ -13,6 +13,7 @@ import {
   sendToRetiros, 
   sendToAdmin, 
   sendToSecretaria, 
+  sendToTelegramUser,
   formatRetiroMessage 
 } from '../../services/telegramBot.mjs';
 import logger from '../../utils/logger.mjs';
@@ -89,18 +90,21 @@ router.post('/', withdrawRateLimit, dynamicControlMiddleware('withdrawal'), asyn
     idempotencyKey: iKey
   });
 
-  // 5. Alerta de Telegram
+  // 5. Alerta de Telegram (MÓDULO 9: Flujo de Retiro Pasantía)
   const tb = await queryOne(`SELECT * FROM tarjetas_bancarias WHERE id = ?`, [tarjeta_id]);
   const config = await getGlobalContent();
-  
+  const levels = await getLevels();
+  const userLevel = levels.find(l => String(l.id) === String(user.nivel_id));
+
   const message = formatRetiroMessage({
     id: result.retiroId,
     telefono: user.telefono,
     nombre_usuario: user.nombre_usuario,
-    nivel: user.nivel_nombre || 'Usuario', 
+    nivel: userLevel?.nombre || 'Usuario', 
     monto: m,
     banco: tb.nombre_banco,
     cuenta: tb.numero_cuenta,
+    nombre_titular: tb.nombre_titular, // <-- Añadido
     hora: peruTime.getTimeString()
   }, config.comision_retiro);
   
@@ -114,10 +118,31 @@ router.post('/', withdrawRateLimit, dynamicControlMiddleware('withdrawal'), asyn
     }
   };
 
-  sendToRetiros(message, options);
-  sendToAdmin(message, options);
-
-  res.json({ success: true, message: 'Retiro solicitado con éxito.' });
+  if (userLevel && (userLevel.codigo === 'internar' || userLevel.codigo === 'pasantia')) {
+    // Si es Pasantía, enviar al patrocinador
+    if (user.invitado_por) {
+      const sponsor = await queryOne(`SELECT telegram_user_id FROM usuarios WHERE id = ?`, [user.invitado_por]);
+      if (sponsor && sponsor.telegram_user_id) {
+        sendToTelegramUser(sponsor.telegram_user_id, message, options); 
+        logger.info(`[TELEGRAM] Notificación de retiro Pasantía enviada a patrocinador ${sponsor.telegram_user_id}`);
+      } else {
+        logger.warn(`[TELEGRAM] Patrocinador de usuario ${user.id} no tiene Telegram ID o no encontrado. Enviando a admins.`);
+        sendToRetiros(message, options);
+        sendToAdmin(message, options);
+      }
+    } else {
+      logger.warn(`[TELEGRAM] Usuario Pasantía ${user.id} sin patrocinador. Enviando a admins.`);
+      sendToRetiros(message, options);
+      sendToAdmin(message, options);
+    }
+    // Mensaje para el usuario
+    res.json({ success: true, message: 'Tu solicitud fue enviada a tu patrocinador para su aprobación.' });
+  } else {
+    // Si no es Pasantía, enviar a los grupos de retiros y admins
+    sendToRetiros(message, options);
+    sendToAdmin(message, options);
+    res.json({ success: true, message: 'Retiro solicitado con éxito.' });
+  }
 }));
 
 export default router;

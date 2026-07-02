@@ -124,7 +124,7 @@ CREATE TABLE IF NOT EXISTS compras_nivel (
   monto DECIMAL(20, 2) NOT NULL,
   metodo_qr_id VARCHAR(36),
   comprobante_url TEXT,
-  estado ENUM('pendiente', 'completada', 'rechazada') DEFAULT 'pendiente',
+  estado ENUM('Verificando', 'Aceptado', 'Rechazado') DEFAULT 'Verificando',
   reembolsado TINYINT(1) DEFAULT 0, -- refunded
   admin_notas TEXT,
   procesado_por VARCHAR(36),
@@ -145,18 +145,79 @@ CREATE TABLE IF NOT EXISTS retiros (
   monto DECIMAL(20, 2) NOT NULL,
   monto_neto DECIMAL(20, 2) NOT NULL, -- Monto menos comisión
   comision_aplicada DECIMAL(20, 2) NOT NULL,
+  comision_operador DECIMAL(20, 2) DEFAULT 0,
+  comision_retiro DECIMAL(20, 2) DEFAULT 0,
+  comision_total DECIMAL(20, 2) DEFAULT 0,
   tipo_billetera ENUM('principal', 'comisiones') NOT NULL,
-  estado ENUM('pendiente', 'aprobado', 'rechazado', 'pagado') DEFAULT 'pendiente',
+  estado ENUM('Verificando', 'Aceptado', 'Rechazado', 'Pendiente_Patrocinador') DEFAULT 'Verificando',
   datos_bancarios JSON, -- Copia de la tarjeta al momento del retiro
-  fecha_dia DATE NOT NULL, -- Para validación de 1 retiro por día (Per� Time)
+  cuenta_bancaria_id VARCHAR(36),
+  password_fondo_validado TINYINT(1) DEFAULT 0,
+  fecha_dia DATE NOT NULL, -- Para validación de 1 retiro por día (Perú Time)
+  patrocinador_id VARCHAR(36), -- Para retiros de pasantes
+  procesado_por_patrocinador VARCHAR(36), -- ID del patrocinador que aprobó
+  procesado_por_patrocinador_at TIMESTAMP NULL,
+  estado_patrocinador ENUM('Verificando', 'aprobado', 'rechazado') DEFAULT 'Verificando',
+  aprobado_por_patrocinador TINYINT(1) DEFAULT 0,
+  motivo_rechazo_patrocinador TEXT,
+  fecha_aprobacion_patrocinador TIMESTAMP NULL,
   admin_notas TEXT,
   procesado_por VARCHAR(36),
   procesado_at TIMESTAMP NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE,
   FOREIGN KEY (procesado_por) REFERENCES usuarios(id) ON DELETE SET NULL,
+  FOREIGN KEY (patrocinador_id) REFERENCES usuarios(id) ON DELETE SET NULL,
+  FOREIGN KEY (cuenta_bancaria_id) REFERENCES tarjetas_bancarias(id) ON DELETE SET NULL,
   INDEX idx_retiros_estado (estado),
-  INDEX idx_retiros_usuario_dia (usuario_id, fecha_dia)
+  INDEX idx_retiros_usuario_dia (usuario_id, fecha_dia),
+  INDEX idx_retiros_patrocinador (patrocinador_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 7.1. LÍMITES DE RETIROS POR PATROCINADOR
+CREATE TABLE IF NOT EXISTS limites_retiros_pasantia (
+  id VARCHAR(36) PRIMARY KEY,
+  patrocinador_id VARCHAR(36) NOT NULL UNIQUE,
+  total_aprobados INT DEFAULT 0,
+  maximo_por_patrocinador INT DEFAULT 15,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (patrocinador_id) REFERENCES usuarios(id) ON DELETE CASCADE,
+  INDEX idx_limites_patrocinador (patrocinador_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 7.2. AUDITORÍA DE OPERACIONES
+CREATE TABLE IF NOT EXISTS auditoria_operativa (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  trace_id VARCHAR(36) NOT NULL,
+  usuario_id VARCHAR(36),
+  operacion VARCHAR(100) NOT NULL,
+  estado_anterior VARCHAR(100),
+  estado_nuevo VARCHAR(100),
+  motivo TEXT,
+  ip_address VARCHAR(45),
+  user_agent TEXT,
+  metadata JSON,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_audit_trace (trace_id),
+  INDEX idx_audit_usuario (usuario_id),
+  INDEX idx_audit_operacion (operacion)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 7.3. AUDITORÍA DE OPERACIONES (COMPATIBILIDAD)
+CREATE TABLE IF NOT EXISTS auditoria_operaciones (
+  id VARCHAR(36) PRIMARY KEY,
+  tipo_operacion VARCHAR(100) NOT NULL,
+  usuario_id VARCHAR(36),
+  patrocinador_id VARCHAR(36),
+  fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  estado_anterior VARCHAR(100),
+  estado_nuevo VARCHAR(100),
+  motivo TEXT,
+  metadata JSON,
+  INDEX idx_audit_op_tipo (tipo_operacion),
+  INDEX idx_audit_op_usuario (usuario_id),
+  INDEX idx_audit_op_patrocinador (patrocinador_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 8. TARJETAS BANCARIAS

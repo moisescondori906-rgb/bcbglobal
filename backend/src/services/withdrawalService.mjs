@@ -33,7 +33,7 @@ export const WithdrawalService = {
       );
 
       if (!retiro) throw new Error("❌ Retiro no encontrado.");
-      if (retiro.estado_operativo !== 'pendiente') {
+      if (retiro.estado_operativo !== 'Verificando') {
         throw new Error("⚠️ Este retiro ya no está disponible (ya fue tomado o procesado).");
       }
 
@@ -145,7 +145,8 @@ export const WithdrawalService = {
       if (!check || check.estado_operativo !== 'tomado') return;
 
       await conn.query(
-        `UPDATE retiros SET estado_operativo='pendiente', tomado_por_telegram_user_id=NULL, tomado_por_nombre=NULL, tomado_en=NULL WHERE id=?`, 
+        `UPDATE retiros SET estado_operativo='Verificando', tomado_por_telegram_user_id=NULL, tomado_por_nombre=NULL, tomado_en=NULL WHERE id=?`,
+ 
         [withdrawalId]
       );
       

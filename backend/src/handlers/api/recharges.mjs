@@ -114,15 +114,17 @@ router.post('/', asyncHandler(async (req, res) => {
   const id = uuidv4();
   await query(`
     INSERT INTO compras_nivel (id, usuario_id, nivel_id, monto, metodo_qr_id, comprobante_url, estado, fecha_dia) 
-    VALUES (?, ?, ?, ?, ?, ?, 'pendiente', ?)`,
+    VALUES (?, ?, ?, ?, ?, ?, 'Verificando', ?)`,
     [id, req.user.id, matchingLevel.id, monto, metodo_qr_id, final_comprobante_url, todayStr]
   );
 
   // 4. Notificar vía Telegram (Resiliente con safeTelegram)
   const msg = formatRecargaMessage({
-    telefono: user?.telefono || user?.nombre_usuario || 'Desconocido',
+    nombre_usuario: user.nombre_usuario, // <-- Añadido
+    telefono: user.telefono,
     nivel: matchingLevel.nombre,
-    monto: monto
+    monto: monto,
+    fecha: peruTime.todayStr() // <-- Añadido para el formato
   });
   
   const options = {

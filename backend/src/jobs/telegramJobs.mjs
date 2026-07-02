@@ -1,6 +1,7 @@
-import { botAdmin, botRetiros, botSecretaria } from '../services/telegramBot.mjs';
+import { botAdmin, botRetiros, botSecretaria, formatReporteFinancieroMessage } from '../services/telegramBot.mjs';
 import { WithdrawalRepository, CronRepository } from '../services/repositories/telegramRepository.mjs';
 import { WithdrawalService } from '../services/withdrawalService.mjs';
+import { generarReporteFinancieroDiario } from '../services/dbService.mjs';
 import worker from '../services/TelegramWorker.mjs';
 import { checkGlobalRateLimit, acquireLock, releaseLock } from '../services/redisService.mjs';
 import { query } from '../config/db.mjs';
@@ -57,12 +58,12 @@ export const setupJobs = () => {
     }
   }, 3 * 60 * 1000);
 
-  // 3. Reporte Diario 23:30 (Con Idempotencia Persistente)
+  // 3. Reporte Diario 22:00 (Con Idempotencia Persistente)
   setInterval(async () => {
     const now = new Date();
     const boliviaTime = new Date(now.toLocaleString('en-US', { timeZone: 'America/La_Paz' }));
     
-    if (boliviaTime.getHours() === 23 && boliviaTime.getMinutes() === 30) {
+    if (boliviaTime.getHours() === 22 && boliviaTime.getMinutes() === 0) {
       const traceId = uuidv4();
       const hoy = boliviaTime.toISOString().split('T')[0];
       
@@ -76,9 +77,9 @@ export const setupJobs = () => {
           return;
         }
 
-        // Generar reporte (Lógica delegada a un servicio si crece más)
-        const stats = await query(`SELECT COUNT(*) as total FROM retiros WHERE DATE(resuelto_en) = ?`, [hoy]);
-        const msg = `📊 <b>REPORTE RESILIENTE (${hoy})</b>\nTotal: ${stats[0].total}`;
+        // Generar reporte financiero completo
+        const reporte = await generarReporteFinancieroDiario(hoy);
+        const msg = formatReporteFinancieroMessage(reporte);
         
         await worker.addToQueue(botAdmin, process.env.TELEGRAM_CHAT_ADMIN, msg, { traceId });
         await CronRepository.registerExecution('reporte_diario', hoy, { traceId });

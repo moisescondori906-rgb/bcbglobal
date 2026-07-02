@@ -77,7 +77,7 @@ async function sendDailyUnpaidQRReport(bot, chatId) {
         JSON_EXTRACT(r.datos_bancarios, '$.numero_cuenta') as cuenta
       FROM retiros r
       LEFT JOIN usuarios u ON r.usuario_id = u.id
-      WHERE r.estado = 'pendiente'
+      WHERE r.estado = 'Verificando'
       ORDER BY r.created_at DESC
     `);
     const dateStr = peruTime.todayStr();
@@ -86,19 +86,19 @@ async function sendDailyUnpaidQRReport(bot, chatId) {
       const message = `✅ <b>REPORTE DIARIO RETIROS PENDIENTES</b>\n` +
                       `━━━━━━━━━━━━━━━━━━\n` +
                       `📅 <b>Fecha:</b> ${dateStr}\n` +
-                      `🎉 <b>¡Excelente!</b> No hay retiros pendientes de pago.\n` +
+                      `🎉 <b>¡Excelente!</b> No hay retiros Verificando de pago.\n` +
                       `━━━━━━━━━━━━━━━━━━`;
       await bot.sendMessage(chatId, message, { parse_mode: 'HTML' });
       return;
     }
 
-    const filename = `retiros_pendientes_${dateStr}.csv`;
+    const filename = `retiros_Verificando_${dateStr}.csv`;
     const filePath = generateCSV(pendingRetiros, filename, 'retiros');
     
     const caption = `🔴 <b>REPORTE DIARIO RETIROS PENDIENTES</b>\n` +
                     `━━━━━━━━━━━━━━━━━━\n` +
                     `📅 <b>Fecha:</b> ${dateStr}\n` +
-                    `📊 <b>Total pendientes:</b> ${pendingRetiros.length}\n` +
+                    `📊 <b>Total Verificando:</b> ${pendingRetiros.length}\n` +
                     `━━━━━━━━━━━━━━━━━━`;
     
     await bot.sendDocument(chatId, filePath, { caption, parse_mode: 'HTML' });
@@ -300,7 +300,7 @@ export async function setupTelegramLogic() {
               logger.info(`[TELEGRAM][${botName}] Creando registro de bloqueo para refId: ${refId}, tipo: ${opType}`);
               try {
                 await conn.query(
-                  'INSERT INTO telegram_casos_bloqueo (referencia_id, tipo_operacion, estado_operativo) VALUES (?, ?, "pendiente")',
+                  'INSERT INTO telegram_casos_bloqueo (referenci-id, tipo_operacion, estado_operativo) VALUES (?, ?, "Verificando")',
                   [refId, opType]
                 );
               } catch (insErr) {
@@ -361,11 +361,11 @@ export async function setupTelegramLogic() {
                       operador_username = ?, 
                       tomado_en = ? 
                   WHERE id = ?
-                    AND (estado_operativo IS NULL OR estado_operativo = 'pendiente')
+                    AND (estado_operativo IS NULL OR estado_operativo = 'Verificando')
                 `, [telegramUserId, adminName, from.username || null, peruTime.now(), refId]);
                 logger.info(`[TELEGRAM][${botName}] Resultado update retiros: ${res.affectedRows} filas.`);
                 if (res.affectedRows === 0) {
-                  throw new Error(`Este caso ya fue tomado por otro operador o no está pendiente.`);
+                  throw new Error(`Este caso ya fue tomado por otro operador o no está en Verificando.`);
                 }
               } else {
                 const [res] = await conn.query(`
@@ -376,11 +376,11 @@ export async function setupTelegramLogic() {
                       operador_username = ?,
                       tomado_en = ?
                   WHERE id = ?
-                    AND (estado_operativo IS NULL OR estado_operativo = 'pendiente')
+                    AND (estado_operativo IS NULL OR estado_operativo = 'Verificando')
                 `, [telegramUserId, adminName, from.username || null, peruTime.now(), refId]);
                 logger.info(`[TELEGRAM][${botName}] Resultado update compras_nivel: ${res.affectedRows} filas.`);
                 if (res.affectedRows === 0) {
-                  throw new Error(`Este caso ya fue tomado por otro operador o no está pendiente.`);
+                  throw new Error(`Este caso ya fue tomado por otro operador o no está en Verificando.`);
                 }
               }
 
@@ -929,12 +929,12 @@ Selecciona una opción:
               u.telefono as usuario_telefono
             FROM retiros r
             LEFT JOIN usuarios u ON r.usuario_id = u.id
-            WHERE r.estado = 'pendiente'
+            WHERE r.estado = 'Verificando'
             ORDER BY r.created_at DESC
           `);
           let pendingMessage = pendingRetiros.length > 0 
             ? `🔴 <b>RETIROS PENDIENTES</b> (${pendingRetiros.length})\n━━━━━━━━━━━━━━━━━━\n\n` 
-            : `🔴 <b>RETIROS PENDIENTES</b>\n━━━━━━━━━━━━━━━━━━\nNo hay retiros pendientes.\n`;
+            : `🔴 <b>RETIROS EN VERIFICACIÓN</b>\n━━━━━━━━━━━━━━━━━━\nNo hay retiros en verificación.\n`;
 
           let buttons = [];
           if (pendingRetiros.length > 0) {
@@ -973,7 +973,7 @@ Selecciona una opción:
         case 'export_pagados':
         case 'export_no_pagados':
           const isApproved = subAction === 'export_pagados';
-          const statusFilter = isApproved ? "estado IN ('aprobado', 'pagado')" : "estado = 'pendiente'";
+          const statusFilter = isApproved ? "estado IN ('Aceptado', 'pagado')" : "estado = 'Verificando'";
           
           const data = await query(`
             SELECT 
@@ -991,7 +991,7 @@ Selecciona una opción:
           const dateStr = peruTime.todayStr().replace(/\//g, '-');
           const filename = isApproved 
             ? `retiros_aprobados_${dateStr}.csv` 
-            : `retiros_pendientes_${dateStr}.csv`;
+            : `retiros_Verificando_${dateStr}.csv`;
           
           const filePath = generateCSV(data, filename, 'retiros');
           
@@ -1049,7 +1049,7 @@ Selecciona una opción:
     sendDailyOperatorReport(bot, chatId);
   });
 
-  bot.onText(/\/retiros_pendientes/, async (msg) => {
+  bot.onText(/\/retiros_Verificando/, async (msg) => {
     const chatId = msg.chat.id;
     sendDailyUnpaidQRReport(bot, chatId);
   });

@@ -82,7 +82,7 @@ export async function processTelegramUpdate(update) {
                operador_nombre = ?,
                operador_username = ?,
                tomado_en = ?
-           WHERE id = ? AND (estado_operativo IS NULL OR estado_operativo = 'pendiente') AND estado = 'pendiente'`,
+           WHERE id = ? AND (estado_operativo IS NULL OR estado_operativo = 'Verificando') AND estado = 'Verificando'`,
           [String(telegramUser.id), adminName, adminUsername, peruTime.getISOString(), id]
         );
 
@@ -154,9 +154,9 @@ export async function processTelegramUpdate(update) {
     if (type === 'recarga') {
       logger.info(`[TELEGRAM-LOGIC] Acción de Recarga: ${action} para ID: ${id}`);
       const recarga = await getRecargaById(id);
-      if (!recarga || (recarga.estado !== 'pendiente' && recarga.estado !== 'pendiente_ascenso')) {
-        logger.error(`[TELEGRAM-LOGIC] Recarga no encontrada o no pendiente: ${id}`);
-        return safeTelegram(() => answerCallback(callbackQueryId, 'Esta solicitud ya no está pendiente.'), 'answerCallback-RecargaDone');
+      if (!recarga || (recarga.estado !== 'Verificando' && recarga.estado !== 'pendiente_ascenso')) {
+        logger.error(`[TELEGRAM-LOGIC] Recarga no encontrada o no en Verificando: ${id}`);
+        return safeTelegram(() => answerCallback(callbackQueryId, 'Esta solicitud ya no está en Verificando.'), 'answerCallback-RecargaDone');
       }
 
       // ACCIÓN: TOMAR RECARGA v14.0.1 (Blindado con WHERE)
@@ -168,7 +168,7 @@ export async function processTelegramUpdate(update) {
                operador_nombre = ?,
                operador_username = ?,
                tomado_en = ?
-           WHERE id = ? AND (estado_operativo IS NULL OR estado_operativo = 'pendiente') AND estado IN ('pendiente', 'pendiente_ascenso')`,
+           WHERE id = ? AND (estado_operativo IS NULL OR estado_operativo = 'Verificando') AND estado IN ('Verificando', 'pendiente_ascenso')`,
           [String(telegramUser.id), adminName, adminUsername, peruTime.getISOString(), id]
         );
 
@@ -203,7 +203,7 @@ export async function processTelegramUpdate(update) {
           // LOCK de recarga para evitar doble proceso (Atómico, usando 'completada' según schema)
           const approveResult = await query(
             `UPDATE compras_nivel SET estado = 'completada', estado_operativo = 'aceptado', procesado_por = ?, procesado_at = ? 
-             WHERE id = ? AND estado IN ('pendiente', 'pendiente_ascenso')`,
+             WHERE id = ? AND estado IN ('Verificando', 'pendiente_ascenso')`,
             [admin.id, peruTime.getISOString(), id]
           );
 
@@ -265,7 +265,7 @@ export async function processTelegramUpdate(update) {
           // RECHAZAR RECARGA (Atómico)
           const rejectResult = await query(
             `UPDATE compras_nivel SET estado = 'rechazada', estado_operativo = 'rechazado', admin_notas = 'Rechazado vía Telegram', procesado_por = ?, procesado_at = ? 
-             WHERE id = ? AND estado IN ('pendiente', 'pendiente_ascenso')`,
+             WHERE id = ? AND estado IN ('Verificando', 'pendiente_ascenso')`,
             [admin.id, peruTime.getISOString(), id]
           );
 

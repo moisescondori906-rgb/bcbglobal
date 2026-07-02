@@ -11,6 +11,11 @@ import {
   getDailyWithdrawalSummary, getDailyOperatorSummary,
   giveTicketsPorAscensoInvitado
 } from '../../services/dbService.mjs';
+import {
+  sendToAdmin,
+  formatRecargaMessageAprobada,
+  formatRecargaMessageRechazada
+} from '../../services/telegramBot.mjs';
 import { query, queryOne, transaction } from '../../config/db.mjs';
 import { authenticate, requireAdmin } from '../../utils/middleware/auth.mjs';
 import { uploadVideoBuffer, uploadImageBuffer, uploadLocalVideo, uploadLocalImage } from '../../utils/fileStorage.mjs';
@@ -48,8 +53,8 @@ router.get('/stats', asyncHandler(async (req, res) => {
   const stats = await query(`
     SELECT 
       (SELECT COUNT(*) FROM usuarios WHERE rol = 'usuario') as usuarios,
-      (SELECT COALESCE(SUM(monto), 0) FROM compras_nivel WHERE estado = 'completada' AND DATE(created_at) = CURDATE()) as recargas_hoy,
-      (SELECT COALESCE(SUM(monto), 0) FROM retiros WHERE estado = 'pagado' AND DATE(created_at) = CURDATE()) as retiros_hoy,
+      (SELECT COALESCE(SUM(monto), 0) FROM compras_nivel WHERE estado = 'Aceptado' AND DATE(created_at) = CURDATE()) as recargas_hoy,
+          (SELECT COALESCE(SUM(monto), 0) FROM retiros WHERE estado = 'Aceptado' AND DATE(created_at) = CURDATE()) as retiros_hoy,
       (SELECT COALESCE(SUM(saldo_principal + saldo_comisiones), 0) FROM usuarios WHERE rol = 'usuario') as balance_total
   `);
   
@@ -89,6 +94,62 @@ router.get('/usuarios', asyncHandler(async (req, res) => {
       saldo_comisiones: Number(u.saldo_comisiones || 0)
     };
   });
+  res.json(filtered);
+}));
+
+router.get('/usuarios/search', asyncHandler(async (req, res) => {
+  const { q } = req.query;
+  if (!q || q.trim() === '') {
+    return res.json([]);
+  }
+  const searchTerm = `%${q.trim()}%`;
+  
+  // First get all bank accounts to join
+  const bankAccounts = await query(`SELECT usuario_id, numero_cuenta FROM tarjetas_bancarias`);
+  const accountMap = new Map();
+  bankAccounts.forEach(acc => {
+    if (!accountMap.has(acc.usuario_id)) {
+      accountMap.set(acc.usuario_id, []);
+    }
+    accountMap.get(acc.usuario_id).push(acc.numero_cuenta);
+  });
+  
+  // Search users
+  const users = await query(`
+    SELECT * FROM usuarios 
+    WHERE nombre_usuario LIKE ? 
+    OR telefono LIKE ? 
+    OR codigo_invitacion LIKE ? 
+    OR id LIKE ?
+  `, [searchTerm, searchTerm, searchTerm, searchTerm]);
+  
+  // Also check for bank account matches
+  const userIdsFromAccounts = [];
+  bankAccounts.forEach(acc => {
+    if (acc.numero_cuenta.includes(q.trim())) {
+      userIdsFromAccounts.push(acc.usuario_id);
+    }
+  });
+  
+  if (userIdsFromAccounts.length > 0) {
+    const moreUsers = await query(`SELECT * FROM usuarios WHERE id IN (${userIdsFromAccounts.map(() => '?').join(',')})`, userIdsFromAccounts);
+    moreUsers.forEach(u => {
+      if (!users.find(x => x.id === u.id)) {
+        users.push(u);
+      }
+    });
+  }
+  
+  const levels = await getLevels();
+  const filtered = users.map(u => {
+    const sanitized = sanitizeUser(u, levels);
+    return {
+      ...sanitized,
+      saldo_principal: Number(u.saldo_principal || 0),
+      saldo_comisiones: Number(u.saldo_comisiones || 0)
+    };
+  });
+  
   res.json(filtered);
 }));
 
@@ -175,11 +236,11 @@ router.post('/recargas/:id/tomar', asyncHandler(async (req, res) => {
         operador_nombre = ?, 
         operador_username = ?, 
         tomado_en = NOW() 
-    WHERE id = ? AND (estado_operativo IS NULL OR estado_operativo = 'pendiente')
+    WHERE id = ? AND (estado_operativo IS NULL OR estado_operativo = 'Verificando')
   `, [admin.nombre_usuario, admin.nombre_usuario, id]);
 
   if (result.affectedRows === 0) {
-    return res.status(400).json({ error: 'Este caso ya fue tomado o no está pendiente.' });
+    return res.status(400).json({ error: 'Este caso ya fue tomado o no está en Verificando.' });
   }
 
   res.json({ ok: true });
@@ -195,11 +256,11 @@ router.post('/retiros/:id/tomar', asyncHandler(async (req, res) => {
         operador_nombre = ?, 
         operador_username = ?, 
         tomado_en = NOW() 
-    WHERE id = ? AND (estado_operativo IS NULL OR estado_operativo = 'pendiente')
+    WHERE id = ? AND (estado_operativo IS NULL OR estado_operativo = 'Verificando')
   `, [admin.nombre_usuario, admin.nombre_usuario, id]);
 
   if (result.affectedRows === 0) {
-    return res.status(400).json({ error: 'Este caso ya fue tomado o no está pendiente.' });
+    return res.status(400).json({ error: 'Este caso ya fue tomado o no está en Verificando.' });
   }
 
   res.json({ ok: true });
@@ -225,6 +286,15 @@ router.post('/compras-nivel/:id/aprobar', asyncHandler(async (req, res) => {
     // Invalidar caché de ranking ya que un ascenso afecta el conteo de invitados reales
     await redis.del('admin:ranking:invitados');
   }
+
+  // Send Telegram notification for approved recarga
+  const adminUser = await queryOne(`SELECT nombre_usuario FROM usuarios WHERE id = ?`, [req.user.id]);
+  const message = formatRecargaMessageAprobada({ 
+    procesado_por: adminUser?.nombre_usuario || 'Administrador', 
+    hora: peruTime.getTimeString()
+  });
+  sendToAdmin(message);
+
   res.json({ ok: true, trace_id: result.traceId });
 }));
 
@@ -248,29 +318,64 @@ router.post('/recargas/:id/aprobar', asyncHandler(async (req, res) => {
     await distributeInvestmentCommissions(compra.usuario_id, compra.monto, req.params.id);
     await redis.del('admin:ranking:invitados');
   }
+
+  // Send Telegram notification for approved recarga
+  const adminUser = await queryOne(`SELECT nombre_usuario FROM usuarios WHERE id = ?`, [req.user.id]);
+  const message = formatRecargaMessageAprobada({ 
+    procesado_por: adminUser?.nombre_usuario || 'Administrador', 
+    hora: peruTime.getTimeString()
+  });
+  sendToAdmin(message);
+
   res.json({ ok: true, trace_id: result.traceId });
 }));
 
 router.post('/compras-nivel/:id/rechazar', asyncHandler(async (req, res) => {
   const { motivo } = req.body;
+  const compraId = req.params.id;
+  const adminId = req.user.id;
+
   const result = await query(
-    `UPDATE compras_nivel SET estado = 'rechazada', estado_operativo = 'rechazado', admin_notas = ?, procesado_por = ?, procesado_at = NOW() 
-     WHERE id = ? AND estado IN ('pendiente', 'pendiente_ascenso')`,
-    [motivo, req.user.id, req.params.id]
+    `UPDATE compras_nivel SET estado = 'Rechazado', estado_operativo = 'Rechazado', admin_notas = ?, procesado_por = ?, procesado_at = NOW() 
+     WHERE id = ? AND estado = 'Verificando'`,
+    [motivo, adminId, compraId]
   );
-  if (result.affectedRows === 0) return res.status(400).json({ error: 'La recarga ya no está pendiente o no existe.' });
+  if (result.affectedRows === 0) return res.status(400).json({ error: 'La recarga ya no está en Verificando o no existe.' });
+
+  // Notificar por Telegram
+  const adminUser = await queryOne(`SELECT nombre_usuario FROM usuarios WHERE id = ?`, [adminId]);
+  const message = formatRecargaMessageRechazada({ 
+    procesado_por: adminUser?.nombre_usuario || 'Administrador', 
+    hora: peruTime.getTimeString(),
+    motivo: motivo 
+  });
+  sendToAdmin(message);
+
   res.json({ ok: true });
 }));
 
 // Alias para compatibilidad con el frontend
 router.post('/recargas/:id/rechazar', asyncHandler(async (req, res) => {
   const { motivo } = req.body;
+  const compraId = req.params.id;
+  const adminId = req.user.id;
+
   const result = await query(
-    `UPDATE compras_nivel SET estado = 'rechazada', estado_operativo = 'rechazado', admin_notas = ?, procesado_por = ?, procesado_at = NOW() 
-     WHERE id = ? AND estado IN ('pendiente', 'pendiente_ascenso')`,
-    [motivo, req.user.id, req.params.id]
+    `UPDATE compras_nivel SET estado = 'Rechazado', estado_operativo = 'Rechazado', admin_notas = ?, procesado_por = ?, procesado_at = NOW() 
+     WHERE id = ? AND estado = 'Verificando'`,
+    [motivo, adminId, compraId]
   );
-  if (result.affectedRows === 0) return res.status(400).json({ error: 'La recarga ya no está pendiente o no existe.' });
+  if (result.affectedRows === 0) return res.status(400).json({ error: 'La recarga ya no está en Verificando o no existe.' });
+
+  // Notificar por Telegram
+  const adminUser = await queryOne(`SELECT nombre_usuario FROM usuarios WHERE id = ?`, [adminId]);
+  const message = formatRecargaMessageRechazada({ 
+    procesado_por: adminUser?.nombre_usuario || 'Administrador', 
+    hora: peruTime.getTimeString(),
+    motivo: motivo 
+  });
+  sendToAdmin(message);
+
   res.json({ ok: true });
 }));
 
@@ -1050,8 +1155,8 @@ router.get('/usuarios/:id/financial', asyncHandler(async (req, res) => {
 
   const stats = await queryOne(`
     SELECT 
-      (SELECT SUM(monto) FROM compras_nivel WHERE usuario_id = ? AND estado = 'completada') as total_recargado,
-      (SELECT SUM(monto) FROM retiros WHERE usuario_id = ? AND estado = 'pagado') as total_retirado,
+      (SELECT SUM(monto) FROM compras_nivel WHERE usuario_id = ? AND estado = 'Aceptado') as total_recargado,
+      (SELECT SUM(monto) FROM retiros WHERE usuario_id = ? AND estado = 'Aceptado') as total_retirado,
       (SELECT SUM(monto_ganado) FROM actividad_tareas WHERE usuario_id = ?) as total_tareas,
       (SELECT COUNT(*) FROM usuarios WHERE invitado_por = ?) as referidos_directos
   `, [user.id, user.id, user.id, user.id]);

@@ -223,6 +223,22 @@ export async function sendToSecretaria(message, options = {}) {
 }
 
 /**
+ * Envía un mensaje a un usuario específico de Telegram
+ */
+export async function sendToTelegramUser(chatId, message, options = {}) {
+  return safeTelegram(async () => {
+    const bot = await setupAdminBot();
+    if (bot && chatId) {
+      if (options.photo) {
+        const { photo, ...otherOptions } = options;
+        return await bot.sendPhoto(chatId, photo, { caption: message, parse_mode: 'HTML', ...otherOptions });
+      }
+      return await bot.sendMessage(chatId, message, { parse_mode: 'HTML', ...options });
+    }
+  }, 'sendToTelegramUser');
+}
+
+/**
  * @section HELPERS DE FORMATEO v8.1.0
  */
 
@@ -241,29 +257,68 @@ export function formatRetiroMessage(data, comisionRetiroPct = 10) {
   
   return `<b>💰 NUEVA SOLICITUD DE RETIRO</b>\n` +
          `━━━━━━━━━━━━━━━━━━\n` +
-         `🆔 <b>ID:</b> <code>${data.id ? data.id.substring(0, 8) : 'N/A'}</code>\n` +
-         `👤 <b>Usuario:</b> <code>${data.nombre_usuario || 'N/A'}</code>\n` +
-         `📞 <b>Número de registro:</b> <code>${data.telefono || 'N/A'}</code>\n` +
+         `🆔 <b>ID:</b> <code>${data.id || 'N/A'}</code>\n` +
+         `👤 <b>Nombre:</b> <code>${data.nombre_usuario || 'N/A'}</code>\n` +
+         `📞 <b>Número registrado:</b> <code>${data.telefono || 'N/A'}</code>\n` +
          `🏆 <b>Nivel:</b> ${data.nivel || 'Usuario'}\n` +
          `💵 <b>Monto solicitado:</b> <code>${comm.montoSolicitado} Bs</code>\n` +
-         `📉 <b>Descuento total ${comm.comisionRetiroPct}%:</b> <code>${comm.descuentoTotal} Bs</code>\n` +
-         (comm.comisionOperador > 0 ? `👨‍💼 <b>Comisión operador:</b> <code>${comm.comisionOperador} Bs</code>\n` : '') +
-         `🏦 <b>Comisión retiro ${comm.comisionRetiroPct}%:</b> <code>${comm.comisionRetiro} Bs</code>\n` +
-         `✅ <b>Neto a pagar:</b> <code>${comm.montoNeto} Bs</code>\n` +
+         `📉 <b>Descuento:</b> <code>${comm.descuentoTotal} Bs</code>\n` +
+         `🏦 <b>Comisión:</b> <code>${comm.comisionRetiro} Bs</code>\n` +
+         `✅ <b>Neto:</b> <code>${comm.montoNeto} Bs</code>\n` +
          `🏦 <b>Banco:</b> ${data.banco || 'N/A'}\n` +
-         `💳 <b>Cuenta:</b> <code>${data.cuenta || 'N/A'}</code>\n` +
+         `👤 <b>Titular de la cuenta bancaria:</b> <code>${data.nombre_titular || 'N/A'}</code>\n` +
+         `💳 <b>Número completo de la cuenta:</b> <code>${data.cuenta || 'N/A'}</code>\n` +
          `🕒 <b>Hora:</b> ${data.hora || new Date().toLocaleTimeString('es-BO')}\n` +
          `━━━━━━━━━━━━━━━━━━\n` +
-         `<i>Por favor, tome el caso para procesar.</i>`;
+         `<i>Por favor tome el caso.</i>`;
 }
 
 export function formatRecargaMessage(data) {
   return `<b>💳 NUEVA SOLICITUD DE RECARGA</b>\n` +
          `━━━━━━━━━━━━━━━━━━\n` +
-         `👤 <b>Usuario:</b> <code>${data.telefono}</code>\n` +
-         `📈 <b>Nivel:</b> ${data.nivel}\n` +
-         `💵 <b>Monto:</b> <code>${data.monto} Bs</code>\n` +
-         `🕒 <b>Fecha:</b> ${new Date().toLocaleString('es-BO')}\n` +
+         `👤 <b>Nombre:</b> <code>${data.nombre_usuario || 'N/A'}</code>\n` +
+         `📞 <b>Teléfono:</b> <code>${data.telefono || 'N/A'}</code>\n` +
+         `📈 <b>Nivel:</b> ${data.nivel || 'N/A'}\n` +
+         `💵 <b>Monto:</b> <code>${data.monto || 'N/A'} Bs</code>\n` +
+         `🕒 <b>Fecha:</b> ${data.fecha || new Date().toLocaleString('es-BO')}\n` +
          `━━━━━━━━━━━━━━━━━━\n` +
          `<i>Por favor, tome el caso para procesar.</i>`;
+}
+
+export function formatRetiroMessageAprobado(data) {
+  return `✅ <b>PAGADO</b>\n` +
+         `🤝 <b>Procesado por:</b> ${data.procesado_por || 'Administrador'}\n` +
+         `🕒 <b>Hora:</b> ${data.hora || new Date().toLocaleTimeString('es-BO')}`;
+}
+
+export function formatRetiroMessageRechazado(data) {
+  return `❌ <b>RETIRO RECHAZADO</b>\n` +
+         `🤝 <b>Procesado por:</b> ${data.procesado_por || 'Administrador'}\n` +
+         `🕒 <b>Hora:</b> ${data.hora || new Date().toLocaleTimeString('es-BO')}\n` +
+         `📝 <b>Motivo:</b> ${data.motivo || 'No especificado'}`;
+}
+
+export function formatReporteFinancieroMessage(data) {
+  return `📊 <b>REPORTE FINANCIERO</b>\n` +
+         `━━━━━━━━━━━━━━━━━━\n` +
+         `💰 <b>Ingresos:</b> <code>${data.total_ingresos} Bs</code>\n` +
+         `💸 <b>Salidas:</b> <code>${data.total_salidas} Bs</code>\n` +
+         `📈 <b>Balance:</b> <code>${data.balance} Bs</code>\n` +
+         `📥 <b>Recargas:</b> <code>${data.cantidad_recargas}</code>\n` +
+         `📤 <b>Retiros:</b> <code>${data.cantidad_retiros}</code>\n` +
+         `📅 <b>Fecha:</b> ${data.fecha}\n` +
+         `━━━━━━━━━━━━━━━━━━`;
+}
+
+export function formatRecargaMessageAprobada(data) {
+  return `✅ <b>RECARGA APROBADA</b>\n` +
+         `🤝 <b>Administrador:</b> ${data.procesado_por || 'Administrador'}\n` +
+         `🕒 <b>Hora:</b> ${data.hora || new Date().toLocaleTimeString('es-BO')}`;
+}
+
+export function formatRecargaMessageRechazada(data) {
+  return `❌ <b>RECARGA RECHAZADA</b>\n` +
+         `🤝 <b>Administrador:</b> ${data.procesado_por || 'Administrador'}\n` +
+         `🕒 <b>Hora:</b> ${data.hora || new Date().toLocaleTimeString('es-BO')}\n` +
+         `📝 <b>Motivo:</b> ${data.motivo || 'No especificado'}`;
 }

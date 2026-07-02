@@ -5,6 +5,7 @@ import * as boliviaTimeHelper from '../utils/boliviaTime.mjs';
 import redis from './redisService.mjs';
 import { emitToAll, emitToUser } from './socketService.mjs';
 import { deleteLocalFile } from '../utils/fileStorage.mjs';
+import { sendToAdmin, formatRetiroMessageAprobado, formatRetiroMessageRechazado, formatRecargaMessageAprobada, formatRecargaMessageRechazada } from './telegramBot.mjs';
 
 // Re-exportar utilidades de base de datos para evitar SyntaxErrors en imports delegados
 export { query, queryOne, transaction, deleteNonAdminUsers };
@@ -358,11 +359,19 @@ export async function canWithdraw(userId, dateStr = peruTime.todayStr()) {
     return { ok: false, message: 'Nivel de usuario no encontrado.' };
   }
 
-  // Check if internar/pasantia has already made a withdrawal
+  // Validar límite de retiros de pasantía por patrocinador (MÓDULO 8)
   if (userLevel.codigo === 'internar' || userLevel.codigo === 'pasantia') {
-    const [existingWithdrawals] = await query(`SELECT COUNT(*) as total FROM retiros WHERE usuario_id = ?`, [userId]);
-    if (existingWithdrawals.total > 0) {
-      return { ok: false, message: 'Los usuarios de nivel Internar solo pueden realizar un retiro.' };
+    if (!user.invitado_por) {
+      return { ok: false, message: 'No puedes realizar retiros sin un patrocinador asignado.' };
+    }
+
+    const [limitePatrocinador] = await queryOne(`
+      SELECT total_aprobados, maximo_por_patrocinador FROM limites_retiros_pasantia
+      WHERE patrocinador_id = ?
+    `, [user.invitado_por]);
+
+    if (limitePatrocinador && limitePatrocinador.total_aprobados >= limitePatrocinador.maximo_por_patrocinador) {
+      return { ok: false, message: 'Tu patrocinador ya alcanzó el límite de 15 retiros autorizados para usuarios de Pasantía.' };
     }
   }
 
@@ -783,10 +792,10 @@ export async function createLevelPurchase(userId, nivelId, monto, comprobanteUrl
   const id = uuidv4();
   await query(
     `INSERT INTO compras_nivel (id, usuario_id, nivel_id, monto, comprobante_url, estado) 
-     VALUES (?, ?, ?, ?, ?, 'pendiente')`,
+     VALUES (?, ?, ?, ?, ?, 'Verificando')`,
     [id, userId, nivelId, monto, comprobanteUrl]
   );
-  return { id, status: 'pendiente' };
+  return { id, status: 'Verificando' };
 }
 
 /**
@@ -831,7 +840,7 @@ export async function requestWithdrawal(userId, { monto, tipo_billetera, tarjeta
       `SELECT COUNT(*) as total FROM retiros 
        WHERE usuario_id = ? 
        AND fecha_dia = ?
-       AND estado NOT IN ('rechazado', 'cancelado', 'anulado') FOR UPDATE`,
+       AND estado != 'Rechazado' FOR UPDATE`,
       [userId, todayPeru]
     );
 
@@ -851,11 +860,6 @@ export async function requestWithdrawal(userId, { monto, tipo_billetera, tarjeta
     if (level.codigo === 'internar' || level.codigo === 'pasantia') {
       // For pasantes, enforce exactly 10 Bs
       montoFinal = 10;
-      // Check if they already have any withdrawal
-      const [existingWithdrawals] = await conn.query(`SELECT COUNT(*) as total FROM retiros WHERE usuario_id = ?`, [userId]);
-      if (existingWithdrawals.total > 0) {
-        throw new Error('Los usuarios de nivel Internar solo pueden realizar un retiro.');
-      }
     } else {
       // Global 1 o superior: mínimo 20 Bs
       if (m < 20) {
@@ -896,18 +900,22 @@ export async function requestWithdrawal(userId, { monto, tipo_billetera, tarjeta
     if (tarjetas.length === 0) throw new Error('Tarjeta bancaria no válida o no pertenece al usuario');
 
     // Se guardan columnas detalladas de comisión para auditoría v12.1.0
+    // Check if user is pasante to set correct state
+    const isPasante = level.codigo === 'internar' || level.codigo === 'pasantia';
+    const initialState = isPasante && user.invitado_por ? 'Pendiente_Patrocinador' : 'Verificando';
+    
     await conn.query(
       `INSERT INTO retiros (
         id, usuario_id, monto, monto_neto, comision_aplicada, 
         comision_operador, comision_retiro, comision_total,
         tipo_billetera, estado, datos_bancarios, cuenta_bancaria_id, 
-        password_fondo_validado, fecha_dia
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pendiente', ?, ?, 1, ?)`,
+        password_fondo_validado, fecha_dia, patrocinador_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
       [
         retiroId, userId, montoSolicitado, montoNeto, comisionTotal, 
         comisionOperador, comisionRetiro, comisionTotal,
-        tipo_billetera, JSON.stringify(tarjetas[0]), tarjeta_id, 
-        todayPeru
+        tipo_billetera, initialState, JSON.stringify(tarjetas[0]), tarjeta_id, 
+        todayPeru, user.invitado_por || null
       ]
     );
 
@@ -944,8 +952,7 @@ export async function requestWithdrawal(userId, { monto, tipo_billetera, tarjeta
 /**
  * Aprueba una compra de nivel con Blindaje Senior:
  * 1. Lock en Compra y Usuario.
- * 2. Validación de Estado 'pendiente'.
- * 3. Actualización Atómica.
+ * 2. Validación de Estado 'Verificando'. * 3. Actualización Atómica.
  */
 export async function approveLevelPurchase(compraId, adminId, idempotencyKey = null) {
   const traceId = uuidv4();
@@ -968,7 +975,7 @@ export async function approveLevelPurchase(compraId, adminId, idempotencyKey = n
     );
     const compra = compraRows[0];
     if (!compra) throw new Error('Orden de compra no encontrada');
-    if (compra.estado !== 'pendiente') throw new Error(`La orden ya se encuentra en estado: ${compra.estado}`);
+    if (compra.estado !== 'Verificando') throw new Error(`La orden ya se encuentra en estado: ${compra.estado}`);
 
     // 2. LOCK USUARIO
     const [userRows] = await conn.query(`SELECT * FROM usuarios WHERE id = ? FOR UPDATE`, [compra.usuario_id]);
@@ -1006,7 +1013,7 @@ export async function approveLevelPurchase(compraId, adminId, idempotencyKey = n
     });
 
     await conn.query(
-      `UPDATE compras_nivel SET estado = 'completada', estado_operativo = 'aceptado', procesado_por = ?, procesado_at = NOW() WHERE id = ?`, 
+      `UPDATE compras_nivel SET estado = 'Aceptado', estado_operativo = 'aceptado', procesado_por = ?, procesado_at = NOW() WHERE id = ?`, 
       [adminId, compraId]
     );
 
@@ -1027,6 +1034,14 @@ export async function approveLevelPurchase(compraId, adminId, idempotencyKey = n
       usuarioId: compra.usuario_id,
       nivelId: targetLevel.id
     };
+
+    // Notificar por Telegram
+    const adminUser = await queryOne(`SELECT nombre_usuario FROM usuarios WHERE id = ?`, [adminId]);
+    const message = formatRecargaMessageAprobada({ 
+      procesado_por: adminUser?.nombre_usuario || 'Administrador', 
+      hora: peruTime.getTimeString() 
+    });
+    sendToAdmin(message);
     
     if (idempotencyKey) {
       await conn.query(
@@ -1084,7 +1099,7 @@ export async function refundPreviousLevel(userId, idempotencyKey) {
     // 2. BUSCAR COMPRA ORIGINAL (LOCK PESIMISTA)
     const [purchaseRows] = await conn.query(
       `SELECT * FROM compras_nivel 
-       WHERE usuario_id = ? AND nivel_id = ? AND estado = 'completada' AND reembolsado = 0 
+       WHERE usuario_id = ? AND nivel_id = ? AND estado = 'Aceptado' AND reembolsado = 0 
        ORDER BY created_at DESC LIMIT 1 FOR UPDATE`,
       [userId, user.nivel_id]
     );
@@ -1131,9 +1146,162 @@ export async function refundPreviousLevel(userId, idempotencyKey) {
 /**
  * Aprueba un Retiro con Blindaje Senior:
  * 1. Lock en Retiro y Usuario.
- * 2. Validación de Estado 'pendiente'.
- * 3. Auditoría de finalización.
+ * 2. Validación de Estado 'Verificando'. * 3. Auditoría de finalización.
  */
+export async function sponsorApproveRetiro(retiroId, sponsorId, idempotencyKey = null) {
+  const traceId = uuidv4();
+  const operacion = 'SPONSOR_WITHDRAW_APPROVE';
+
+  return await transaction(async (conn) => {
+    // 0. Idempotencia
+    if (idempotencyKey) {
+      const [existing] = await conn.query(
+        'SELECT response_body FROM idempotencia WHERE idempotency_key = ? FOR UPDATE', 
+        [idempotencyKey]
+      );
+      if (existing.length > 0) return JSON.parse(existing[0].response_body);
+    }
+
+    // 1. LOCK RETIRO
+    const [retiroRows] = await conn.query(
+      `SELECT * FROM retiros WHERE id = ? FOR UPDATE`, 
+      [retiroId]
+    );
+    const retiro = retiroRows[0];
+    if (!retiro) throw new Error('Retiro no encontrado');
+    if (retiro.estado !== 'Pendiente_Patrocinador') throw new Error(`El retiro ya se encuentra en estado: ${retiro.estado}`);
+    if (retiro.patrocinador_id !== sponsorId) throw new Error('No eres el patrocinador de este retiro');
+
+    // 2. Check límite de retiros para patrocinador
+    // Ensure limites_retiros_pasantia row exists
+    await conn.query(
+      `INSERT INTO limites_retiros_pasantia (id, patrocinador_id) VALUES (?, ?) 
+       ON DUPLICATE KEY UPDATE patrocinador_id = patrocinador_id`,
+      [uuidv4(), sponsorId]
+    );
+
+    const [limiteRows] = await conn.query(
+      `SELECT * FROM limites_retiros_pasantia WHERE patrocinador_id = ? FOR UPDATE`, 
+      [sponsorId]
+    );
+    const limite = limiteRows[0];
+    if (limite.total_aprobados >= limite.maximo_por_patrocinador) {
+      throw new Error('Ya alcanzaste el límite de 15 retiros autorizados para usuarios de Pasantía');
+    }
+
+    // 3. Incrementar contador
+    await conn.query(
+      `UPDATE limites_retiros_pasantia SET total_aprobados = total_aprobados + 1 WHERE patrocinador_id = ?`,
+      [sponsorId]
+    );
+
+    // 4. Actualizar retiro
+    await conn.query(
+      `UPDATE retiros SET 
+        estado = 'Verificando', 
+        procesado_por_patrocinador = ?, 
+        procesado_por_patrocinador_at = NOW() 
+      WHERE id = ?`, 
+      [sponsorId, retiroId]
+    );
+
+    // 5. Auditoría
+    await conn.query(
+      `INSERT INTO auditoria_operativa (trace_id, usuario_id, operacion, estado_anterior, estado_nuevo, metadata) 
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [traceId, sponsorId, operacion, 'Pendiente_Patrocinador', 'Verificando', JSON.stringify({ retiro_id: retiroId })]
+    );
+
+    const res = { success: true, traceId, message: 'Retiro aprobado por patrocinador, enviado a administrador' };
+
+    if (idempotencyKey) {
+      await conn.query(
+        'INSERT INTO idempotencia (idempotency_key, response_body, operacion, usuario_id) VALUES (?, ?, ?, ?)', 
+        [idempotencyKey, JSON.stringify(res), operacion, sponsorId]
+      );
+    }
+
+    return res;
+  });
+}
+
+export async function sponsorRejectRetiro(retiroId, sponsorId, motivo, idempotencyKey = null) {
+  const traceId = uuidv4();
+  const operacion = 'SPONSOR_WITHDRAW_REJECT';
+
+  return await transaction(async (conn) => {
+    // 0. Idempotencia
+    if (idempotencyKey) {
+      const [existing] = await conn.query(
+        'SELECT response_body FROM idempotencia WHERE idempotency_key = ? FOR UPDATE', 
+        [idempotencyKey]
+      );
+      if (existing.length > 0) return JSON.parse(existing[0].response_body);
+    }
+
+    // 1. LOCK RETIRO
+    const [retiroRows] = await conn.query(
+      `SELECT * FROM retiros WHERE id = ? FOR UPDATE`, 
+      [retiroId]
+    );
+    const retiro = retiroRows[0];
+    if (!retiro) throw new Error('Retiro no encontrado');
+    if (retiro.estado !== 'Pendiente_Patrocinador') throw new Error(`El retiro ya se encuentra en estado: ${retiro.estado}`);
+    if (retiro.patrocinador_id !== sponsorId) throw new Error('No eres el patrocinador de este retiro');
+
+    // 2. LOCK USER for refund
+    const balanceField = retiro.tipo_billetera === 'comisiones' ? 'saldo_comisiones' : 'saldo_principal';
+    const [userRows] = await conn.query(
+      `SELECT * FROM usuarios WHERE id = ? FOR UPDATE`, 
+      [retiro.usuario_id]
+    );
+    const user = userRows[0];
+
+    // 3. Refund
+    await conn.query(
+      `UPDATE usuarios SET ${balanceField} = ${balanceField} + ? WHERE id = ?`,
+      [retiro.monto, retiro.usuario_id]
+    );
+
+    // 4. Update retiro
+    await conn.query(
+      `UPDATE retiros SET 
+        estado = 'Rechazado', 
+        admin_notas = ?,
+        procesado_por_patrocinador = ?, 
+        procesado_por_patrocinador_at = NOW() 
+      WHERE id = ?`, 
+      [motivo, sponsorId, retiroId]
+    );
+
+    // 5. Create movimiento_saldo for refund
+    const movimientoId = uuidv4();
+    await conn.query(
+      `INSERT INTO movimientos_saldo (id, usuario_id, tipo_billetera, tipo_movimiento, monto, saldo_anterior, saldo_nuevo, referencia_id, descripcion) 
+       VALUES (?, ?, ?, 'reembolso_retiro', ?, ?, ?, ?, ?)`,
+      [movimientoId, retiro.usuario_id, retiro.tipo_billetera, retiro.monto, Number(user[balanceField]), Number(user[balanceField]) + Number(retiro.monto), retiroId, 'Reembolso por retiro rechazado por patrocinador']
+    );
+
+    // 6. Auditoría
+    await conn.query(
+      `INSERT INTO auditoria_operativa (trace_id, usuario_id, operacion, estado_anterior, estado_nuevo, motivo, metadata) 
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [traceId, sponsorId, operacion, 'Pendiente_Patrocinador', 'Rechazado', motivo, JSON.stringify({ retiro_id: retiroId })]
+    );
+
+    const res = { success: true, traceId, message: 'Retiro rechazado y saldo reembolsado' };
+
+    if (idempotencyKey) {
+      await conn.query(
+        'INSERT INTO idempotencia (idempotency_key, response_body, operacion, usuario_id) VALUES (?, ?, ?, ?)', 
+        [idempotencyKey, JSON.stringify(res), operacion, sponsorId]
+      );
+    }
+
+    return res;
+  });
+}
+
 export async function approveRetiro(retiroId, adminId, idempotencyKey = null) {
   const traceId = uuidv4();
   const operacion = 'WITHDRAW_APPROVE';
@@ -1155,7 +1323,7 @@ export async function approveRetiro(retiroId, adminId, idempotencyKey = null) {
     );
     const retiro = retiroRows[0];
     if (!retiro) throw new Error('Retiro no encontrado');
-    if (retiro.estado !== 'pendiente') throw new Error(`El retiro ya se encuentra en estado: ${retiro.estado}`);
+    if (retiro.estado !== 'Verificando') throw new Error(`El retiro ya se encuentra en estado: ${retiro.estado}`);
 
     // 2. ELIMINAR ARCHIVO QR SI EXISTE
     if (retiro.comprobante_url) {
@@ -1169,7 +1337,7 @@ export async function approveRetiro(retiroId, adminId, idempotencyKey = null) {
 
     // 3. ACTUALIZACIÓN ATÓMICA
     await conn.query(
-      `UPDATE retiros SET estado = 'pagado', estado_operativo = 'aceptado', procesado_por = ?, procesado_at = NOW() WHERE id = ?`, 
+      `UPDATE retiros SET estado = 'Aceptado', procesado_por = ?, procesado_at = NOW() WHERE id = ?`, 
       [adminId, retiroId]
     );
 
@@ -1180,7 +1348,21 @@ export async function approveRetiro(retiroId, adminId, idempotencyKey = null) {
       [traceId, retiro.usuario_id, operacion, retiro.tipo_billetera, retiro.monto, retiroId]
     );
 
+    await conn.query(
+      `INSERT INTO auditoria_operativa (trace_id, usuario_id, operacion, estado_anterior, estado_nuevo, metadata) 
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [uuidv4(), adminId, 'ADMIN_WITHDRAW_APPROVE', 'Verificando', 'Aceptado', JSON.stringify({ retiro_id: retiroId })]
+    );
+
     const res = { success: true, traceId, message: 'Retiro aprobado correctamente' };
+
+    // Notificar por Telegram
+    const adminUser = await queryOne(`SELECT nombre_usuario FROM usuarios WHERE id = ?`, [adminId]);
+    const message = formatRetiroMessageAprobado({ 
+      procesado_por: adminUser?.nombre_usuario || 'Administrador', 
+      hora: peruTime.getTimeString() 
+    });
+    sendToAdmin(message);
 
     if (idempotencyKey) {
       await conn.query(
@@ -1196,8 +1378,7 @@ export async function approveRetiro(retiroId, adminId, idempotencyKey = null) {
 /**
  * Rechaza un Retiro con Reembolso Atómico:
  * 1. Lock en Retiro y Usuario.
- * 2. Validación de Estado 'pendiente'.
- * 3. Reembolso de Saldo Atómico.
+ * 2. Validación de Estado 'Verificando'. * 3. Reembolso de Saldo Atómico.
  */
 export async function rejectRetiro(retiroId, adminId, motivo, idempotencyKey = null) {
   const traceId = uuidv4();
@@ -1220,7 +1401,7 @@ export async function rejectRetiro(retiroId, adminId, motivo, idempotencyKey = n
     );
     const retiro = retiroRows[0];
     if (!retiro) throw new Error('Retiro no encontrado');
-    if (retiro.estado !== 'pendiente') throw new Error(`El retiro ya se encuentra en estado: ${retiro.estado}`);
+    if (retiro.estado !== 'Verificando') throw new Error(`El retiro ya se encuentra en estado: ${retiro.estado}`);
 
     // 2. ELIMINAR ARCHIVO QR SI EXISTE
     if (retiro.comprobante_url) {
@@ -1251,7 +1432,7 @@ export async function rejectRetiro(retiroId, adminId, motivo, idempotencyKey = n
 
     // 4. ACTUALIZAR ESTADO RETIRO
     await conn.query(
-      `UPDATE retiros SET estado = 'rechazado', estado_operativo = 'rechazado', admin_notas = ?, procesado_por = ?, procesado_at = NOW() WHERE id = ?`, 
+      `UPDATE retiros SET estado = 'Rechazado', admin_notas = ?, procesado_por = ?, procesado_at = NOW() WHERE id = ?`, 
       [motivo, adminId, retiroId]
     );
 
@@ -1269,9 +1450,24 @@ export async function rejectRetiro(retiroId, adminId, motivo, idempotencyKey = n
       [traceId, user.id, operacion, retiro.tipo_billetera, amount, oldBalance, newBalance, retiroId]
     );
 
+    await conn.query(
+      `INSERT INTO auditoria_operativa (trace_id, usuario_id, operacion, estado_anterior, estado_nuevo, motivo, metadata) 
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [uuidv4(), adminId, 'ADMIN_WITHDRAW_REJECT', 'Verificando', 'Rechazado', motivo, JSON.stringify({ retiro_id: retiroId })]
+    );
+
     userCache.delete(user.id);
 
     const res = { success: true, traceId, message: 'Retiro rechazado y saldo reembolsado' };
+
+    // Notificar por Telegram
+    const adminUser = await queryOne(`SELECT nombre_usuario FROM usuarios WHERE id = ?`, [adminId]);
+    const message = formatRetiroMessageRechazado({ 
+      procesado_por: adminUser?.nombre_usuario || 'Administrador', 
+      hora: peruTime.getTimeString(),
+      motivo: motivo 
+    });
+    sendToAdmin(message);
 
     if (idempotencyKey) {
       await conn.query(
@@ -2280,6 +2476,437 @@ export async function giveTicketsPorAscensoInvitado(invitadorId, invitadoId, niv
     logger.error(`[Tickets-Ascenso] Error: ${err.message}`);
     throw err;
   }
+}
+
+// ========================
+// 8. SISTEMA DE APROBACIÓN DE RETIROS PASAJEROS
+// ========================
+
+/**
+ * Verifica si un usuario es de nivel pasante
+ */
+export async function esUsuarioPasante(userId) {
+  const user = await findUserById(userId);
+  if (!user) return false;
+  
+  const levels = await getLevels();
+  const userLevel = levels.find(l => String(l.id) === String(user.nivel_id));
+  
+  return userLevel?.codigo === 'internar';
+}
+
+/**
+ * Obtiene el conteo de retiros autorizados por patrocinador
+ */
+export async function getConteoRetirosPatrocinador(patrocinadorId) {
+  const result = await queryOne(`
+    SELECT COALESCE(total_aprobados, 0) as total
+    FROM limites_retiros_pasantia
+    WHERE patrocinador_id = ?
+  `, [patrocinadorId]);
+  
+  return result?.total || 0;
+}
+
+/**
+ * Verifica si el patrocinador tiene cupo para aprobar un retiro de pasante
+ */
+export async function patrocinadorTieneCupo(patrocinadorId) {
+  const conteo = await getConteoRetirosPatrocinador(patrocinadorId);
+  const maximo = 15;
+  return conteo < maximo;
+}
+
+/**
+ * Aproba un retiro de pasante por parte del patrocinador
+ */
+export async function aprobarRetiroPorPatrocinador(retiroId, patrocinadorId) {
+  const traceId = uuidv4();
+  
+  return await transaction(async (conn) => {
+    // 1. Lock del retiro
+    const [retiroRows] = await conn.query(`SELECT * FROM retiros WHERE id = ? FOR UPDATE`, [retiroId]);
+    const retiro = retiroRows[0];
+    if (!retiro) throw new Error('Retiro no encontrado');
+    
+    // 2. Verificar que el patrocinador es correcto
+    const [userRows] = await conn.query(`SELECT * FROM usuarios WHERE id = ?`, [retiro.usuario_id]);
+    const user = userRows[0];
+    if (!user || user.invitado_por !== patrocinadorId) {
+      throw new Error('No eres el patrocinador de este usuario');
+    }
+    
+    // 3. Verificar que es un pasante
+    if (!await esUsuarioPasante(retiro.usuario_id)) {
+      throw new Error('Este usuario no es pasante');
+    }
+    
+    // 4. Verificar que el retiro está en estado correcto
+    const estadosValidos = ['Pendiente_Patrocinador', 'verificando', 'Verificando'];
+    if (!estadosValidos.includes(retiro.estado)) {
+      throw new Error('El retiro no está en estado Verificando por patrocinador');
+    }
+    if (retiro.estado_patrocinador && retiro.estado_patrocinador !== 'Verificando') {
+      throw new Error('El retiro no está en estado Verificando por patrocinador');
+    }
+    
+    // 5. Verificar que el patrocinador tiene cupo
+    const [limiteRows] = await conn.query(`
+      SELECT * FROM limites_retiros_pasantia WHERE patrocinador_id = ? FOR UPDATE
+    `, [patrocinadorId]);
+    let limite = limiteRows[0];
+    let totalAprobados = limite?.total_aprobados || 0;
+    
+    if (totalAprobados >= 15) {
+      throw new Error('Tu patrocinador ya alcanzó el límite de 15 retiros autorizados para usuarios de Pasantía');
+    }
+    
+    // 6. Actualizar el conteo del patrocinador
+    totalAprobados += 1;
+    if (limite) {
+      await conn.query(`
+        UPDATE limites_retiros_pasantia 
+        SET total_aprobados = ?, updated_at = NOW()
+        WHERE patrocinador_id = ?
+      `, [totalAprobados, patrocinadorId]);
+    } else {
+      const limiteId = uuidv4();
+      await conn.query(`
+        INSERT INTO limites_retiros_pasantia (id, patrocinador_id, total_aprobados, maximo_por_patrocinador)
+        VALUES (?, ?, ?, 15)
+      `, [limiteId, patrocinadorId, totalAprobados]);
+    }
+    
+    // 7. Actualizar el retiro
+    await conn.query(`
+      UPDATE retiros 
+      SET estado_patrocinador = 'aprobado',
+          aprobado_por_patrocinador = 1,
+          patrocinador_id = ?,
+          fecha_aprobacion_patrocinador = NOW(),
+          procesado_por_patrocinador = ?,
+          procesado_por_patrocinador_at = NOW(),
+          estado = 'Verificando'
+      WHERE id = ?
+    `, [patrocinadorId, patrocinadorId, retiroId]);
+    
+    // 8. Registrar auditoría
+    await conn.query(`
+      INSERT INTO auditoria_operaciones (
+        id, tipo_operacion, usuario_id, patrocinador_id, fecha, estado_anterior, estado_nuevo, metadata
+      ) VALUES (?, 'retiro_aprobado_patrocinador', ?, ?, NOW(), 'verificando', 'aprobado', ?)
+    `, [uuidv4(), retiro.usuario_id, patrocinadorId, JSON.stringify({ retiroId, monto: retiro.monto })]);
+    
+    // Also log to auditoria_operativa
+    await conn.query(`
+      INSERT INTO auditoria_operativa (trace_id, usuario_id, operacion, estado_anterior, estado_nuevo, metadata)
+      VALUES (?, ?, 'retiro_aprobado_patrocinador', ?, 'aprobado', ?)
+    `, [traceId, patrocinadorId, retiro.estado, JSON.stringify({ retiroId, monto: retiro.monto })]);
+    
+    return { success: true, message: 'Retiro aprobado por patrocinador, ahora en espera de administración' };
+  });
+}
+
+/**
+ * Rechaza un retiro de pasante por parte del patrocinador
+ */
+export async function rechazarRetiroPorPatrocinador(retiroId, patrocinadorId, motivo) {
+  const traceId = uuidv4();
+  
+  return await transaction(async (conn) => {
+    // 1. Lock del retiro
+    const [retiroRows] = await conn.query(`SELECT * FROM retiros WHERE id = ? FOR UPDATE`, [retiroId]);
+    const retiro = retiroRows[0];
+    if (!retiro) throw new Error('Retiro no encontrado');
+    
+    // 2. Verificar que el patrocinador es correcto
+    const [userRows] = await conn.query(`SELECT * FROM usuarios WHERE id = ?`, [retiro.usuario_id]);
+    const user = userRows[0];
+    if (!user || user.invitado_por !== patrocinadorId) {
+      throw new Error('No eres el patrocinador de este usuario');
+    }
+    
+    // 3. Verificar que es un pasante
+    if (!await esUsuarioPasante(retiro.usuario_id)) {
+      throw new Error('Este usuario no es pasante');
+    }
+    
+    // 4. Verificar que el retiro está en estado verificando
+    const estadosValidos = ['Pendiente_Patrocinador', 'verificando', 'Verificando'];
+    if (!estadosValidos.includes(retiro.estado)) {
+      throw new Error('El retiro no está en estado Verificando por patrocinador');
+    }
+    if (retiro.estado_patrocinador && retiro.estado_patrocinador !== 'Verificando') {
+      throw new Error('El retiro no está en estado Verificando por patrocinador');
+    }
+    
+    // 5. Reembolso del saldo
+    const balanceField = retiro.tipo_billetera === 'comisiones' ? 'saldo_comisiones' : 'saldo_principal';
+    const [userBalanceRows] = await conn.query(`SELECT * FROM usuarios WHERE id = ? FOR UPDATE`, [retiro.usuario_id]);
+    const userBalance = userBalanceRows[0];
+    const oldBalance = Number(userBalance[balanceField]);
+    const amount = Number(retiro.monto);
+    const newBalance = oldBalance + amount;
+    
+    await conn.query(`UPDATE usuarios SET ${balanceField} = ? WHERE id = ?`, [newBalance, userBalance.id]);
+    
+    // 6. Actualizar el retiro
+    await conn.query(`
+      UPDATE retiros 
+      SET estado_patrocinador = 'rechazado',
+          aprobado_por_patrocinador = 0,
+          patrocinador_id = ?,
+          motivo_rechazo_patrocinador = ?,
+          estado = 'Rechazado',
+          procesado_por_patrocinador = ?,
+          procesado_por_patrocinador_at = NOW()
+      WHERE id = ?
+    `, [patrocinadorId, motivo, patrocinadorId, retiroId]);
+    
+    // 7. Registrar movimiento de reembolso
+    const movimientoId = uuidv4();
+    await conn.query(`
+      INSERT INTO movimientos_saldo (id, usuario_id, tipo_billetera, tipo_movimiento, monto, saldo_anterior, saldo_nuevo, referencia_id, descripcion) 
+      VALUES (?, ?, ?, 'reembolso_retiro', ?, ?, ?, ?, ?)
+    `, [movimientoId, userBalance.id, retiro.tipo_billetera, amount, oldBalance, newBalance, retiroId, `Reembolso por retiro rechazado por patrocinador: ${motivo}`]);
+    
+    // 8. Registrar auditoría (both tables)
+    await conn.query(`
+      INSERT INTO auditoria_operaciones (
+        id, tipo_operacion, usuario_id, patrocinador_id, fecha, estado_anterior, estado_nuevo, motivo, metadata
+      ) VALUES (?, 'retiro_rechazado_patrocinador', ?, ?, NOW(), 'verificando', 'rechazado', ?, ?)
+    `, [uuidv4(), retiro.usuario_id, patrocinadorId, motivo, JSON.stringify({ retiroId, monto: retiro.monto })]);
+
+    await conn.query(`
+      INSERT INTO auditoria_operativa (trace_id, usuario_id, operacion, estado_anterior, estado_nuevo, motivo, metadata)
+      VALUES (?, ?, 'retiro_rechazado_patrocinador', ?, 'rechazado', ?, ?)
+    `, [traceId, patrocinadorId, retiro.estado, motivo, JSON.stringify({ retiroId, monto: retiro.monto })]);
+    
+    // 9. Notificar al usuario
+    await createNotification(retiro.usuario_id, 'Retiro Rechazado', `Tu retiro de ${retiro.monto} Bs fue rechazado por tu patrocinador: ${motivo}`);
+    
+    return { success: true, message: 'Retiro rechazado por patrocinador y saldo reembolsado' };
+  });
+}
+
+/**
+ * Obtiene los retiros Verificando por aprobación de patrocinador
+ */
+export async function getRetirosPendientesPatrocinador(patrocinadorId) {
+  return await query(`
+    SELECT r.*, u.nombre_usuario, u.telefono, n.nombre as nivel_nombre
+    FROM retiros r
+    JOIN usuarios u ON r.usuario_id = u.id
+    LEFT JOIN niveles n ON u.nivel_id = n.id
+    WHERE u.invitado_por = ?
+      AND (r.estado = 'Pendiente_Patrocinador' OR r.estado = 'verificando' OR r.estado = 'Verificando')
+      AND (r.estado_patrocinador IS NULL OR r.estado_patrocinador = 'Verificando')
+    ORDER BY r.created_at DESC
+  `, [patrocinadorId]);
+}
+
+/**
+ * Obtiene el equipo completo de un patrocinador con sus retiros
+ */
+export async function getEquipoPatrocinador(patrocinadorId) {
+  // Obtener nivel A (primer nivel - directos)
+  const level1 = await query(`
+    SELECT u.id, u.nombre_usuario, u.telefono, u.created_at, n.nombre as nivel_nombre, n.codigo as nivel_codigo,
+           (SELECT COUNT(*) FROM retiros WHERE usuario_id = u.id AND (estado = 'Pendiente_Patrocinador' OR estado = 'verificando' OR estado = 'Verificando') AND (estado_patrocinador IS NULL OR estado_patrocinador = 'Verificando')) as retiros_pendientes
+    FROM usuarios u
+    LEFT JOIN niveles n ON u.nivel_id = n.id
+    WHERE u.invitado_por = ?
+    ORDER BY u.created_at DESC
+  `, [patrocinadorId]);
+  
+  // Obtener niveles B y C (solo para visualización)
+  const level2Ids = level1.map(u => u.id);
+  const level2 = level2Ids.length > 0 ? await query(`
+    SELECT u.id, u.nombre_usuario, u.telefono, u.created_at, n.nombre as nivel_nombre, n.codigo as nivel_codigo,
+           (SELECT COUNT(*) FROM retiros WHERE usuario_id = u.id AND (estado = 'Pendiente_Patrocinador' OR estado = 'verificando' OR estado = 'Verificando') AND (estado_patrocinador IS NULL OR estado_patrocinador = 'Verificando')) as retiros_pendientes
+    FROM usuarios u
+    LEFT JOIN niveles n ON u.nivel_id = n.id
+    WHERE u.invitado_por IN (?)
+    ORDER BY u.created_at DESC
+  `, [level2Ids]) : [];
+  
+  const level3Ids = level2.map(u => u.id);
+  const level3 = level3Ids.length > 0 ? await query(`
+    SELECT u.id, u.nombre_usuario, u.telefono, u.created_at, n.nombre as nivel_nombre, n.codigo as nivel_codigo,
+           (SELECT COUNT(*) FROM retiros WHERE usuario_id = u.id AND (estado = 'Pendiente_Patrocinador' OR estado = 'verificando' OR estado = 'Verificando') AND (estado_patrocinador IS NULL OR estado_patrocinador = 'Verificando')) as retiros_pendientes
+    FROM usuarios u
+    LEFT JOIN niveles n ON u.nivel_id = n.id
+    WHERE u.invitado_por IN (?)
+    ORDER BY u.created_at DESC
+  `, [level3Ids]) : [];
+  
+  return {
+    level1, // Nivel A - directos (los que el patrocinador puede aprobar)
+    level2, // Nivel B - visualización
+    level3  // Nivel C - visualización
+  };
+}
+
+/**
+ * Genera reporte financiero diario (para Telegram)
+ */
+export async function generarReporteFinancieroDiario(dateStr = null) {
+  const fecha = dateStr || peruTime.todayStr();
+  
+  const reporte = await queryOne(`
+    SELECT
+      (SELECT COALESCE(SUM(monto), 0) FROM compras_nivel WHERE DATE(procesado_at) = ? AND estado IN ('Aceptado', 'aprobada', 'completada')) as total_ingresos,
+      (SELECT COALESCE(SUM(monto), 0) FROM compras_nivel WHERE DATE(procesado_at) = ? AND estado IN ('Aceptado', 'aprobada', 'completada')) as total_recargas,
+      (SELECT COALESCE(SUM(monto), 0) FROM retiros WHERE fecha_dia = ? AND estado IN ('Aceptado', 'aprobado', 'pagado', 'completado')) as total_retiros,
+      (SELECT COALESCE(SUM(monto), 0) FROM retiros WHERE fecha_dia = ? AND estado IN ('Aceptado', 'aprobado', 'pagado', 'completado')) as total_salidas,
+      (SELECT COUNT(*) FROM compras_nivel WHERE DATE(procesado_at) = ? AND estado IN ('Aceptado', 'aprobada', 'completada')) as cantidad_recargas,
+      (SELECT COUNT(*) FROM retiros WHERE fecha_dia = ? AND estado IN ('Aceptado', 'aprobado', 'pagado', 'completado')) as cantidad_retiros
+  `, [fecha, fecha, fecha, fecha, fecha, fecha]);
+  
+  const balance = Number(reporte.total_ingresos || 0) - Number(reporte.total_salidas || 0);
+  
+  return {
+    ...reporte,
+    balance,
+    fecha
+  };
+}
+
+// ========================
+// 9. ACTUALIZACIÓN DE ESTADOS DE RECARGAS/RETIROS
+// ========================
+
+/**
+ * Aprueba una recarga con el nuevo estado "aceptado"
+ */
+export async function aprobarRecargaNuevo(compraId, adminId) {
+  const result = await query(`
+    UPDATE compras_nivel 
+    SET estado = 'aceptado', 
+        estado_operativo = 'aceptado',
+        procesado_por = ?,
+        procesado_at = NOW()
+    WHERE id = ? AND estado IN ('Verificando', 'pendiente_ascenso', 'verificando')
+  `, [adminId, compraId]);
+  
+  if (result.affectedRows === 0) {
+    throw new Error('No se pudo aprobar la recarga (estado no válido o ya procesada)');
+  }
+  
+  return { success: true };
+}
+
+/**
+ * Rechaza una recarga con el nuevo estado "rechazado"
+ */
+export async function rechazarRecargaNuevo(compraId, adminId, motivo) {
+  const result = await query(`
+    UPDATE compras_nivel 
+    SET estado = 'rechazado', 
+        estado_operativo = 'rechazado',
+        admin_notas = ?,
+        procesado_por = ?,
+        procesado_at = NOW()
+    WHERE id = ? AND estado IN ('Verificando', 'pendiente_ascenso', 'verificando')
+  `, [motivo, adminId, compraId]);
+  
+  if (result.affectedRows === 0) {
+    throw new Error('No se pudo rechazar la recarga (estado no válido o ya procesada)');
+  }
+  
+  return { success: true };
+}
+
+/**
+ * Aprueba un retiro con el nuevo estado "aceptado"
+ */
+export async function aprobarRetiroNuevo(retiroId, adminId) {
+  return await transaction(async (conn) => {
+    // 1. Lock del retiro
+    const [retiroRows] = await conn.query(`SELECT * FROM retiros WHERE id = ? FOR UPDATE`, [retiroId]);
+    const retiro = retiroRows[0];
+    if (!retiro) throw new Error('Retiro no encontrado');
+    
+    // 2. Si es pasante, verificar que el patrocinador ya lo aprobó
+    const esPasante = await esUsuarioPasante(retiro.usuario_id);
+    if (esPasante && !retiro.aprobado_por_patrocinador) {
+      throw new Error('Este retiro de pasante necesita la aprobación del patrocinador primero');
+    }
+    
+    // 3. Verificar estado
+    if (retiro.estado !== 'verificando') {
+      throw new Error('El retiro no está en estado verificando');
+    }
+    
+    // 4. Actualizar el retiro
+    await conn.query(`
+      UPDATE retiros 
+      SET estado = 'aceptado', 
+          estado_operativo = 'aceptado',
+          procesado_por = ?,
+          procesado_at = NOW()
+      WHERE id = ?
+    `, [adminId, retiroId]);
+    
+    // 5. Registrar auditoría
+    await conn.query(`
+      INSERT INTO auditoria_operaciones (
+        id, tipo_operacion, usuario_id, admin_id, fecha, estado_anterior, estado_nuevo, metadata
+      ) VALUES (?, 'retiro_aprobado_admin', ?, ?, NOW(), 'verificando', 'aceptado', ?)
+    `, [uuidv4(), retiro.usuario_id, adminId, JSON.stringify({ retiroId, monto: retiro.monto })]);
+    
+    return { success: true, message: 'Retiro aprobado' };
+  });
+}
+
+/**
+ * Rechaza un retiro con el nuevo estado "rechazado"
+ */
+export async function rechazarRetiroNuevo(retiroId, adminId, motivo) {
+  return await transaction(async (conn) => {
+    // 1. Lock del retiro
+    const [retiroRows] = await conn.query(`SELECT * FROM retiros WHERE id = ? FOR UPDATE`, [retiroId]);
+    const retiro = retiroRows[0];
+    if (!retiro) throw new Error('Retiro no encontrado');
+    
+    // 2. Verificar estado
+    if (retiro.estado !== 'verificando') {
+      throw new Error('El retiro no está en estado verificando');
+    }
+    
+    // 3. Reembolso
+    const balanceField = retiro.tipo_billetera === 'comisiones' ? 'saldo_comisiones' : 'saldo_principal';
+    const [userRows] = await conn.query(`SELECT * FROM usuarios WHERE id = ? FOR UPDATE`, [retiro.usuario_id]);
+    const user = userRows[0];
+    const oldBalance = Number(user[balanceField]);
+    const amount = Number(retiro.monto);
+    const newBalance = oldBalance + amount;
+    
+    await conn.query(`UPDATE usuarios SET ${balanceField} = ? WHERE id = ?`, [newBalance, user.id]);
+    
+    // 4. Actualizar el retiro
+    await conn.query(`
+      UPDATE retiros 
+      SET estado = 'rechazado', 
+          estado_operativo = 'rechazado',
+          admin_notas = ?,
+          procesado_por = ?,
+          procesado_at = NOW()
+      WHERE id = ?
+    `, [motivo, adminId, retiroId]);
+    
+    // 5. Registrar movimiento
+    const movimientoId = uuidv4();
+    await conn.query(`
+      INSERT INTO movimientos_saldo (id, usuario_id, tipo_billetera, tipo_movimiento, monto, saldo_anterior, saldo_nuevo, referencia_id, descripcion) 
+      VALUES (?, ?, ?, 'reembolso_retiro', ?, ?, ?, ?, ?)
+    `, [movimientoId, user.id, retiro.tipo_billetera, amount, oldBalance, newBalance, retiroId, `Reembolso por retiro rechazado: ${motivo}`]);
+    
+    // 6. Notificar
+    await createNotification(user.id, 'Retiro Rechazado', `Tu retiro de ${retiro.monto} Bs fue rechazado: ${motivo}`);
+    
+    return { success: true, message: 'Retiro rechazado y saldo reembolsado' };
+  });
 }
 
 
