@@ -38,7 +38,7 @@ validateEnv();
 const app = express();
 
 // Confiar en el proxy (Nginx) para obtener la IP real y headers correctos (v12.0.0)
-app.set('trust proxy', true);
+app.set('trust proxy', 1);
 
 // Middleware de seguridad y utilidad
 
@@ -85,6 +85,7 @@ const globalLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   skip: (req) => req.path.includes('/api/health') || req.path.includes('/uploads') || req.path.includes('/socket.io'),
+  validate: false,
 });
 app.use('/api/', globalLimiter);
 

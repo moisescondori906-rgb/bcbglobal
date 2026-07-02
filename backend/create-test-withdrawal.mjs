@@ -40,7 +40,7 @@ async function createTestWithdrawal() {
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `, [
         withdrawalId, userId, monto, montoNeto, comision, 
-        'principal', 'pendiente', datosBancarios, comprobanteUrl, peruTime.todayStr()
+        'principal', 'Verificando', datosBancarios, comprobanteUrl, peruTime.todayStr()
       ]);
     });
 
