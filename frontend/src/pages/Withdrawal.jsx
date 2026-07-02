@@ -778,15 +778,15 @@ const [showWithdrawModal, setShowWithdrawModal] = useState(false);
                 </section>
 
                 {/* Mensaje para pasantes */}
-                {isInternar && !hasWithdrawalToday && (
+                {isInternar && (
                   <section className="space-y-5 sm:space-y-6">
-                    <Card className="p-4 sm:p-6 bg-blue-50 border-2 border-blue-200 shadow-sm">
+                    <Card className="p-4 sm:p-6 bg-yellow-50 border-2 border-yellow-200 shadow-sm">
                       <div className="flex items-start gap-3">
-                        <InfoIcon size={24} className="text-blue-600 shrink-0" />
+                        <InfoIcon size={24} className="text-yellow-600 shrink-0" />
                         <div>
-                          <h3 className="text-[10px] sm:text-[11px] font-black text-blue-900 uppercase tracking-widest mb-2">Información Importante</h3>
-                          <p className="text-[9px] sm:text-[10px] text-blue-800 leading-relaxed">
-                            Como usuario pasante, solo puedes realizar UN retiro de 10 Bs. El monto es fijo y no se puede modificar. Después de este retiro, deberás ascender a nivel global para seguir retirando.
+                          <h3 className="text-[10px] sm:text-[11px] font-black text-yellow-900 uppercase tracking-widest mb-2">Atención Pasante</h3>
+                          <p className="text-[9px] sm:text-[10px] text-yellow-800 leading-relaxed">
+                            Comunicate con tu reclutador para gestionar tu retiro.
                           </p>
                         </div>
                       </div>

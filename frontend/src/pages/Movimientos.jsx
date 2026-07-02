@@ -89,32 +89,32 @@ export default function Movimientos() {
     let statusIcon = Loader2;
 
     if (isRecarga) {
-      if (e === 'completada' || e === 'aprobada') {
-        statusText = 'PROCESADO';
+      if (e === 'completada' || e === 'aprobada' || e === 'aceptado') {
+        statusText = 'EXITOSO';
         statusVariant = 'success';
         statusIcon = CheckCircle2;
-      } else if (e === 'rechazada') {
-        statusText = 'Rechazado';
+      } else if (e === 'rechazada' || e === 'rechazado') {
+        statusText = 'RECHAZADO';
         statusVariant = 'error';
         statusIcon = XCircle;
       } else {
-        statusText = 'PROCESANDO';
+        statusText = 'EN REVISIÓN';
         statusVariant = 'warning';
-        statusIcon = Loader2;
+        statusIcon = Clock;
       }
     } else { // Retiro
-      if (e === 'pagado') {
-        statusText = 'PROCESADO';
+      if (e === 'pagado' || e === 'aceptado') {
+        statusText = 'EXITOSO';
         statusVariant = 'success';
         statusIcon = CheckCircle2;
       } else if (e === 'rechazado') {
-        statusText = 'Rechazado';
+        statusText = 'RECHAZADO';
         statusVariant = 'error';
         statusIcon = XCircle;
       } else {
-        statusText = 'PROCESANDO';
+        statusText = 'EN REVISIÓN';
         statusVariant = 'warning';
-        statusIcon = Loader2;
+        statusIcon = Clock;
       }
     }
 

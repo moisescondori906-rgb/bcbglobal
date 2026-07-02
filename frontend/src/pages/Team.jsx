@@ -160,6 +160,9 @@ export default function Team() {
   const [selectedNivel, setSelectedNivel] = useState('A');
   const [expandedUserId, setExpandedUserId] = useState(null);
   const [isReferralsCollapsed, setIsReferralsCollapsed] = useState(false);
+  
+  const [pendingWithdrawals, setPendingWithdrawals] = useState([]);
+  const [withdrawalsLoading, setWithdrawalsLoading] = useState(false);
 
   const fetchTeam = async (isSilent = false) => {
     if (!isSilent && !data) setLoading(true);
@@ -196,9 +199,43 @@ export default function Team() {
     return () => clearInterval(interval);
   }, []);
 
+  const fetchPendingWithdrawals = async () => {
+    setWithdrawalsLoading(true);
+    try {
+      const res = await api.get('/users/my-team/pending-withdrawals');
+      setPendingWithdrawals(res || []);
+    } catch (err) {
+      console.error('Error fetching pending withdrawals:', err);
+    } finally {
+      setWithdrawalsLoading(false);
+    }
+  };
+
+  const approveWithdrawal = async (retiroId) => {
+    try {
+      await api.post(`/users/my-team/withdrawals/${retiroId}/approve`);
+      await fetchPendingWithdrawals();
+    } catch (err) {
+      console.error('Error approving withdrawal:', err);
+    }
+  };
+
+  const rejectWithdrawal = async (retiroId) => {
+    try {
+      await api.post(`/users/my-team/withdrawals/${retiroId}/reject`, { motivo: 'Rechazado por reclutador' });
+      await fetchPendingWithdrawals();
+    } catch (err) {
+      console.error('Error rejecting withdrawal:', err);
+    }
+  };
+
   useEffect(() => {
     fetchReferrals();
-    const interval = setInterval(() => fetchReferrals(true), 5000);
+    fetchPendingWithdrawals();
+    const interval = setInterval(() => {
+      fetchReferrals(true);
+      fetchPendingWithdrawals();
+    }, 5000);
     return () => clearInterval(interval);
   }, [selectedNivel]);
 
@@ -288,6 +325,71 @@ export default function Team() {
             <p className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tighter truncate">{resumen.total_miembros || 0}</p>
           </Card>
         </div>
+
+        {/* Pending Withdrawals Section */}
+        <section className="px-1 space-y-4">
+          <div className="flex items-center gap-2">
+            <ArrowDownCircle size={16} className="text-bcb-primary" />
+            <h3 className="text-[10px] sm:text-[11px] font-black text-slate-900 uppercase tracking-[0.2em]">Retiros Pendientes de Pasantes</h3>
+          </div>
+          
+          <Card className="bg-white border-slate-200 shadow-xl shadow-slate-200/50 rounded-[1.5rem] sm:rounded-[2.5rem] overflow-hidden">
+            {withdrawalsLoading ? (
+              <div className="p-10 flex flex-col items-center justify-center space-y-4">
+                <div className="w-8 h-8 border-2 border-slate-200 border-t-bcb-primary rounded-full animate-spin" />
+                <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">Cargando retiros...</p>
+              </div>
+            ) : pendingWithdrawals.length > 0 ? (
+              <div className="divide-y divide-slate-100">
+                {pendingWithdrawals.map((retiro) => (
+                  <div key={retiro.id} className="p-5 sm:p-6 flex flex-col gap-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-bcb-primary/10 border-2 border-bcb-primary/20 flex items-center justify-center text-bcb-primary">
+                          <ArrowDownCircle size={24} />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs sm:text-sm font-black text-slate-900 uppercase tracking-tight truncate">{retiro.usuario_nombre || '---'}</p>
+                          <p className="text-[9px] text-slate-500 font-mono tracking-widest">
+                            {retiro.telefono || '---'}
+                          </p>
+                        </div>
+                      </div>
+                      <p className="text-xl sm:text-2xl font-black text-slate-900 tracking-tighter">-{Number(retiro.monto).toFixed(2)} Bs</p>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-3">
+                      <Button 
+                        onClick={() => approveWithdrawal(retiro.id)}
+                        variant="secondary" 
+                        className="h-12 sm:h-14 bg-emerald-500 text-white border-emerald-500 hover:bg-emerald-600"
+                      >
+                        Aprobar
+                      </Button>
+                      <Button 
+                        onClick={() => rejectWithdrawal(retiro.id)} 
+                        variant="secondary" 
+                        className="h-12 sm:h-14 bg-red-500 text-white border-red-500 hover:bg-red-600"
+                      >
+                        Rechazar
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-12 flex flex-col items-center justify-center text-center space-y-4">
+                <div className="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-200">
+                  <FileText size={28} />
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Sin retiros pendientes</p>
+                  <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">No hay retiros pendientes de tus pasantes.</p>
+                </div>
+              </div>
+            )}
+          </Card>
+        </section>
 
         {/* Módulo: Análisis de Ingresos */}
         <section className="px-1">
