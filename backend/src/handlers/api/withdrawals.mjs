@@ -22,8 +22,8 @@ import { asyncHandler } from '../../utils/asyncHandler.mjs';
 
 const router = Router();
 
-// Rate Limit Config: 2 intentos de retiro por minuto
-const WITHDRAW_RATE_LIMIT = 2;
+// Rate Limit Config: 5 intentos de retiro por minuto
+const WITHDRAW_RATE_LIMIT = 5;
 const RATE_LIMIT_WINDOW = 60;
 
 const withdrawRateLimit = async (req, res, next) => {
@@ -31,13 +31,21 @@ const withdrawRateLimit = async (req, res, next) => {
   if (!userId) return next();
   const key = `ratelimit:withdraw:${userId}`;
   try {
-    const current = await redis.incr(key);
-    if (current === 1) await redis.expire(key, RATE_LIMIT_WINDOW);
-    if (current > WITHDRAW_RATE_LIMIT) {
+    // Check current count without incrementing
+    const current = await redis.get(key);
+    const count = current ? parseInt(current) : 0;
+    
+    if (count >= WITHDRAW_RATE_LIMIT) {
       return res.status(429).json({ error: 'Demasiados intentos. Espera un minuto.' });
     }
+    
+    // Store key on request for later increment on success
+    req.withdrawalRateKey = key;
     next();
-  } catch (err) { next(); }
+  } catch (err) { 
+    // If Redis fails, just let the request proceed
+    next(); 
+  }
 };
 
 router.use(authenticate);
@@ -90,11 +98,21 @@ router.post('/', withdrawRateLimit, dynamicControlMiddleware('withdrawal'), asyn
     idempotencyKey: iKey
   });
 
-  // 5. Alerta de Telegram (MÓDULO 9: Flujo de Retiro Pasantía)
+  // 5. Increment rate limit counter ONLY on success
+  if (req.withdrawalRateKey) {
+    try {
+      const current = await redis.incr(req.withdrawalRateKey);
+      if (current === 1) await redis.expire(req.withdrawalRateKey, RATE_LIMIT_WINDOW);
+    } catch (err) {
+      // Ignore Redis errors
+    }
+  }
+
+  // 6. Alerta de Telegram (MÓDULO 9: Flujo de Retiro Pasantía)
   const tb = await queryOne(`SELECT * FROM tarjetas_bancarias WHERE id = ?`, [tarjeta_id]);
   const config = await getGlobalContent();
-  const levels = await getLevels();
-  const userLevel = levels.find(l => String(l.id) === String(user.nivel_id));
+  const niveles = await getLevels();
+  const userLevel = niveles.find(l => String(l.id) === String(user.nivel_id));
 
   const message = formatRetiroMessage({
     id: result.retiroId,
