@@ -73,7 +73,12 @@ async function runMigration() {
     }
     
     // Actualizar columna estado (incluyendo valores existentes para compatibilidad)
-    await query(`ALTER TABLE retiros MODIFY COLUMN estado ENUM('Verificando', 'Aceptado', 'Rechazado', 'Pendiente_Patrocinador', 'aprobado', 'rechazado', 'pendiente', 'pagado', 'completado') DEFAULT 'Verificando'`);
+    try {
+      await query(`ALTER TABLE retiros MODIFY COLUMN estado ENUM('Verificando', 'Aceptado', 'Rechazado', 'Pendiente_Patrocinador', 'aprobado', 'rechazado', 'pendiente', 'pagado', 'completado') DEFAULT 'Verificando'`);
+      console.log('✅ estado column updated');
+    } catch (err) {
+      console.log(`⚠️ estado column update skipped: ${err.message}`);
+    }
 
     // 2. Crear tabla limites_retiros_pasantia
     if (!await tableExists('limites_retiros_pasantia')) {
