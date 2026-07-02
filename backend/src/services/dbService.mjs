@@ -365,7 +365,7 @@ export async function canWithdraw(userId, dateStr = peruTime.todayStr()) {
       return { ok: false, message: 'No puedes realizar retiros sin un patrocinador asignado.' };
     }
 
-    const [limitePatrocinador] = await queryOne(`
+    const limitePatrocinador = await queryOne(`
       SELECT total_aprobados, maximo_por_patrocinador FROM limites_retiros_pasantia
       WHERE patrocinador_id = ?
     `, [user.invitado_por]);
