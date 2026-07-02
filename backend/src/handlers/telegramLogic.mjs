@@ -82,7 +82,12 @@ export async function processTelegramUpdate(update) {
                operador_nombre = ?,
                operador_username = ?,
                tomado_en = ?
-           WHERE id = ? AND (estado_operativo IS NULL OR estado_operativo = 'Verificando') AND estado = 'Verificando'`,
+           WHERE id = ?
+             AND (
+               estado_operativo IS NULL
+               OR estado_operativo IN ('Verificando', 'pendiente', 'Pendiente')
+             )
+             AND estado = 'Verificando'`,
           [String(telegramUser.id), adminName, adminUsername, peruTime.getISOString(), id]
         );
 
@@ -168,7 +173,12 @@ export async function processTelegramUpdate(update) {
                operador_nombre = ?,
                operador_username = ?,
                tomado_en = ?
-           WHERE id = ? AND (estado_operativo IS NULL OR estado_operativo = 'Verificando') AND estado IN ('Verificando', 'pendiente_ascenso')`,
+           WHERE id = ?
+             AND (
+               estado_operativo IS NULL
+               OR estado_operativo IN ('Verificando', 'pendiente', 'Pendiente')
+             )
+             AND estado IN ('Verificando', 'pendiente_ascenso')`,
           [String(telegramUser.id), adminName, adminUsername, peruTime.getISOString(), id]
         );
 

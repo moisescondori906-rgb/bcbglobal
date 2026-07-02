@@ -361,7 +361,10 @@ export async function setupTelegramLogic() {
                       operador_username = ?, 
                       tomado_en = ? 
                   WHERE id = ?
-                    AND (estado_operativo IS NULL OR estado_operativo = 'Verificando')
+                    AND (
+                      estado_operativo IS NULL
+                      OR estado_operativo IN ('Verificando', 'pendiente', 'Pendiente')
+                    )
                 `, [telegramUserId, adminName, from.username || null, peruTime.now(), refId]);
                 logger.info(`[TELEGRAM][${botName}] Resultado update retiros: ${res.affectedRows} filas.`);
                 if (res.affectedRows === 0) {
@@ -376,7 +379,10 @@ export async function setupTelegramLogic() {
                       operador_username = ?,
                       tomado_en = ?
                   WHERE id = ?
-                    AND (estado_operativo IS NULL OR estado_operativo = 'Verificando')
+                    AND (
+                      estado_operativo IS NULL
+                      OR estado_operativo IN ('Verificando', 'pendiente', 'Pendiente')
+                    )
                 `, [telegramUserId, adminName, from.username || null, peruTime.now(), refId]);
                 logger.info(`[TELEGRAM][${botName}] Resultado update compras_nivel: ${res.affectedRows} filas.`);
                 if (res.affectedRows === 0) {

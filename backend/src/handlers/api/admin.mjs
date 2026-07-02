@@ -236,7 +236,10 @@ router.post('/recargas/:id/tomar', asyncHandler(async (req, res) => {
         operador_nombre = ?, 
         operador_username = ?, 
         tomado_en = NOW() 
-    WHERE id = ? AND (estado_operativo IS NULL OR estado_operativo = 'Verificando')
+    WHERE id = ? AND (
+      estado_operativo IS NULL
+      OR estado_operativo IN ('Verificando', 'pendiente', 'Pendiente')
+    )
   `, [admin.nombre_usuario, admin.nombre_usuario, id]);
 
   if (result.affectedRows === 0) {
@@ -256,7 +259,10 @@ router.post('/retiros/:id/tomar', asyncHandler(async (req, res) => {
         operador_nombre = ?, 
         operador_username = ?, 
         tomado_en = NOW() 
-    WHERE id = ? AND (estado_operativo IS NULL OR estado_operativo = 'Verificando')
+    WHERE id = ? AND (
+      estado_operativo IS NULL
+      OR estado_operativo IN ('Verificando', 'pendiente', 'Pendiente')
+    )
   `, [admin.nombre_usuario, admin.nombre_usuario, id]);
 
   if (result.affectedRows === 0) {
