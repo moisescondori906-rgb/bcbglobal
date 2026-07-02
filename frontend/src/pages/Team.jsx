@@ -8,7 +8,8 @@ import { CONFIG } from '../config.js';
 import { 
   Users, UserPlus, TrendingUp, Info, 
   ShieldAlert, ChevronRight, Copy, Check,
-  Target, Zap, Gem, Trash2, Star, PieChart as PieChartIcon
+  Target, Zap, Gem, Star, PieChart as PieChartIcon,
+  ChevronDown
 } from 'lucide-react';
 
 // UI Components
@@ -157,7 +158,7 @@ export default function Team() {
   const [referrals, setReferrals] = useState([]);
   const [referralsLoading, setReferralsLoading] = useState(true);
   const [selectedNivel, setSelectedNivel] = useState('A');
-  const [deletingId, setDeletingId] = useState(null);
+  const [expandedUserId, setExpandedUserId] = useState(null);
   const [isReferralsCollapsed, setIsReferralsCollapsed] = useState(false);
 
   const fetchTeam = async (isSilent = false) => {
@@ -213,20 +214,7 @@ export default function Team() {
     }
   };
 
-  const handleDeleteReferral = async (referralId) => {
-    if (!window.confirm('¿Estás seguro de eliminar a este usuario Pasante? Esta acción no se puede deshacer.')) return;
-    
-    setDeletingId(referralId);
-    try {
-      await api.delete(`/users/my-referrals/${referralId}`);
-      fetchReferrals();
-      fetchTeam(true);
-    } catch (err) {
-      alert(err.response?.data?.error || 'Error al eliminar referido');
-    } finally {
-      setDeletingId(null);
-    }
-  };
+
 
   if (loading && !data) {
     return (
@@ -433,54 +421,85 @@ export default function Team() {
                       </div>
                     ) : referrals.length > 0 ? (
                       referrals.map((ref, idx) => (
-                        <motion.div 
-                          key={ref.id} 
-                          initial={{ opacity: 0, x: -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: idx * 0.05 }}
-                          className="p-5 sm:p-6 flex items-center justify-between hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-0"
-                        >
-                          <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-slate-100 border-2 border-slate-200 flex items-center justify-center text-slate-500 font-black text-sm sm:text-base shadow-sm">
-                              {ref.nombre_usuario?.charAt(0).toUpperCase() || '?'}
-                            </div>
-                            <div className="min-w-0">
-                              <p className="text-xs sm:text-sm font-black text-slate-900 uppercase tracking-tight truncate">
-                                {ref.nombre_usuario}
-                              </p>
-                              <p className="text-[10px] sm:text-[11px] font-bold text-slate-500 tracking-[0.1em]">
-                                {ref.telefono_masked}
-                              </p>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-3">
-                            <div className="text-right space-y-1">
-                              <div className="inline-block px-2.5 py-1 rounded-lg bg-bcb-primary/10 border-2 border-bcb-primary/20">
-                                <p className="text-[9px] sm:text-[10px] font-black text-bcb-primary uppercase tracking-widest">
-                                  {displayLevelCode(ref.nivel_codigo)}
+                        <div key={ref.id} className="border-b border-slate-100 last:border-0">
+                          <motion.div 
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: idx * 0.05 }}
+                            onClick={() => setExpandedUserId(expandedUserId === ref.id ? null : ref.id)}
+                            className="p-5 sm:p-6 flex items-center justify-between hover:bg-slate-50 transition-colors cursor-pointer"
+                          >
+                            <div className="flex items-center gap-4">
+                              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-slate-100 border-2 border-slate-200 flex items-center justify-center text-slate-500 font-black text-sm sm:text-base shadow-sm">
+                                {ref.nombre_usuario?.charAt(0).toUpperCase() || '?'}
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-xs sm:text-sm font-black text-slate-900 uppercase tracking-tight truncate">
+                                  {ref.nombre_usuario}
+                                </p>
+                                <p className="text-[10px] sm:text-[11px] font-bold text-slate-500 tracking-[0.1em]">
+                                  {ref.telefono_masked}
                                 </p>
                               </div>
-                              <p className="text-[8px] sm:text-[9px] font-black text-slate-400 uppercase tracking-tighter">
-                                {ref.created_at ? new Date(ref.created_at).toLocaleDateString('es-BO', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '---'}
-                              </p>
                             </div>
-                            
-                            {selectedNivel === 'A' && String(ref.nivel_codigo).toLowerCase() === 'internar' && (
-                              <button
-                                onClick={() => handleDeleteReferral(ref.id)}
-                                disabled={deletingId === ref.id}
-                                className="p-2 text-bcb-error hover:bg-bcb-error/5 rounded-lg transition-colors disabled:opacity-50 border border-transparent hover:border-bcb-error/10"
+
+                            <div className="flex items-center gap-3">
+                              <div className="text-right space-y-1">
+                                <div className="inline-block px-2.5 py-1 rounded-lg bg-bcb-primary/10 border-2 border-bcb-primary/20">
+                                  <p className="text-[9px] sm:text-[10px] font-black text-bcb-primary uppercase tracking-widest">
+                                    {displayLevelCode(ref.nivel_codigo)}
+                                  </p>
+                                </div>
+                                <p className="text-[8px] sm:text-[9px] font-black text-slate-400 uppercase tracking-tighter">
+                                  {ref.created_at ? new Date(ref.created_at).toLocaleDateString('es-BO', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '---'}
+                                </p>
+                              </div>
+                              
+                              <motion.div
+                                animate={{ rotate: expandedUserId === ref.id ? 90 : 0 }}
+                                transition={{ duration: 0.2 }}
                               >
-                                {deletingId === ref.id ? (
-                                  <div className="w-4 h-4 border-2 border-bcb-error/20 border-t-bcb-error rounded-full animate-spin" />
-                                ) : (
-                                  <Trash2 size={16} />
-                                )}
-                              </button>
+                                <ChevronRight size={20} className="text-slate-400" />
+                              </motion.div>
+                            </div>
+                          </motion.div>
+
+                          <AnimatePresence>
+                            {expandedUserId === ref.id && (
+                              <motion.div
+                                initial={{ width: 0, opacity: 0, overflow: 'hidden' }}
+                                animate={{ width: '100%', opacity: 1, overflow: 'visible' }}
+                                exit={{ width: 0, opacity: 0, overflow: 'hidden' }}
+                                transition={{ duration: 0.3, ease: 'easeInOut' }}
+                              >
+                                <div className="px-5 sm:px-6 pb-5 sm:pb-6 bg-slate-50/50">
+                                  <div className="grid grid-cols-2 gap-3 text-xs">
+                                    <div className="space-y-1">
+                                      <p className="text-[9px] font-bold text-slate-500 uppercase tracking-[0.1em]">ID Usuario</p>
+                                      <p className="font-black text-slate-800 truncate">{ref.id}</p>
+                                    </div>
+                                    <div className="space-y-1">
+                                      <p className="text-[9px] font-bold text-slate-500 uppercase tracking-[0.1em]">Fecha Registro</p>
+                                      <p className="font-black text-slate-800">
+                                        {ref.created_at ? new Date(ref.created_at).toLocaleDateString('es-BO', { 
+                                          day: '2-digit', 
+                                          month: 'long', 
+                                          year: 'numeric' 
+                                        }) : '---'}
+                                      </p>
+                                    </div>
+                                    {ref.nivel && (
+                                      <div className="space-y-1">
+                                        <p className="text-[9px] font-bold text-slate-500 uppercase tracking-[0.1em]">Nivel</p>
+                                        <p className="font-black text-slate-800">{ref.nivel}</p>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </motion.div>
                             )}
-                          </div>
-                        </motion.div>
+                          </AnimatePresence>
+                        </div>
                       ))
                     ) : (
                       <div className="p-12 flex flex-col items-center justify-center text-center space-y-4">
