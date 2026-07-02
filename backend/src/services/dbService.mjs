@@ -1487,14 +1487,14 @@ export async function getDailyOperatorSummary(dateStr = peruTime.todayStr()) {
     // 1. Totales Generales
     const totales = await queryOne(`
       SELECT 
-        (SELECT COUNT(*) FROM compras_nivel WHERE DATE(procesado_at) = ? AND estado IN ('aprobada', 'completada')) as recargas_procesadas,
-        (SELECT IFNULL(SUM(monto), 0) FROM compras_nivel WHERE DATE(procesado_at) = ? AND estado IN ('aprobada', 'completada')) as total_recargas,
-        (SELECT COUNT(*) FROM retiros WHERE fecha_dia = ? AND estado IN ('aprobado', 'pagado', 'completado')) as retiros_procesados,
-        (SELECT IFNULL(SUM(monto), 0) FROM retiros WHERE fecha_dia = ? AND estado IN ('aprobado', 'pagado', 'completado')) as total_retiros_solicitados,
-        (SELECT IFNULL(SUM(monto_neto), 0) FROM retiros WHERE fecha_dia = ? AND estado IN ('aprobado', 'pagado', 'completado')) as total_neto_pagado,
-        (SELECT IFNULL(SUM(comision_operador), 0) FROM retiros WHERE fecha_dia = ? AND estado IN ('aprobado', 'pagado', 'completado')) as total_comision_operadores_5,
-        (SELECT IFNULL(SUM(comision_retiro), 0) FROM retiros WHERE fecha_dia = ? AND estado IN ('aprobado', 'pagado', 'completado')) as total_comision_plataforma_10,
-        (SELECT IFNULL(SUM(comision_total), 0) FROM retiros WHERE fecha_dia = ? AND estado IN ('aprobado', 'pagado', 'completado')) as total_descuento_15
+        (SELECT COUNT(*) FROM compras_nivel WHERE DATE(procesado_at) = ? AND estado IN ('Aceptado')) as recargas_procesadas,
+        (SELECT IFNULL(SUM(monto), 0) FROM compras_nivel WHERE DATE(procesado_at) = ? AND estado IN ('Aceptado')) as total_recargas,
+        (SELECT COUNT(*) FROM retiros WHERE fecha_dia = ? AND estado IN ('Aceptado')) as retiros_procesados,
+        (SELECT IFNULL(SUM(monto), 0) FROM retiros WHERE fecha_dia = ? AND estado IN ('Aceptado')) as total_retiros_solicitados,
+        (SELECT IFNULL(SUM(monto_neto), 0) FROM retiros WHERE fecha_dia = ? AND estado IN ('Aceptado')) as total_neto_pagado,
+        (SELECT IFNULL(SUM(comision_operador), 0) FROM retiros WHERE fecha_dia = ? AND estado IN ('Aceptado')) as total_comision_operadores_5,
+        (SELECT IFNULL(SUM(comision_retiro), 0) FROM retiros WHERE fecha_dia = ? AND estado IN ('Aceptado')) as total_comision_plataforma_10,
+        (SELECT IFNULL(SUM(comision_total), 0) FROM retiros WHERE fecha_dia = ? AND estado IN ('Aceptado')) as total_descuento_15
     `, [dateStr, dateStr, dateStr, dateStr, dateStr, dateStr, dateStr, dateStr]);
 
     // 2. Detalle por Operador (Agrupado por Telegram ID)
@@ -1518,7 +1518,7 @@ export async function getDailyOperatorSummary(dateStr = peruTime.todayStr()) {
           SUM(monto_neto) as neto_retiros,
           SUM(comision_operador) as comision_op
         FROM retiros 
-        WHERE fecha_dia = ? AND estado_operativo IN ('tomado', 'aceptado', 'rechazado')
+        WHERE fecha_dia = ? AND estado_operativo IN ('Verificando', 'Aceptado', 'Rechazado')
         GROUP BY operador_telegram_id, operador_nombre, operador_username
       ) r
       LEFT JOIN (
@@ -1527,7 +1527,7 @@ export async function getDailyOperatorSummary(dateStr = peruTime.todayStr()) {
           COUNT(*) as cant_recargas,
           SUM(monto) as monto_recargas
         FROM compras_nivel 
-        WHERE DATE(tomado_en) = ? AND estado_operativo IN ('tomado', 'aceptado', 'rechazado')
+        WHERE DATE(tomado_en) = ? AND estado_operativo IN ('Verificando', 'Aceptado', 'Rechazado')
         GROUP BY operador_telegram_id, operador_nombre, operador_username
       ) c ON r.operador_telegram_id = c.operador_telegram_id
       
@@ -1551,7 +1551,7 @@ export async function getDailyOperatorSummary(dateStr = peruTime.todayStr()) {
           SUM(monto_neto) as neto_retiros,
           SUM(comision_operador) as comision_op
         FROM retiros 
-        WHERE fecha_dia = ? AND estado_operativo IN ('tomado', 'aceptado', 'rechazado')
+        WHERE fecha_dia = ? AND estado_operativo IN ('Verificando', 'Aceptado', 'Rechazado')
         GROUP BY operador_telegram_id, operador_nombre, operador_username
       ) r
       RIGHT JOIN (
@@ -1560,7 +1560,7 @@ export async function getDailyOperatorSummary(dateStr = peruTime.todayStr()) {
           COUNT(*) as cant_recargas,
           SUM(monto) as monto_recargas
         FROM compras_nivel 
-        WHERE DATE(tomado_en) = ? AND estado_operativo IN ('tomado', 'aceptado', 'rechazado')
+        WHERE DATE(tomado_en) = ? AND estado_operativo IN ('Verificando', 'Aceptado', 'Rechazado')
         GROUP BY operador_telegram_id, operador_nombre, operador_username
       ) c ON r.operador_telegram_id = c.operador_telegram_id
       WHERE r.operador_telegram_id IS NULL
@@ -1591,7 +1591,7 @@ export async function distributeInvestmentCommissions(userId, amount, purchaseId
     // --- REGLA: SOLO PRIMERA INVERSIÓN ---
     // Verificamos si el usuario ya tiene otras inversiones aprobadas anteriormente.
     // Contamos todas las compras aprobadas. Si el total es > 1, significa que no es la primera.
-    const stats = await queryOne(`SELECT COUNT(*) as total FROM compras_nivel WHERE usuario_id = ? AND estado IN ('aprobada', 'completada')`, [userId]);
+    const stats = await queryOne(`SELECT COUNT(*) as total FROM compras_nivel WHERE usuario_id = ? AND estado IN ('Aceptado')`, [userId]);
     if (stats.total > 1) {
       logger.info(`[COMMISSIONS] Usuario ${user.nombre_usuario} (${userId}) ya realizó inversiones previas. Saltando distribución de comisiones.`);
       return;
@@ -1774,7 +1774,7 @@ export async function handleLevelUpRewards(userId, oldLevelId, newLevelId, compr
     // Verificar si es la primera compra completada de nivel del usuario
     const queryParams = [userId];
     let sql = `SELECT COUNT(*) as total FROM compras_nivel 
-               WHERE usuario_id = ? AND estado = 'completada'`;
+               WHERE usuario_id = ? AND estado = 'Aceptado'`;
     if (compraId) {
       sql += ` AND id != ?`;
       queryParams.push(compraId);
@@ -1926,7 +1926,7 @@ export async function getDailyWithdrawalSummary(dateStr = peruTime.todayStr()) {
         IFNULL(SUM(comision_aplicada), 0) as total_comisiones
       FROM retiros 
       WHERE fecha_dia = ? 
-      AND estado IN ('aprobado', 'pagado', 'completado')
+      AND estado IN ('Aceptado')
     `, [dateStr]);
 
     const totalSolicitado = Number(summary.total_solicitado);
@@ -1965,8 +1965,8 @@ export async function getDailyWithdrawalSummary(dateStr = peruTime.todayStr()) {
 export async function getDashboardStats() {
   const [userCount, rechargeTotal, withdrawalTotal, activeTasks] = await Promise.all([
     queryOne(`SELECT COUNT(*) as total FROM usuarios WHERE rol = 'usuario'`),
-    queryOne(`SELECT SUM(monto) as total FROM compras_nivel WHERE estado = 'completada'`),
-    queryOne(`SELECT SUM(monto) as total FROM retiros WHERE estado = 'pagado'`),
+    queryOne(`SELECT SUM(monto) as total FROM compras_nivel WHERE estado = 'Aceptado'`),
+    queryOne(`SELECT SUM(monto) as total FROM retiros WHERE estado = 'Aceptado'`),
     queryOne(`SELECT COUNT(*) as total FROM actividad_tareas WHERE fecha_dia = ?`, [peruTime.todayStr()])
   ]);
 
@@ -2754,12 +2754,12 @@ export async function generarReporteFinancieroDiario(dateStr = null) {
   
   const reporte = await queryOne(`
     SELECT
-      (SELECT COALESCE(SUM(monto), 0) FROM compras_nivel WHERE DATE(procesado_at) = ? AND estado IN ('Aceptado', 'aprobada', 'completada')) as total_ingresos,
-      (SELECT COALESCE(SUM(monto), 0) FROM compras_nivel WHERE DATE(procesado_at) = ? AND estado IN ('Aceptado', 'aprobada', 'completada')) as total_recargas,
-      (SELECT COALESCE(SUM(monto), 0) FROM retiros WHERE fecha_dia = ? AND estado IN ('Aceptado', 'aprobado', 'pagado', 'completado')) as total_retiros,
-      (SELECT COALESCE(SUM(monto), 0) FROM retiros WHERE fecha_dia = ? AND estado IN ('Aceptado', 'aprobado', 'pagado', 'completado')) as total_salidas,
-      (SELECT COUNT(*) FROM compras_nivel WHERE DATE(procesado_at) = ? AND estado IN ('Aceptado', 'aprobada', 'completada')) as cantidad_recargas,
-      (SELECT COUNT(*) FROM retiros WHERE fecha_dia = ? AND estado IN ('Aceptado', 'aprobado', 'pagado', 'completado')) as cantidad_retiros
+      (SELECT COALESCE(SUM(monto), 0) FROM compras_nivel WHERE DATE(procesado_at) = ? AND estado IN ('Aceptado')) as total_ingresos,
+      (SELECT COALESCE(SUM(monto), 0) FROM compras_nivel WHERE DATE(procesado_at) = ? AND estado IN ('Aceptado')) as total_recargas,
+      (SELECT COALESCE(SUM(monto), 0) FROM retiros WHERE fecha_dia = ? AND estado IN ('Aceptado')) as total_retiros,
+      (SELECT COALESCE(SUM(monto), 0) FROM retiros WHERE fecha_dia = ? AND estado IN ('Aceptado')) as total_salidas,
+      (SELECT COUNT(*) FROM compras_nivel WHERE DATE(procesado_at) = ? AND estado IN ('Aceptado')) as cantidad_recargas,
+      (SELECT COUNT(*) FROM retiros WHERE fecha_dia = ? AND estado IN ('Aceptado')) as cantidad_retiros
   `, [fecha, fecha, fecha, fecha, fecha, fecha]);
   
   const balance = Number(reporte.total_ingresos || 0) - Number(reporte.total_salidas || 0);
@@ -2781,8 +2781,8 @@ export async function generarReporteFinancieroDiario(dateStr = null) {
 export async function aprobarRecargaNuevo(compraId, adminId) {
   const result = await query(`
     UPDATE compras_nivel 
-    SET estado = 'aceptado', 
-        estado_operativo = 'aceptado',
+    SET estado = 'Aceptado', 
+        estado_operativo = 'Aceptado',
         procesado_por = ?,
         procesado_at = NOW()
     WHERE id = ? AND estado IN ('Verificando', 'pendiente_ascenso', 'verificando')
@@ -2796,13 +2796,13 @@ export async function aprobarRecargaNuevo(compraId, adminId) {
 }
 
 /**
- * Rechaza una recarga con el nuevo estado "rechazado"
+ * Rechaza una recarga con el nuevo estado "Rechazado"
  */
 export async function rechazarRecargaNuevo(compraId, adminId, motivo) {
   const result = await query(`
     UPDATE compras_nivel 
-    SET estado = 'rechazado', 
-        estado_operativo = 'rechazado',
+    SET estado = 'Rechazado', 
+        estado_operativo = 'Rechazado',
         admin_notas = ?,
         procesado_por = ?,
         procesado_at = NOW()
@@ -2817,7 +2817,7 @@ export async function rechazarRecargaNuevo(compraId, adminId, motivo) {
 }
 
 /**
- * Aprueba un retiro con el nuevo estado "aceptado"
+ * Aprueba un retiro con el nuevo estado "Aceptado"
  */
 export async function aprobarRetiroNuevo(retiroId, adminId) {
   return await transaction(async (conn) => {
@@ -2833,15 +2833,15 @@ export async function aprobarRetiroNuevo(retiroId, adminId) {
     }
     
     // 3. Verificar estado
-    if (retiro.estado !== 'verificando') {
-      throw new Error('El retiro no está en estado verificando');
+    if (retiro.estado !== 'Verificando' && retiro.estado !== 'verificando') {
+      throw new Error('El retiro no está en estado Verificando');
     }
     
     // 4. Actualizar el retiro
     await conn.query(`
       UPDATE retiros 
-      SET estado = 'aceptado', 
-          estado_operativo = 'aceptado',
+      SET estado = 'Aceptado', 
+          estado_operativo = 'Aceptado',
           procesado_por = ?,
           procesado_at = NOW()
       WHERE id = ?
@@ -2851,7 +2851,7 @@ export async function aprobarRetiroNuevo(retiroId, adminId) {
     await conn.query(`
       INSERT INTO auditoria_operaciones (
         id, tipo_operacion, usuario_id, admin_id, fecha, estado_anterior, estado_nuevo, metadata
-      ) VALUES (?, 'retiro_aprobado_admin', ?, ?, NOW(), 'verificando', 'aceptado', ?)
+      ) VALUES (?, 'retiro_aprobado_admin', ?, ?, NOW(), 'verificando', 'Aceptado', ?)
     `, [uuidv4(), retiro.usuario_id, adminId, JSON.stringify({ retiroId, monto: retiro.monto })]);
     
     return { success: true, message: 'Retiro aprobado' };
@@ -2869,8 +2869,8 @@ export async function rechazarRetiroNuevo(retiroId, adminId, motivo) {
     if (!retiro) throw new Error('Retiro no encontrado');
     
     // 2. Verificar estado
-    if (retiro.estado !== 'verificando') {
-      throw new Error('El retiro no está en estado verificando');
+    if (retiro.estado !== 'Verificando' && retiro.estado !== 'verificando') {
+      throw new Error('El retiro no está en estado Verificando');
     }
     
     // 3. Reembolso
@@ -2886,8 +2886,8 @@ export async function rechazarRetiroNuevo(retiroId, adminId, motivo) {
     // 4. Actualizar el retiro
     await conn.query(`
       UPDATE retiros 
-      SET estado = 'rechazado', 
-          estado_operativo = 'rechazado',
+      SET estado = 'Rechazado', 
+          estado_operativo = 'Rechazado',
           admin_notas = ?,
           procesado_por = ?,
           procesado_at = NOW()
