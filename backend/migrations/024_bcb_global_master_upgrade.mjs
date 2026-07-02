@@ -72,8 +72,8 @@ async function runMigration() {
       await query(`ALTER TABLE retiros ADD INDEX idx_retiros_patrocinador (patrocinador_id)`);
     }
     
-    // Actualizar columna estado
-    await query(`ALTER TABLE retiros MODIFY COLUMN estado ENUM('Verificando', 'Aceptado', 'Rechazado', 'Pendiente_Patrocinador') DEFAULT 'Verificando'`);
+    // Actualizar columna estado (incluyendo valores existentes para compatibilidad)
+    await query(`ALTER TABLE retiros MODIFY COLUMN estado ENUM('Verificando', 'Aceptado', 'Rechazado', 'Pendiente_Patrocinador', 'aprobado', 'rechazado', 'pendiente', 'pagado', 'completado') DEFAULT 'Verificando'`);
 
     // 2. Crear tabla limites_retiros_pasantia
     if (!await tableExists('limites_retiros_pasantia')) {
