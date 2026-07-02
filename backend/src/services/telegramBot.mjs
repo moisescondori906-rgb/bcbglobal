@@ -1,4 +1,5 @@
 import TelegramBot from 'node-telegram-bot-api';
+import fs from 'fs';
 import logger from '../utils/logger.mjs';
 import { safeTelegram } from '../utils/safe.mjs';
 import { query, queryOne } from '../config/db.mjs';
@@ -10,6 +11,21 @@ let botSecretaria = null;
 
 // Solo el primer worker de PM2 (instancia 0) o si no estamos en PM2 debe hacer polling
 const SHOULD_POLL = !process.env.NODE_APP_INSTANCE || process.env.NODE_APP_INSTANCE === '0';
+
+const reportWithdrawalQrDebug = (hypothesisId, location, msg, data = {}) => {
+  let debugServerUrl = 'http://127.0.0.1:7777/event';
+  let sessionId = 'withdrawal-qr-telegram';
+  try {
+    const env = fs.readFileSync(`${process.cwd()}\\.dbg\\withdrawal-qr-telegram.env`, 'utf8');
+    debugServerUrl = env.match(/DEBUG_SERVER_URL=(.+)/)?.[1] || debugServerUrl;
+    sessionId = env.match(/DEBUG_SESSION_ID=(.+)/)?.[1] || sessionId;
+  } catch {}
+  fetch(debugServerUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sessionId, runId: 'pre-fix', hypothesisId, location, msg, data, ts: Date.now() })
+  }).catch(() => {});
+};
 
 /**
  * @section CONFIGURACIÓN DE BOTS
@@ -180,9 +196,41 @@ export async function sendToAdmin(message, options = {}) {
     const chatId = process.env.TELEGRAM_CHAT_ADMIN;
     if (bot && chatId) {
       if (options.photo) {
+        // #region debug-point C:send-admin-photo-attempt
+        reportWithdrawalQrDebug('C', 'telegramBot.mjs:197', '[DEBUG] sendToAdmin photo attempt', {
+          chatId,
+          photoType: options.photo?.constructor?.name || typeof options.photo,
+          photoBytes: Buffer.isBuffer(options.photo) ? options.photo.length : null
+        });
+        // #endregion
         const { photo, ...otherOptions } = options;
-        return await bot.sendPhoto(chatId, photo, { caption: message, parse_mode: 'HTML', ...otherOptions });
+        try {
+          const sent = await bot.sendPhoto(chatId, photo, { caption: message, parse_mode: 'HTML', ...otherOptions });
+          // #region debug-point C:send-admin-photo-success
+          reportWithdrawalQrDebug('C', 'telegramBot.mjs:205', '[DEBUG] sendToAdmin photo success', {
+            chatId,
+            messageId: sent?.message_id || null
+          });
+          // #endregion
+          return sent;
+        } catch (err) {
+          // #region debug-point C:send-admin-photo-error
+          reportWithdrawalQrDebug('C', 'telegramBot.mjs:213', '[DEBUG] sendToAdmin photo error', {
+            chatId,
+            error: err?.message || String(err),
+            code: err?.code || null,
+            responseBody: err?.response?.body || null
+          });
+          // #endregion
+          throw err;
+        }
       }
+      // #region debug-point E:send-admin-text-fallback
+      reportWithdrawalQrDebug('E', 'telegramBot.mjs:223', '[DEBUG] sendToAdmin text fallback', {
+        chatId,
+        hasPhoto: !!options.photo
+      });
+      // #endregion
       return await bot.sendMessage(chatId, message, { parse_mode: 'HTML', ...options });
     }
   }, 'sendToAdmin');
@@ -197,9 +245,41 @@ export async function sendToRetiros(message, options = {}) {
     const chatId = process.env.TELEGRAM_CHAT_RETIROS || process.env.TELEGRAM_CHAT_ADMIN;
     if (bot && chatId) {
       if (options.photo) {
+        // #region debug-point C:send-retiros-photo-attempt
+        reportWithdrawalQrDebug('C', 'telegramBot.mjs:240', '[DEBUG] sendToRetiros photo attempt', {
+          chatId,
+          photoType: options.photo?.constructor?.name || typeof options.photo,
+          photoBytes: Buffer.isBuffer(options.photo) ? options.photo.length : null
+        });
+        // #endregion
         const { photo, ...otherOptions } = options;
-        return await bot.sendPhoto(chatId, photo, { caption: message, parse_mode: 'HTML', ...otherOptions });
+        try {
+          const sent = await bot.sendPhoto(chatId, photo, { caption: message, parse_mode: 'HTML', ...otherOptions });
+          // #region debug-point C:send-retiros-photo-success
+          reportWithdrawalQrDebug('C', 'telegramBot.mjs:248', '[DEBUG] sendToRetiros photo success', {
+            chatId,
+            messageId: sent?.message_id || null
+          });
+          // #endregion
+          return sent;
+        } catch (err) {
+          // #region debug-point C:send-retiros-photo-error
+          reportWithdrawalQrDebug('C', 'telegramBot.mjs:256', '[DEBUG] sendToRetiros photo error', {
+            chatId,
+            error: err?.message || String(err),
+            code: err?.code || null,
+            responseBody: err?.response?.body || null
+          });
+          // #endregion
+          throw err;
+        }
       }
+      // #region debug-point E:send-retiros-text-fallback
+      reportWithdrawalQrDebug('E', 'telegramBot.mjs:266', '[DEBUG] sendToRetiros text fallback', {
+        chatId,
+        hasPhoto: !!options.photo
+      });
+      // #endregion
       return await bot.sendMessage(chatId, message, { parse_mode: 'HTML', ...options });
     }
   }, 'sendToRetiros');
@@ -230,9 +310,41 @@ export async function sendToTelegramUser(chatId, message, options = {}) {
     const bot = await setupAdminBot();
     if (bot && chatId) {
       if (options.photo) {
+        // #region debug-point D:send-user-photo-attempt
+        reportWithdrawalQrDebug('D', 'telegramBot.mjs:285', '[DEBUG] sendToTelegramUser photo attempt', {
+          chatId,
+          photoType: options.photo?.constructor?.name || typeof options.photo,
+          photoBytes: Buffer.isBuffer(options.photo) ? options.photo.length : null
+        });
+        // #endregion
         const { photo, ...otherOptions } = options;
-        return await bot.sendPhoto(chatId, photo, { caption: message, parse_mode: 'HTML', ...otherOptions });
+        try {
+          const sent = await bot.sendPhoto(chatId, photo, { caption: message, parse_mode: 'HTML', ...otherOptions });
+          // #region debug-point D:send-user-photo-success
+          reportWithdrawalQrDebug('D', 'telegramBot.mjs:293', '[DEBUG] sendToTelegramUser photo success', {
+            chatId,
+            messageId: sent?.message_id || null
+          });
+          // #endregion
+          return sent;
+        } catch (err) {
+          // #region debug-point D:send-user-photo-error
+          reportWithdrawalQrDebug('D', 'telegramBot.mjs:301', '[DEBUG] sendToTelegramUser photo error', {
+            chatId,
+            error: err?.message || String(err),
+            code: err?.code || null,
+            responseBody: err?.response?.body || null
+          });
+          // #endregion
+          throw err;
+        }
       }
+      // #region debug-point E:send-user-text-fallback
+      reportWithdrawalQrDebug('E', 'telegramBot.mjs:311', '[DEBUG] sendToTelegramUser text fallback', {
+        chatId,
+        hasPhoto: !!options.photo
+      });
+      // #endregion
       return await bot.sendMessage(chatId, message, { parse_mode: 'HTML', ...options });
     }
   }, 'sendToTelegramUser');

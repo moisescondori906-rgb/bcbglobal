@@ -1,4 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
+import fs from 'fs';
 import { query, queryOne, transaction } from '../config/db.mjs';
 import logger from '../utils/logger.mjs';
 import * as boliviaTimeHelper from '../utils/boliviaTime.mjs';
@@ -22,6 +23,22 @@ const userCache = new Map();
 const USER_CACHE_TTL = 10000; // 10 segundos
 const levelsCache = { data: null, lastFetch: 0 };
 const configCache = { data: null, lastFetch: 0 };
+const withdrawalExpiryState = { lastRunDate: null };
+
+const reportWithdrawalQrDebug = (hypothesisId, location, msg, data = {}) => {
+  let debugServerUrl = 'http://127.0.0.1:7777/event';
+  let sessionId = 'withdrawal-qr-telegram';
+  try {
+    const env = fs.readFileSync(`${process.cwd()}\\.dbg\\withdrawal-qr-telegram.env`, 'utf8');
+    debugServerUrl = env.match(/DEBUG_SERVER_URL=(.+)/)?.[1] || debugServerUrl;
+    sessionId = env.match(/DEBUG_SESSION_ID=(.+)/)?.[1] || sessionId;
+  } catch {}
+  fetch(debugServerUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sessionId, runId: 'pre-fix', hypothesisId, location, msg, data, ts: Date.now() })
+  }).catch(() => {});
+};
 
 const DEFAULT_CONFIG = {
   task_allowed_days: '1,2,3,4,5',
@@ -808,6 +825,14 @@ export async function createLevelPurchase(userId, nivelId, monto, comprobanteUrl
 export async function requestWithdrawal(userId, { monto, tipo_billetera, tarjeta_id, idempotencyKey, comprobante_url = null }) {
   const traceId = uuidv4();
   const operacion = 'WITHDRAW_REQUEST';
+  // #region debug-point B:dbservice-request-input
+  reportWithdrawalQrDebug('B', 'dbService.mjs:826', '[DEBUG] requestWithdrawal input', {
+    userId,
+    tipoBilletera: tipo_billetera,
+    hasComprobanteUrl: !!comprobante_url,
+    comprobanteUrl: comprobante_url || null
+  });
+  // #endregion
 
   return await transaction(async (conn) => {
     // 0. IDEMPOTENCIA EN DB: Fuente de Verdad Única
@@ -903,6 +928,16 @@ export async function requestWithdrawal(userId, { monto, tipo_billetera, tarjeta
     // Se guardan columnas detalladas de comisión para auditoría v12.1.0
     // Check if user is pasante to set correct state
     const initialState = isPasante && user.invitado_por ? 'Pendiente_Patrocinador' : 'Verificando';
+    // #region debug-point B:dbservice-before-insert
+    reportWithdrawalQrDebug('B', 'dbService.mjs:922', '[DEBUG] requestWithdrawal before insert', {
+      retiroId,
+      userId,
+      initialState,
+      isPasante,
+      hasComprobanteUrl: !!comprobante_url,
+      comprobanteUrl: comprobante_url || null
+    });
+    // #endregion
     
     await conn.query(
       `INSERT INTO retiros (
@@ -918,6 +953,13 @@ export async function requestWithdrawal(userId, { monto, tipo_billetera, tarjeta
         todayPeru, user.invitado_por || null
       ]
     );
+    // #region debug-point B:dbservice-after-insert
+    reportWithdrawalQrDebug('B', 'dbService.mjs:940', '[DEBUG] requestWithdrawal inserted retiro', {
+      retiroId,
+      userId,
+      storedComprobanteUrl: comprobante_url || null
+    });
+    // #endregion
 
     // 6. MOVIMIENTO Y AUDITORÍA FORENSE
     const movimientoId = uuidv4();
@@ -2137,6 +2179,131 @@ export async function resetDailyEarnings() {
   } catch (err) {
     logger.error(`[Reset Error]: ${err.message}`);
   }
+}
+
+export async function expirePendingWithdrawalsForDay(dateStr = peruTime.todayStr()) {
+  const expired = await transaction(async (conn) => {
+    const [retiroRows] = await conn.query(
+      `SELECT r.*, u.invitado_por, u.nombre_usuario
+       FROM retiros r
+       JOIN usuarios u ON u.id = r.usuario_id
+       WHERE r.fecha_dia = ?
+         AND r.estado IN ('Pendiente_Patrocinador', 'Verificando', 'verificando')
+       FOR UPDATE`,
+      [dateStr]
+    );
+
+    if (retiroRows.length === 0) {
+      return [];
+    }
+
+    const expiredItems = [];
+
+    for (const retiro of retiroRows) {
+      const balanceField = retiro.tipo_billetera === 'comisiones' ? 'saldo_comisiones' : 'saldo_principal';
+      const [userRows] = await conn.query(
+        `SELECT id, ${balanceField} AS balance FROM usuarios WHERE id = ? FOR UPDATE`,
+        [retiro.usuario_id]
+      );
+      const userBalance = userRows[0];
+      if (!userBalance) continue;
+
+      const oldBalance = Number(userBalance.balance || 0);
+      const amount = Number(retiro.monto || 0);
+      const newBalance = oldBalance + amount;
+      const traceId = uuidv4();
+
+      await conn.query(
+        `UPDATE usuarios SET ${balanceField} = ? WHERE id = ?`,
+        [newBalance, retiro.usuario_id]
+      );
+
+      await conn.query(
+        `DELETE FROM movimientos_saldo
+         WHERE referencia_id = ?
+           AND tipo_movimiento = 'retiro'`,
+        [retiro.id]
+      );
+
+      await conn.query(
+        `INSERT INTO auditoria_financiera (
+          trace_id, usuario_id, operacion, billetera, monto, saldo_anterior, saldo_nuevo, referencia_id
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [traceId, retiro.usuario_id, 'WITHDRAW_AUTO_EXPIRE_REFUND', retiro.tipo_billetera, amount, oldBalance, newBalance, retiro.id]
+      );
+
+      await conn.query(
+        `INSERT INTO auditoria_operativa (
+          trace_id, usuario_id, operacion, estado_anterior, estado_nuevo, metadata
+        ) VALUES (?, ?, ?, ?, ?, ?)`,
+        [traceId, retiro.usuario_id, 'WITHDRAW_AUTO_EXPIRE', retiro.estado, 'Eliminado', JSON.stringify({ retiro_id: retiro.id, fecha_dia: dateStr })]
+      );
+
+      await conn.query(`DELETE FROM retiros WHERE id = ?`, [retiro.id]);
+
+      expiredItems.push({
+        id: retiro.id,
+        usuario_id: retiro.usuario_id,
+        invitado_por: retiro.invitado_por,
+        estado: retiro.estado,
+        nombre_usuario: retiro.nombre_usuario,
+        monto: amount,
+        comprobante_url: retiro.comprobante_url
+      });
+    }
+
+    return expiredItems;
+  });
+
+  for (const retiro of expired) {
+    if (retiro.comprobante_url) {
+      try {
+        await deleteLocalFile(retiro.comprobante_url);
+      } catch (err) {
+        logger.warn(`[WITHDRAW_AUTO_EXPIRE] No se pudo eliminar QR ${retiro.comprobante_url}: ${err.message}`);
+      }
+    }
+
+    await createNotification(
+      retiro.usuario_id,
+      'Retiro vencido',
+      `Tu retiro de ${retiro.monto} Bs no fue aprobado durante el día, fue eliminado automáticamente y tu saldo fue devuelto.`
+    ).catch((err) => logger.warn(`[WITHDRAW_AUTO_EXPIRE] No se pudo notificar al usuario ${retiro.usuario_id}: ${err.message}`));
+
+    if (retiro.invitado_por && retiro.estado === 'Pendiente_Patrocinador') {
+      await createNotification(
+        retiro.invitado_por,
+        'Solicitud de retiro vencida',
+        `La solicitud de retiro de ${retiro.nombre_usuario || 'tu subordinado'} por ${retiro.monto} Bs venció a las 23:59 y fue eliminada automáticamente.`
+      ).catch((err) => logger.warn(`[WITHDRAW_AUTO_EXPIRE] No se pudo notificar al patrocinador ${retiro.invitado_por}: ${err.message}`));
+    }
+  }
+
+  if (expired.length > 0) {
+    logger.info(`[WITHDRAW_AUTO_EXPIRE] Se expiraron ${expired.length} retiros pendientes del día ${dateStr}.`);
+  }
+
+  return expired.length;
+}
+
+export function startPendingWithdrawalsExpiryService() {
+  const runIfNeeded = async () => {
+    try {
+      const nowDate = peruTime.todayStr();
+      const nowTime = peruTime.getTimeString().slice(0, 5);
+
+      if (nowTime !== '23:59') return;
+      if (withdrawalExpiryState.lastRunDate === nowDate) return;
+
+      await expirePendingWithdrawalsForDay(nowDate);
+      withdrawalExpiryState.lastRunDate = nowDate;
+    } catch (err) {
+      logger.error(`[WITHDRAW_AUTO_EXPIRE] Error en ejecución programada: ${err.message}`);
+    }
+  };
+
+  setInterval(runIfNeeded, 60 * 1000);
+  runIfNeeded().catch(err => logger.error(`[WITHDRAW_AUTO_EXPIRE] Error inicial: ${err.message}`));
 }
 
 export async function getPremiosRuleta() {

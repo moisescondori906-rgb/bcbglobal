@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 import bcrypt from 'bcryptjs';
 import { 
@@ -21,6 +22,21 @@ import { asyncHandler } from '../../utils/asyncHandler.mjs';
 import { uploadImageBuffer } from '../../utils/fileStorage.mjs';
 
 const router = Router();
+
+const reportWithdrawalQrDebug = (hypothesisId, location, msg, data = {}) => {
+  let debugServerUrl = 'http://127.0.0.1:7777/event';
+  let sessionId = 'withdrawal-qr-telegram';
+  try {
+    const env = fs.readFileSync(`${process.cwd()}\\.dbg\\withdrawal-qr-telegram.env`, 'utf8');
+    debugServerUrl = env.match(/DEBUG_SERVER_URL=(.+)/)?.[1] || debugServerUrl;
+    sessionId = env.match(/DEBUG_SESSION_ID=(.+)/)?.[1] || sessionId;
+  } catch {}
+  fetch(debugServerUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sessionId, runId: 'pre-fix', hypothesisId, location, msg, data, ts: Date.now() })
+  }).catch(() => {});
+};
 
 // Rate Limit Config: 5 intentos de retiro por minuto
 const WITHDRAW_RATE_LIMIT = 5;
@@ -65,6 +81,16 @@ router.get('/', asyncHandler(async (req, res) => {
 router.post('/', withdrawRateLimit, dynamicControlMiddleware('withdrawal'), asyncHandler(async (req, res) => {
   const { monto, tipo_billetera, password_fondo, tarjeta_id, idempotency_key, comprobante_url } = req.body;
   const user = req.requestUser;
+  // #region debug-point A:withdraw-request-input
+  reportWithdrawalQrDebug('A', 'withdrawals.mjs:82', '[DEBUG] Withdrawal request received', {
+    userId: user?.id || null,
+    tarjetaId: tarjeta_id || null,
+    tipoBilletera: tipo_billetera || null,
+    hasComprobanteUrl: !!comprobante_url,
+    comprobantePrefix: typeof comprobante_url === 'string' ? comprobante_url.slice(0, 32) : null,
+    comprobanteLength: typeof comprobante_url === 'string' ? comprobante_url.length : 0
+  });
+  // #endregion
 
   const iKey = idempotency_key || req.headers['x-idempotency-key'];
   if (!iKey) return res.status(400).json({ error: 'Falta clave de idempotencia' });
@@ -96,6 +122,12 @@ router.post('/', withdrawRateLimit, dynamicControlMiddleware('withdrawal'), asyn
 
   if (comprobante_url) {
     const dataUrlMatch = comprobante_url.match(/^data:(image\/[a-zA-Z0-9-.+]+);base64,(.*)$/);
+    // #region debug-point A:withdraw-request-parse
+    reportWithdrawalQrDebug('A', 'withdrawals.mjs:114', '[DEBUG] Withdrawal comprobante parse attempt', {
+      hasMatch: !!dataUrlMatch,
+      mimeType: dataUrlMatch?.[1] || null
+    });
+    // #endregion
     if (!dataUrlMatch) {
       return res.status(400).json({ error: 'El comprobante QR debe ser una imagen válida.' });
     }
@@ -108,7 +140,19 @@ router.post('/', withdrawRateLimit, dynamicControlMiddleware('withdrawal'), asyn
     try {
       const uploaded = await uploadImageBuffer(imageBuffer, { folder: 'comprobantes', ext });
       finalComprobanteUrl = uploaded.secure_url;
+      // #region debug-point B:withdraw-upload-result
+      reportWithdrawalQrDebug('B', 'withdrawals.mjs:129', '[DEBUG] Withdrawal comprobante uploaded', {
+        uploadedUrl: finalComprobanteUrl,
+        bufferBytes: imageBuffer.length,
+        extension: ext
+      });
+      // #endregion
     } catch (err) {
+      // #region debug-point B:withdraw-upload-error
+      reportWithdrawalQrDebug('B', 'withdrawals.mjs:136', '[DEBUG] Withdrawal comprobante upload failed', {
+        error: err?.message || String(err)
+      });
+      // #endregion
       logger.error(`[WITHDRAW] Error guardando comprobante QR: ${err.message}`);
       return res.status(500).json({ error: 'No se pudo guardar el comprobante QR.' });
     }
@@ -160,9 +204,17 @@ router.post('/', withdrawRateLimit, dynamicControlMiddleware('withdrawal'), asyn
       ]
     }
   };
-  const notifyOptions = imageBuffer ? { ...options, photo: imageBuffer } : options;
-
   const userLevelCode = String(userLevel?.codigo || '').toLowerCase();
+  const notifyOptions = imageBuffer ? { ...options, photo: imageBuffer } : options;
+  // #region debug-point C:withdraw-telegram-branch
+  reportWithdrawalQrDebug('C', 'withdrawals.mjs:188', '[DEBUG] Withdrawal telegram branch prepared', {
+    retiroId: result?.retiroId || null,
+    userId: user?.id || null,
+    userLevelCode,
+    hasImageBuffer: !!imageBuffer,
+    imageBufferBytes: Buffer.isBuffer(imageBuffer) ? imageBuffer.length : 0
+  });
+  // #endregion
 
   if (userLevelCode === 'internar' || userLevelCode === 'pasantia') {
     // Si es Pasantía, enviar al patrocinador
@@ -177,7 +229,7 @@ router.post('/', withdrawRateLimit, dynamicControlMiddleware('withdrawal'), asyn
       );
 
       if (sponsor && sponsor.telegram_user_id) {
-        sendToTelegramUser(sponsor.telegram_user_id, message, notifyOptions); 
+        sendToTelegramUser(sponsor.telegram_user_id, message, options); 
         logger.info(`[TELEGRAM] Notificación de retiro Pasantía enviada a patrocinador ${sponsor.telegram_user_id}`);
       } else {
         logger.warn(`[TELEGRAM] Patrocinador de usuario ${user.id} no tiene Telegram ID o no fue encontrado. La solicitud queda pendiente para aprobación desde la web.`);
