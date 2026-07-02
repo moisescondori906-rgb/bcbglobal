@@ -9,7 +9,7 @@ import {
   Users, UserPlus, TrendingUp, Info, 
   ShieldAlert, ChevronRight, Copy, Check,
   Target, Zap, Gem, Star, PieChart as PieChartIcon,
-  ChevronDown
+  ChevronDown, ArrowDownCircle, FileText
 } from 'lucide-react';
 
 // UI Components

@@ -1012,7 +1012,7 @@ export async function approveLevelPurchase(compraId, adminId, idempotencyKey = n
     });
 
     await conn.query(
-      `UPDATE compras_nivel SET estado = 'Aceptado', estado_operativo = 'aceptado', procesado_por = ?, procesado_at = NOW() WHERE id = ?`, 
+      `UPDATE compras_nivel SET estado = 'Aceptado', estado_operativo = 'Aceptado', procesado_por = ?, procesado_at = NOW() WHERE id = ?`, 
       [adminId, compraId]
     );
 
