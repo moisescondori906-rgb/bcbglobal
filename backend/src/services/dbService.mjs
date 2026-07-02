@@ -901,7 +901,6 @@ export async function requestWithdrawal(userId, { monto, tipo_billetera, tarjeta
 
     // Se guardan columnas detalladas de comisión para auditoría v12.1.0
     // Check if user is pasante to set correct state
-    const isPasante = level.codigo === 'internar' || level.codigo === 'pasantia';
     const initialState = isPasante && user.invitado_por ? 'Pendiente_Patrocinador' : 'Verificando';
     
     await conn.query(
