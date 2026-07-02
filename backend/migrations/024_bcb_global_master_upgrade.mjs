@@ -6,18 +6,22 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+function escapeSql(str) {
+  return `'${str.replace(/'/g, "\\'")}'`;
+}
+
 async function columnExists(table, column) {
-  const result = await query(`SHOW COLUMNS FROM ${table} LIKE ?`, [column]);
+  const result = await query(`SHOW COLUMNS FROM ${table} LIKE ${escapeSql(column)}`);
   return result.length > 0;
 }
 
 async function indexExists(table, indexName) {
-  const result = await query(`SHOW INDEX FROM ${table} WHERE Key_name = ?`, [indexName]);
+  const result = await query(`SHOW INDEX FROM ${table} WHERE Key_name = ${escapeSql(indexName)}`);
   return result.length > 0;
 }
 
 async function tableExists(tableName) {
-  const result = await query(`SHOW TABLES LIKE ?`, [tableName]);
+  const result = await query(`SHOW TABLES LIKE ${escapeSql(tableName)}`);
   return result.length > 0;
 }
 
