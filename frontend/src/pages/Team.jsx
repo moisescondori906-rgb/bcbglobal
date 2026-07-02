@@ -437,8 +437,8 @@ export default function Team() {
                                 <p className="text-xs sm:text-sm font-black text-slate-900 uppercase tracking-tight truncate">
                                   {ref.nombre_usuario}
                                 </p>
-                                <p className="text-[10px] sm:text-[11px] font-bold text-slate-500 tracking-[0.1em]">
-                                  {ref.telefono_masked}
+                                <p class="text-[10px] sm:text-[11px] font-bold text-slate-500 tracking-[0.1em]">
+                                  {ref.telefono}
                                 </p>
                               </div>
                             </div>
