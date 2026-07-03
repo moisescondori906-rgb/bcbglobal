@@ -438,7 +438,9 @@ export async function setupTelegramLogic() {
                   }
 
                   await approveLevelPurchase(refId, adminId);
-                  if (compra) distributeInvestmentCommissions(compra.usuario_id, compra.monto);
+                  if (compra) {
+                    await distributeInvestmentCommissions(compra.usuario_id, compra.monto, refId);
+                  }
                 } else {
                   await conn.query(
                     `UPDATE compras_nivel SET estado = 'rechazada', procesado_por = ?, procesado_at = NOW() WHERE id = ?`,

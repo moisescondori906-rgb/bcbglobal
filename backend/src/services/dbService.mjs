@@ -1745,6 +1745,10 @@ export async function distributeInvestmentCommissions(userId, amount, purchaseId
   try {
     const user = await findUserById(userId);
     if (!user || !user.invitado_por) return;
+    if (!purchaseId) {
+      logger.warn(`[COMMISSIONS] Saltando distribución para usuario ${userId}: falta purchaseId.`);
+      return;
+    }
 
     // --- REGLA: SOLO PRIMERA INVERSIÓN ---
     // Verificamos si el usuario ya tiene otras inversiones aprobadas anteriormente.
@@ -1775,7 +1779,7 @@ export async function distributeInvestmentCommissions(userId, amount, purchaseId
 
     const configs = [
       { key: 'A', percent: 0.10 },
-      { key: 'B', percent: 0.03 },
+      { key: 'B', percent: 0.035 },
       { key: 'C', percent: 0.01 }
     ];
 
@@ -1801,7 +1805,7 @@ export async function distributeInvestmentCommissions(userId, amount, purchaseId
 
         // REGLA DE JERARQUÍA (con excepción para números privilegiados)
         const esPrivilegiado = NUMEROS_PRIVILEGIADOS.includes(uplineData.telefono);
-        const subordinadoEsPasante = userLevel.codigo === 'internar';
+        const subordinadoEsPasante = ['internar', 'pasantia'].includes(String(userLevel.codigo || '').toLowerCase());
         
         if (subordinadoEsPasante) {
           // Si el subordinado es pasante, no se genera comisión
@@ -2666,6 +2670,28 @@ export async function giveTicketsPorAscensoInvitado(invitadorId, invitadoId, niv
       logger.info(`[Tickets-Ascenso] Tickets ya otorgados previamente para este ascenso.`);
       return null;
     }
+
+    let comprasVipAceptadas = 0;
+    if (conn) {
+      const [purchaseRows] = await conn.query(`
+        SELECT COUNT(*) AS total
+        FROM compras_nivel
+        WHERE usuario_id = ? AND estado = 'Aceptado'
+      `, [invitadoId]);
+      comprasVipAceptadas = Number(purchaseRows[0]?.total || 0);
+    } else {
+      const purchaseStats = await queryOne(`
+        SELECT COUNT(*) AS total
+        FROM compras_nivel
+        WHERE usuario_id = ? AND estado = 'Aceptado'
+      `, [invitadoId]);
+      comprasVipAceptadas = Number(purchaseStats?.total || 0);
+    }
+
+    if (comprasVipAceptadas > 0) {
+      logger.info(`[Tickets-Ascenso] Invitado ${invitadoId} ya tenía compras VIP aceptadas. No se regalan tickets por ascensos posteriores.`);
+      return null;
+    }
     
     // Determinar cantidad de tickets según nivel
     let cantidadTickets = 0;
@@ -2682,7 +2708,7 @@ export async function giveTicketsPorAscensoInvitado(invitadorId, invitadoId, niv
       motivoTicket = 'Invitado ascendió a Global 2';
       motivoHistorial = 'Invitado ascendió a Global 2';
     } else if (nivelCodigo === 'global3') {
-      cantidadTickets = 3;
+      cantidadTickets = 2;
       motivoTicket = 'Invitado ascendió a Global 3';
       motivoHistorial = 'Invitado ascendió a Global 3';
     }
@@ -2780,6 +2806,17 @@ export async function esUsuarioPasante(userId) {
   return codigo === 'internar' || codigo === 'pasantia';
 }
 
+export async function puedeAprobarRetirosDePasantes(userId) {
+  const user = await findUserById(userId);
+  if (!user) return false;
+
+  const levels = await getLevels();
+  const userLevel = levels.find(l => String(l.id) === String(user.nivel_id));
+  const codigo = String(userLevel?.codigo || '').toLowerCase();
+
+  return codigo !== 'internar' && codigo !== 'pasantia' && Number(userLevel?.orden || 0) >= 1;
+}
+
 /**
  * Obtiene el conteo de retiros autorizados por patrocinador
  */
@@ -2819,6 +2856,10 @@ export async function aprobarRetiroPorPatrocinador(retiroId, patrocinadorId) {
     const user = userRows[0];
     if (!user || user.invitado_por !== patrocinadorId) {
       throw new Error('No eres el patrocinador de este usuario');
+    }
+
+    if (!await puedeAprobarRetirosDePasantes(patrocinadorId)) {
+      throw new Error('Solo usuarios VIP pueden aprobar retiros de pasantes');
     }
     
     // 3. Verificar que es un pasante
@@ -2964,6 +3005,10 @@ export async function rechazarRetiroPorPatrocinador(retiroId, patrocinadorId, mo
     if (!user || user.invitado_por !== patrocinadorId) {
       throw new Error('No eres el patrocinador de este usuario');
     }
+
+    if (!await puedeAprobarRetirosDePasantes(patrocinadorId)) {
+      throw new Error('Solo usuarios VIP pueden aprobar retiros de pasantes');
+    }
     
     // 3. Verificar que es un pasante
     if (!await esUsuarioPasante(retiro.usuario_id)) {
@@ -3038,8 +3083,12 @@ export async function rechazarRetiroPorPatrocinador(retiroId, patrocinadorId, mo
  * Obtiene los retiros Verificando por aprobación de patrocinador
  */
 export async function getRetirosPendientesPatrocinador(patrocinadorId) {
+  if (!await puedeAprobarRetirosDePasantes(patrocinadorId)) {
+    return [];
+  }
+
   return await query(`
-    SELECT r.*, u.nombre_usuario, u.telefono, n.nombre as nivel_nombre, n.codigo as nivel_codigo
+    SELECT r.*, u.nombre_usuario as usuario_nombre, u.nombre_usuario, u.telefono, n.nombre as nivel_nombre, n.codigo as nivel_codigo
     FROM retiros r
     JOIN usuarios u ON r.usuario_id = u.id
     LEFT JOIN niveles n ON u.nivel_id = n.id

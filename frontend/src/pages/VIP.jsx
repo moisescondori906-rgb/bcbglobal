@@ -219,7 +219,7 @@ export default function VIP() {
               <div className="grid grid-cols-3 gap-3">
                 {[
                   { label: 'Nivel A', val: '10%', sub: 'Directo' },
-                  { label: 'Nivel B', val: '3%', sub: 'Indirecto' },
+                  { label: 'Nivel B', val: '3.5%', sub: 'Indirecto' },
                   { label: 'Nivel C', val: '1%', sub: 'Equipo' },
                 ].map((item, i) => (
                   <div key={i} className="text-center space-y-1">
@@ -241,4 +241,3 @@ export default function VIP() {
     </Layout>
   );
 }
-

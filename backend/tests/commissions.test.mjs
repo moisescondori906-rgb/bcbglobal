@@ -129,8 +129,8 @@ describe('Sistema de Comisiones Automáticas', () => {
       
       // Nivel A: 10% de 230 = 23 Bs
       const expectedCommissionA = 23; 
-      // Nivel B: 3% de 230 = 6.90 Bs
-      const expectedCommissionB = 6.90; 
+      // Nivel B: 3.5% de 230 = 8.05 Bs
+      const expectedCommissionB = 8.05; 
       // Nivel C: 1% de 230 = 2.30 Bs
       const expectedCommissionC = 2.30;
 

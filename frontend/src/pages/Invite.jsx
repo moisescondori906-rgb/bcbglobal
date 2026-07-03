@@ -212,7 +212,7 @@ export default function Invite() {
             <div className="grid grid-cols-1 gap-4">
               {[
                 { icon: Gift, title: 'Bono Directo 10%', desc: 'Comisión por inversión de tus socios Nivel A.', color: 'text-indigo-600', bg: 'bg-indigo-50' },
-                { icon: TrendingUp, title: 'Bono Indirecto', desc: 'Gana hasta el 3% por referidos Nivel B y C.', color: 'text-bcb-primary', bg: 'bg-bcb-primary/10' },
+                { icon: TrendingUp, title: 'Bono Indirecto', desc: 'Gana 3.5% en Nivel B y 1% en Nivel C en la primera recarga VIP.', color: 'text-bcb-primary', bg: 'bg-bcb-primary/10' },
                 { icon: ShieldCheck, title: 'Red VIP Global', desc: 'Liquidación instantánea de beneficios de red.', color: 'text-emerald-600', bg: 'bg-emerald-50' }
               ].map((b, i) => (
                 <Card key={i} className="flex items-center gap-5 p-5 bg-white border-black/[0.03] group hover:border-bcb-primary/30 transition-all shadow-m3-1">
@@ -315,5 +315,4 @@ export default function Invite() {
     </Layout>
   );
 }
-
 

@@ -150,6 +150,7 @@ const PieChart = ({ data }) => {
 
 export default function Team() {
   const { user } = useAuth();
+  const canManagePasanteWithdrawals = !['internar', 'pasantia'].includes(String(user?.nivel_codigo || '').toLowerCase());
   const [data, setData] = useState(null);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -206,6 +207,13 @@ export default function Team() {
   }, []);
 
   const fetchPendingWithdrawals = async (isSilent = false) => {
+    if (!canManagePasanteWithdrawals) {
+      pendingWithdrawalsSnapshotRef.current = '[]';
+      setPendingWithdrawals([]);
+      setWithdrawalsLoading(false);
+      return;
+    }
+
     if (!isSilent && pendingWithdrawals.length === 0) setWithdrawalsLoading(true);
     try {
       const res = await api.get('/users/my-team/pending-withdrawals');
@@ -242,13 +250,20 @@ export default function Team() {
 
   useEffect(() => {
     fetchReferrals();
-    fetchPendingWithdrawals();
+    if (canManagePasanteWithdrawals) {
+      fetchPendingWithdrawals();
+    } else {
+      pendingWithdrawalsSnapshotRef.current = '[]';
+      setPendingWithdrawals([]);
+    }
     const interval = setInterval(() => {
       fetchReferrals(true);
-      fetchPendingWithdrawals(true);
+      if (canManagePasanteWithdrawals) {
+        fetchPendingWithdrawals(true);
+      }
     }, 15000);
     return () => clearInterval(interval);
-  }, [selectedNivel]);
+  }, [selectedNivel, canManagePasanteWithdrawals]);
 
   const handleCopy = async () => {
     if (!user?.codigo_invitacion) return;
@@ -277,8 +292,6 @@ export default function Team() {
 
   const resumen = data?.resumen || {};
   const niveles = Array.isArray(data?.niveles) ? data.niveles : [];
-  const isInternar = user?.nivel_codigo === 'internar';
-
   return (
     <Layout>
       <Header title="Informe del equipo" />
@@ -338,6 +351,7 @@ export default function Team() {
         </div>
 
         {/* Pending Withdrawals Section */}
+        {canManagePasanteWithdrawals && (
         <section className="px-1 space-y-4">
           <div className="flex items-center gap-2">
             <ArrowDownCircle size={16} className="text-bcb-primary" />
@@ -401,6 +415,7 @@ export default function Team() {
             )}
           </Card>
         </section>
+        )}
 
         {/* Módulo: Análisis de Ingresos */}
         <section className="px-1">
@@ -438,7 +453,7 @@ export default function Team() {
                 </div>
                 <div className="bg-white/80 backdrop-blur-sm p-3 rounded-xl border border-slate-200 text-center shadow-sm">
                   <p className="text-[8px] font-black text-slate-400 uppercase tracking-tighter mb-1">Nivel B</p>
-                  <p className="text-sm sm:text-base font-black text-bcb-primary">3%</p>
+                  <p className="text-sm sm:text-base font-black text-bcb-primary">3.5%</p>
                 </div>
                 <div className="bg-white/80 backdrop-blur-sm p-3 rounded-xl border border-slate-200 text-center shadow-sm">
                   <p className="text-[8px] font-black text-slate-400 uppercase tracking-tighter mb-1">Nivel C</p>
