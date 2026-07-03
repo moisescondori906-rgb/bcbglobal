@@ -3,6 +3,7 @@ import fs from 'fs';
 import { query, queryOne, transaction } from '../config/db.mjs';
 import logger from '../utils/logger.mjs';
 import * as boliviaTimeHelper from '../utils/boliviaTime.mjs';
+import { validatePasanteWithdrawalRules } from '../utils/withdrawalRules.mjs';
 import redis from './redisService.mjs';
 import { emitToAll, emitToUser } from './socketService.mjs';
 import { deleteLocalFile, readLocalFileBuffer } from '../utils/fileStorage.mjs';
@@ -423,6 +424,11 @@ export async function canWithdraw(userId, dateStr = peruTime.todayStr()) {
 
   // Validar límite de retiros de pasantía por patrocinador (MÓDULO 8)
   if (userLevel.codigo === 'internar' || userLevel.codigo === 'pasantia') {
+    const diasPasantiaCompletos = await getCompletedInternshipDays(userId, Number(userLevel.num_tareas_diarias || 0));
+    if (diasPasantiaCompletos < 4) {
+      return { ok: false, message: `Debes completar los 4 dias de pasantia antes de solicitar tu retiro. Dias completados: ${diasPasantiaCompletos}/4.` };
+    }
+
     if (!user.invitado_por) {
       return { ok: false, message: 'No puedes realizar retiros sin un patrocinador asignado.' };
     }
@@ -460,6 +466,22 @@ export async function canWithdraw(userId, dateStr = peruTime.todayStr()) {
   }
 
   return { ok: true };
+}
+
+export async function getCompletedInternshipDays(userId, requiredTasksPerDay = 3) {
+  const minimumTasks = Math.max(1, Number(requiredTasksPerDay || 0));
+  const result = await queryOne(`
+    SELECT COUNT(*) as total
+    FROM (
+      SELECT fecha_dia
+      FROM actividad_tareas
+      WHERE usuario_id = ?
+      GROUP BY fecha_dia
+      HAVING COUNT(*) >= ?
+    ) dias_completos
+  `, [userId, minimumTasks]);
+
+  return Number(result?.total || 0);
 }
 
 // ========================
@@ -900,7 +922,6 @@ export async function requestWithdrawal(userId, { monto, tipo_billetera, tarjeta
 
     const m = Number(monto);
     const oldBalance = Number(user.balance);
-    if (oldBalance < m) throw new Error('Saldo insuficiente para realizar el retiro');
 
     // 2. BLINDAJE 1 RETIRO/DIA: validar por periodo calendario Bolivia, no por 24 horas.
     const withdrawalWindow = boliviaTimeHelper.getBoliviaWithdrawalDayWindow();
@@ -925,15 +946,28 @@ export async function requestWithdrawal(userId, { monto, tipo_billetera, tarjeta
     const level = levelRows[0];
     if (!level) throw new Error('Nivel de usuario no encontrado');
 
+    const levelCode = String(level?.codigo || '').toLowerCase();
+    const isPasante = levelCode === 'internar' || levelCode === 'pasantia';
     let montoFinal = m;
-    if (level.codigo === 'internar' || level.codigo === 'pasantia') {
-      // For pasantes, enforce exactly 10 Bs
-      montoFinal = 10;
+    if (isPasante) {
+      const completedInternshipDays = await getCompletedInternshipDays(userId, Number(level.num_tareas_diarias || 0));
+      const pasanteValidation = validatePasanteWithdrawalRules({
+        requestedAmount: m,
+        balance: oldBalance,
+        completedInternshipDays,
+        requiredInternshipDays: 4,
+        requiredAmount: 10
+      });
+      if (!pasanteValidation.ok) {
+        throw new Error(pasanteValidation.message);
+      }
+      montoFinal = pasanteValidation.amount;
     } else {
       // Global 1 o superior: mínimo 20 Bs
       if (m < 20) {
         throw new Error('Los retiros para niveles Global 1 en adelante deben ser de al menos 20 Bs.');
       }
+      if (oldBalance < m) throw new Error('Saldo insuficiente para realizar el retiro');
     }
 
     // 4. DESCONTAR SALDO (ACID)
@@ -954,8 +988,6 @@ export async function requestWithdrawal(userId, { monto, tipo_billetera, tarjeta
     
     // v12.7.0: Obtener comisiones desde la configuración global
     const config = await getGlobalContent();
-    const levelCode = String(level?.codigo || '').toLowerCase();
-    const isPasante = levelCode === 'internar' || levelCode === 'pasantia';
     const pctRetiro = isPasante ? 0 : (Number(config.comision_retiro || 10) / 100); // 0% comision para pasantes, 10% para VIP
 
     const comisionTotal = +(montoSolicitado * pctRetiro).toFixed(2);
@@ -1010,13 +1042,13 @@ export async function requestWithdrawal(userId, { monto, tipo_billetera, tarjeta
     await conn.query(
       `INSERT INTO movimientos_saldo (id, usuario_id, tipo_billetera, tipo_movimiento, monto, saldo_anterior, saldo_nuevo, referencia_id, descripcion) 
        VALUES (?, ?, ?, 'retiro', ?, ?, ?, ?, ?)`,
-      [movimientoId, userId, tipo_billetera, -m, oldBalance, newBalance, retiroId, 'Solicitud de retiro']
+      [movimientoId, userId, tipo_billetera, -montoFinal, oldBalance, newBalance, retiroId, 'Solicitud de retiro']
     );
 
     await conn.query(
       `INSERT INTO auditoria_financiera (trace_id, usuario_id, operacion, billetera, monto, saldo_anterior, saldo_nuevo, referencia_id) 
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [traceId, userId, operacion, tipo_billetera, m, oldBalance, newBalance, retiroId]
+      [traceId, userId, operacion, tipo_billetera, montoFinal, oldBalance, newBalance, retiroId]
     );
 
     userCache.delete(userId);
