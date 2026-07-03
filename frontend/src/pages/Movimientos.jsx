@@ -90,35 +90,35 @@ export default function Movimientos() {
 
     if (isRecarga) {
       if (e === 'completada' || e === 'aprobada' || e === 'aceptado') {
-        statusText = 'EXITOSO';
+        statusText = 'Aprobado';
         statusVariant = 'success';
         statusIcon = CheckCircle2;
       } else if (e === 'rechazada' || e === 'rechazado') {
-        statusText = 'RECHAZADO';
+        statusText = 'Rechazado';
         statusVariant = 'error';
         statusIcon = XCircle;
       } else {
-        statusText = 'EN REVISIÓN';
+        statusText = 'Revisando';
         statusVariant = 'warning';
         statusIcon = Clock;
       }
     } else { // Retiro
-      if (e === 'pagado' || e === 'aceptado') {
-        statusText = 'EXITOSO';
+      if (e === 'pagado' || e === 'aceptado' || e === 'aprobado') {
+        statusText = 'Aprobado';
         statusVariant = 'success';
         statusIcon = CheckCircle2;
       } else if (e === 'rechazado') {
-        statusText = 'RECHAZADO';
+        statusText = 'Rechazado';
         statusVariant = 'error';
         statusIcon = XCircle;
       } else {
-        statusText = 'EN REVISIÓN';
+        statusText = 'Revisando';
         statusVariant = 'warning';
         statusIcon = Clock;
       }
     }
 
-    return { text: statusText.toUpperCase(), variant: statusVariant, icon: statusIcon };
+    return { text: statusText, variant: statusVariant, icon: statusIcon };
   };
 
   if (loading && combinedItems.length === 0) {
@@ -230,4 +230,3 @@ export default function Movimientos() {
     </Layout>
   );
 }
-

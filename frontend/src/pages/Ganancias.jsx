@@ -18,6 +18,24 @@ import { Badge } from '../components/ui/Badge.jsx';
 import { Button } from '../components/ui/Button.jsx';
 import { cn } from '../lib/utils/cn';
 
+const APPROVED_STATES = new Set(['completada', 'completado', 'aprobada', 'aprobado', 'aceptada', 'aceptado', 'pagado']);
+const REJECTED_STATES = new Set(['rechazada', 'rechazado']);
+
+function normalizeText(value) {
+  return String(value || '').trim();
+}
+
+function prettifyMovementType(value) {
+  return normalizeText(value).replace(/_/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function getRequestStatusInfo(rawState) {
+  const state = normalizeText(rawState).toLowerCase();
+  if (REJECTED_STATES.has(state)) return { text: 'Rechazado', variant: 'error' };
+  if (APPROVED_STATES.has(state)) return { text: 'Aprobado', variant: 'success' };
+  return { text: 'Revisando', variant: 'warning' };
+}
+
 const categories = [
   { id: 'todo', label: 'Todo', icon: History },
   { id: 'tareas', label: 'Tareas', icon: Trophy },
@@ -38,13 +56,19 @@ export default function Ganancias() {
   const fetchData = async () => {
     try {
       if (!data) setLoading(true);
-      const res = await api.users.earnings().catch(() => ({ 
-        history: [], 
-        summary: { total: 0, hoy: 0 } 
-      }));
+      const [earningsRes, recargasRes, retirosRes] = await Promise.all([
+        api.users.earnings().catch(() => ({
+          history: [],
+          summary: { total: 0, hoy: 0 }
+        })),
+        api.recharges.list().catch(() => []),
+        api.withdrawals.list().catch(() => [])
+      ]);
       setData({
-        history: res?.history || [],
-        summary: res?.summary || { total: 0, hoy: 0 }
+        history: earningsRes?.history || [],
+        summary: earningsRes?.summary || { total: 0, hoy: 0 },
+        recargas: Array.isArray(recargasRes) ? recargasRes : [],
+        retiros: Array.isArray(retirosRes) ? retirosRes : []
       });
     } catch (err) {
       console.error('Error fetching earnings:', err);
@@ -74,6 +98,73 @@ export default function Ganancias() {
     };
     return filters[tab]?.some(f => tipo.includes(f));
   }) : [];
+
+  const recargasList = Array.isArray(data?.recargas) ? data.recargas : [];
+  const retirosList = Array.isArray(data?.retiros) ? data.retiros : [];
+  const recargasMap = new Map(recargasList.map(item => [String(item.id), item]));
+  const retirosMap = new Map(retirosList.map(item => [String(item.id), item]));
+
+  const enrichedHistory = historyList.map((item) => {
+    const referenceId = normalizeText(item.referencia_id);
+    if (referenceId && recargasMap.has(referenceId)) {
+      return { ...item, __activityKind: 'recarga', __linkedOperation: recargasMap.get(referenceId) };
+    }
+    if (referenceId && retirosMap.has(referenceId)) {
+      return { ...item, __activityKind: 'retiro', __linkedOperation: retirosMap.get(referenceId) };
+    }
+    return { ...item, __activityKind: 'movement', __linkedOperation: null };
+  });
+
+  const referenceIds = new Set(enrichedHistory.map(item => normalizeText(item.referencia_id)).filter(Boolean));
+
+  const pendingRecargasWithoutMovement = recargasList
+    .filter(item => !referenceIds.has(String(item.id)))
+    .map(item => ({
+      ...item,
+      __activityKind: 'recarga',
+      __linkedOperation: item,
+      __syntheticId: `recarga:${item.id}`,
+      tipo_movimiento: 'recarga',
+      descripcion: 'Solicitud de recarga',
+      referencia_id: item.id
+    }));
+
+  const pendingRetirosWithoutMovement = retirosList
+    .filter(item => !referenceIds.has(String(item.id)))
+    .map(item => ({
+      ...item,
+      __activityKind: 'retiro',
+      __linkedOperation: item,
+      __syntheticId: `retiro:${item.id}`,
+      tipo_movimiento: 'retiro',
+      descripcion: 'Solicitud de retiro',
+      referencia_id: item.id
+    }));
+
+  const activityItems = [...enrichedHistory, ...pendingRecargasWithoutMovement, ...pendingRetirosWithoutMovement]
+    .sort((a, b) => {
+      const dateA = new Date(a.created_at || a.fecha || a.procesado_at || 0).getTime();
+      const dateB = new Date(b.created_at || b.fecha || b.procesado_at || 0).getTime();
+      return dateB - dateA;
+    });
+
+  const filteredActivityItems = activityItems.filter((item) => {
+    if (tab === 'todo') return true;
+    if (tab === 'recargas') return item.__activityKind === 'recarga';
+    if (tab === 'retiros') {
+      return item.__activityKind === 'retiro' || normalizeText(item.tipo_movimiento).toLowerCase().includes('reembolso_retiro');
+    }
+    if (item.__activityKind === 'recarga' || item.__activityKind === 'retiro') return false;
+
+    const tipo = normalizeText(item.tipo_movimiento).toLowerCase();
+    const filters = {
+      tareas: ['ganancia_tarea', 'tarea_completada'],
+      comisiones: ['comision_subordinado', 'comision_red'],
+      invitaciones: ['recompensa_invitacion', 'bono_invitado'],
+      otros: ['ajuste_admin', 'bono_manual', 'premio_ruleta', 'canje_codigo']
+    };
+    return filters[tab]?.some(f => tipo.includes(f));
+  });
 
   if (loading && !data) {
     return (
@@ -182,16 +273,33 @@ export default function Ganancias() {
               <h2 className="text-[13px] font-extrabold text-black uppercase tracking-[0.15em] flex items-center gap-2">
                 <History size={18} className="text-bcb-primary" strokeWidth={2.5} /> Actividad Reciente
               </h2>
-              <Badge variant="info">{historyList.length} EVENTOS</Badge>
+              <Badge variant="info">{filteredActivityItems.length} EVENTOS</Badge>
             </div>
 
             <div className="space-y-4">
               <AnimatePresence mode="popLayout">
-                {historyList.map((item, i) => {
+                {filteredActivityItems.map((item, i) => {
                   const tipoLower = item.tipo_movimiento?.toLowerCase() || '';
-                  const isPositive = !['retiro', 'extraccion', 'ajuste_admin_negativo'].some(t => tipoLower.includes(t));
+                  const linkedOperation = item.__linkedOperation || null;
+                  const activityKind = item.__activityKind;
+                  const isPositive = activityKind === 'recarga'
+                    ? true
+                    : activityKind === 'retiro'
+                      ? false
+                      : !['retiro', 'extraccion', 'ajuste_admin_negativo'].some(t => tipoLower.includes(t));
                   const isTarea = ['ganancia_tarea', 'tarea_completada'].some(t => tipoLower.includes(t));
                   const isPremio = ['premio_ruleta'].some(t => tipoLower.includes(t));
+                  const statusInfo = activityKind === 'recarga' || activityKind === 'retiro'
+                    ? getRequestStatusInfo(linkedOperation?.estado || item.estado)
+                    : tipoLower.includes('reembolso_retiro') || normalizeText(item.descripcion).toLowerCase().includes('rechazado')
+                      ? { text: 'Rechazado', variant: 'error' }
+                      : null;
+                  const title = activityKind === 'recarga'
+                    ? 'Solicitud de recarga'
+                    : activityKind === 'retiro'
+                      ? 'Solicitud de retiro'
+                      : (normalizeText(item.descripcion) || prettifyMovementType(item.tipo_movimiento) || 'Movimiento');
+                  const amount = Math.abs(Number(item.monto || 0));
                   
                   return (
                     <motion.div
@@ -211,7 +319,7 @@ export default function Ganancias() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <h4 className="text-[12px] font-extrabold text-black uppercase tracking-tight truncate group-hover:text-bcb-primary transition-colors">
-                            {item.descripcion || item.tipo_movimiento?.replace(/_/g, ' ')}
+                            {title}
                           </h4>
                           <div className="flex items-center gap-3 mt-1">
                             <div className="flex items-center gap-1.5 opacity-60">
@@ -220,9 +328,13 @@ export default function Ganancias() {
                                 {formatDate(item.created_at)}
                               </p>
                             </div>
-                            {(isTarea || isPremio || tipoLower.includes('recarga') || tipoLower.includes('deposito') || tipoLower.includes('retiro') || tipoLower.includes('extraccion')) && (
-                              <Badge variant="success" icon={CheckCircle2}>PROCESADO</Badge>
-                            )}
+                            {statusInfo ? (
+                              <Badge variant={statusInfo.variant} icon={statusInfo.variant === 'success' ? CheckCircle2 : undefined}>
+                                {statusInfo.text}
+                              </Badge>
+                            ) : (isTarea || isPremio) ? (
+                              <Badge variant="success" icon={CheckCircle2}>Procesado</Badge>
+                            ) : null}
                           </div>
                         </div>
                         <div className="text-right shrink-0">
@@ -230,7 +342,7 @@ export default function Ganancias() {
                             "text-lg font-black tracking-tighter",
                             isPositive ? "text-emerald-600" : "text-black"
                           )}>
-                            {isPositive ? '+' : '-'}{Math.abs(Number(item.monto)).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                            {isPositive ? '+' : '-'}{amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                           </p>
                           <p className="text-[9px] font-black text-bcb-muted uppercase tracking-widest">Bs</p>
                         </div>
@@ -240,7 +352,7 @@ export default function Ganancias() {
                 })}
               </AnimatePresence>
 
-              {historyList.length === 0 && (
+              {filteredActivityItems.length === 0 && (
                 <div className="py-24 flex flex-col items-center justify-center text-center space-y-6">
                   <div className="w-24 h-24 rounded-[3rem] bg-bcb-surface border-2 border-dashed border-black/[0.05] flex items-center justify-center text-bcb-muted/30">
                     <History size={48} strokeWidth={1.5} />
@@ -258,5 +370,3 @@ export default function Ganancias() {
     </Layout>
   );
 }
-
-
