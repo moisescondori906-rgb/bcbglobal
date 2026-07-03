@@ -153,7 +153,7 @@ CREATE TABLE IF NOT EXISTS retiros (
   datos_bancarios JSON, -- Copia de la tarjeta al momento del retiro
   cuenta_bancaria_id VARCHAR(36),
   password_fondo_validado TINYINT(1) DEFAULT 0,
-  fecha_dia DATE NOT NULL, -- Para validación de 1 retiro por día (Perú Time)
+  fecha_dia DATE NOT NULL, -- Para validación de 1 retiro por día calendario (America/La_Paz)
   patrocinador_id VARCHAR(36), -- Para retiros de pasantes
   procesado_por_patrocinador VARCHAR(36), -- ID del patrocinador que aprobó
   procesado_por_patrocinador_at TIMESTAMP NULL,

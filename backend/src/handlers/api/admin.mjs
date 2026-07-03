@@ -50,19 +50,20 @@ function sanitizeUser(u, levels) {
 }
 
 router.get('/stats', asyncHandler(async (req, res) => {
+  const todayBolivia = peruTime.todayStr();
   const stats = await query(`
     SELECT 
       (SELECT COUNT(*) FROM usuarios WHERE rol = 'usuario') as usuarios,
-      (SELECT COALESCE(SUM(monto), 0) FROM compras_nivel WHERE estado = 'Aceptado' AND DATE(created_at) = CURDATE()) as recargas_hoy,
-          (SELECT COALESCE(SUM(monto), 0) FROM retiros WHERE estado = 'Aceptado' AND DATE(created_at) = CURDATE()) as retiros_hoy,
+      (SELECT COALESCE(SUM(monto), 0) FROM compras_nivel WHERE estado = 'Aceptado' AND fecha_dia = ?) as recargas_hoy,
+      (SELECT COALESCE(SUM(monto), 0) FROM retiros WHERE estado = 'Aceptado' AND fecha_dia = ?) as retiros_hoy,
       (SELECT COALESCE(SUM(saldo_principal + saldo_comisiones), 0) FROM usuarios WHERE rol = 'usuario') as balance_total
-  `);
+  `, [todayBolivia, todayBolivia]);
   
   const activity = await query(`
     SELECT 
       (SELECT COUNT(*) FROM usuarios WHERE updated_at > DATE_SUB(NOW(), INTERVAL 24 HOUR)) as usuarios_activos,
-      (SELECT COUNT(*) FROM actividad_tareas WHERE fecha_dia = CURDATE()) as tareas_completadas
-  `);
+      (SELECT COUNT(*) FROM actividad_tareas WHERE fecha_dia = ?) as tareas_completadas
+  `, [todayBolivia]);
 
   res.json({
     ...stats[0],

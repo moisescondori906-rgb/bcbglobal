@@ -39,6 +39,21 @@ import { Badge } from '../components/ui/Badge.jsx';
 import { Input } from '../components/ui/Input.jsx';
 import { cn } from '../lib/utils/cn';
 
+function getBoliviaDateKeyFromValue(value) {
+  if (!value) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(String(value))) return String(value);
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return null;
+
+  const boliviaDate = new Date(parsed.toLocaleString('en-US', { timeZone: 'America/La_Paz' }));
+  return [
+    boliviaDate.getFullYear(),
+    String(boliviaDate.getMonth() + 1).padStart(2, '0'),
+    String(boliviaDate.getDate()).padStart(2, '0')
+  ].join('-');
+}
+
 export default function Withdrawal() {
   const { user, refreshUser } = useAuth();
   const navigate = useNavigate();
@@ -96,44 +111,50 @@ const [showWithdrawModal, setShowWithdrawModal] = useState(false);
       
       if (status?.tiene_password_fondo && status?.tiene_cuenta_bancaria) {
         // Cargar datos necesarios para el retiro solo si ya tiene seguridad configurada
-        api.levels.list().then((list) => {
-          if (!isMounted) return;
-          setNiveles(list || []);
-          if (user?.nivel_id && list) {
-            const found = list.find(l => String(l.id) === String(user.nivel_id));
-            if (found) {
-              setUserLevel(found);
-              // Set montos based on level
-              if (found.codigo === 'internar' || found.codigo === 'pasantia') {
-                setMontos([10]);
-                setMonto(10);
-              } else {
-                api.withdrawals.montos().then(data => {
-                  if (isMounted) setMontos(data || [25, 100, 500, 1500, 5000, 10000]);
-                }).catch(() => {});
+        const levelsList = await api.levels.list().catch(() => []);
+        const foundLevel = user?.nivel_id && Array.isArray(levelsList)
+          ? levelsList.find(l => String(l.id) === String(user.nivel_id))
+          : null;
+
+        if (isMounted) {
+          setNiveles(levelsList || []);
+          if (foundLevel) {
+            setUserLevel(foundLevel);
+            if (foundLevel.codigo === 'internar' || foundLevel.codigo === 'pasantia') {
+              setMontos([10]);
+              setMonto(10);
+            } else {
+              const withdrawalAmounts = await api.withdrawals.montos().catch(() => null);
+              if (isMounted) {
+                setMontos(withdrawalAmounts || [25, 100, 500, 1500, 5000, 10000]);
               }
             }
           }
-        }).catch(() => {});
-        
-        api.users.getBankAccounts().then((list) => {
-          if (!isMounted) return;
-          setTarjetas(list || []);
-          if (list && list[0]) setTarjetaId(list[0].id);
-        }).catch(() => {
-          if (isMounted) setTarjetas([]);
-        });
+        }
+
+        const bankAccounts = await api.users.getBankAccounts().catch(() => []);
+        if (isMounted) {
+          setTarjetas(bankAccounts || []);
+          if (bankAccounts && bankAccounts[0]) setTarjetaId(bankAccounts[0].id);
+        }
 
         const withdrawalsRes = await api.withdrawals.list().catch(() => []);
         if (isMounted) {
           const boliviaNow = getBoliviaNow();
           const todayStr = boliviaNow.getFullYear() + '-' + String(boliviaNow.getMonth() + 1).padStart(2, '0') + '-' + String(boliviaNow.getDate()).padStart(2, '0');
-          
-          // Para pasantes: cualquier retiro hecho (no solo de hoy)
-          // Para otros usuarios: solo retiros de hoy
-          const alreadyDone = isInternar 
-            ? Array.isArray(withdrawalsRes) && withdrawalsRes.some(w => w.estado !== 'rechazado')
-            : Array.isArray(withdrawalsRes) && withdrawalsRes.some(w => w.estado !== 'rechazado' && w.created_at && w.created_at.split('T')[0] === todayStr);
+          const isInternLevel = ['internar', 'pasantia'].includes(String(foundLevel?.codigo || userLevel?.codigo || '').toLowerCase());
+
+          const alreadyDone = Array.isArray(withdrawalsRes) && withdrawalsRes.some((w) => {
+            const estado = String(w?.estado || '').toLowerCase();
+            if (estado === 'rechazado') return false;
+
+            if (isInternLevel) {
+              return true;
+            }
+
+            const retiroDateKey = getBoliviaDateKeyFromValue(w?.fecha_dia) || getBoliviaDateKeyFromValue(w?.created_at);
+            return retiroDateKey === todayStr;
+          });
             
           setHasWithdrawalToday(alreadyDone);
         }

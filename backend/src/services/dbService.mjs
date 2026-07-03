@@ -123,14 +123,14 @@ const DEFAULT_LEVELS = [
  */
 export const boliviaTime = {
   now: (date = new Date()) => {
-    return boliviaTimeHelper.getBoliviaNow();
+    return boliviaTimeHelper.getBoliviaNow(date);
   },
-  todayStr: () => {
-    return boliviaTimeHelper.getBoliviaDateKey();
+  todayStr: (date = new Date()) => {
+    return boliviaTimeHelper.getBoliviaDateKey(date);
   },
-  yesterdayStr: () => {
-    const d = boliviaTimeHelper.getBoliviaNow();
-    d.setDate(d.getDate() - 1);
+  yesterdayStr: (date = new Date()) => {
+    const d = boliviaTimeHelper.getBoliviaNow(date);
+    d.setUTCDate(d.getUTCDate() - 1);
     return boliviaTimeHelper.getBoliviaDateKey(d);
   },
   getDateString: (date = new Date()) => {
@@ -143,7 +143,7 @@ export const boliviaTime = {
     return boliviaTimeHelper.getBoliviaISOString(date);
   },
   getDay: (date = new Date()) => {
-    return boliviaTimeHelper.getBoliviaDayOfWeek();
+    return boliviaTimeHelper.getBoliviaDayOfWeek(date);
   },
   getDayName: (date = new Date()) => {
     return boliviaTimeHelper.getBoliviaDayName(date);
@@ -408,10 +408,8 @@ export async function canWithdraw(userId, dateStr = peruTime.todayStr()) {
 
   // Check if user was blocked due to rejected withdrawal
   if (user.ultima_rechazo_retiro) {
-    const lastRejectDate = new Date(user.ultima_rechazo_retiro);
-    const todayDate = new Date(peruTime.todayStr());
-    // If last reject is today, block
-    if (lastRejectDate >= todayDate) {
+    const lastRejectDateKey = peruTime.getDateString(user.ultima_rechazo_retiro);
+    if (lastRejectDateKey === dateStr) {
       return { ok: false, message: 'Tu retiro anterior fue rechazado. No puedes solicitar retiros hasta mañana.' };
     }
   }
@@ -904,23 +902,22 @@ export async function requestWithdrawal(userId, { monto, tipo_billetera, tarjeta
     const oldBalance = Number(user.balance);
     if (oldBalance < m) throw new Error('Saldo insuficiente para realizar el retiro');
 
-    // 2. BLINDAJE 1 RETIRO/DÍA: Validación estricta usando fecha_dia (Bolivia Time)
-    const todayPeru = peruTime.todayStr();
-    
-    // [FIX] Validar solo estados activos. No bloquea si el retiro anterior fue rechazado o cancelado.
+    // 2. BLINDAJE 1 RETIRO/DIA: validar por periodo calendario Bolivia, no por 24 horas.
+    const withdrawalWindow = boliviaTimeHelper.getBoliviaWithdrawalDayWindow();
+    const withdrawalDateKey = withdrawalWindow.dateKey;
+
     const [withdrawCount] = await conn.query(
       `SELECT COUNT(*) as total FROM retiros 
        WHERE usuario_id = ? 
-       AND fecha_dia = ?
-       AND estado != 'Rechazado' FOR UPDATE`,
-      [userId, todayPeru]
+       AND fecha_dia = ? FOR UPDATE`,
+      [userId, withdrawalDateKey]
     );
 
     const retirosHoy = withdrawCount[0].total;
-    logger.info(`[WITHDRAWAL DAILY LIMIT] usuario_id=${userId} fecha_dia=${todayPeru} retiros_hoy=${retirosHoy}`);
+    logger.info(`[WITHDRAWAL DAILY LIMIT] usuario_id=${userId} fecha_dia=${withdrawalDateKey} ventana=${withdrawalWindow.startsAt}..${withdrawalWindow.endsAt} retiros_periodo=${retirosHoy}`);
     
     if (retirosHoy > 0) {
-      throw new Error('Ya realizaste una solicitud de retiro hoy. Puedes volver a solicitar mañana.');
+      throw new Error(`Ya realizaste una solicitud de retiro en el periodo actual (${withdrawalDateKey}, hora Bolivia). Puedes volver a solicitar despues del reinicio diario de las 23:59.`);
     }
 
     // 3. VALIDAR MONTO POR NIVEL
@@ -997,7 +994,7 @@ export async function requestWithdrawal(userId, { monto, tipo_billetera, tarjeta
         retiroId, userId, montoSolicitado, montoNeto, comisionTotal, 
         comisionOperador, comisionRetiro, comisionTotal,
         tipo_billetera, initialState, JSON.stringify(tarjetas[0]), tarjeta_id, comprobante_url,
-        todayPeru, user.invitado_por || null
+        withdrawalDateKey, user.invitado_por || null
       ]
     );
     // #region debug-point B:dbservice-after-insert
