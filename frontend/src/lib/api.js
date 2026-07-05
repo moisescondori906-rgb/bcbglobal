@@ -283,6 +283,7 @@ export const api = {
     updateAdmin: (id, data) => request(`/admin/admins/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
     eliminarAdmin: (id) => request(`/admin/admins/${id}`, { method: 'DELETE' }),
     usuarios: () => request('/admin/usuarios'),
+    crearUsuario: (data) => request('/admin/usuarios', { method: 'POST', body: JSON.stringify(data) }),
     usuarioEarnings: (id) => request(`/admin/usuarios/${id}/earnings`),
     ajusteUsuario: (id, data) => request(`/admin/usuarios/${id}/ajuste`, { method: 'POST', body: JSON.stringify(data) }),
     updateUsuario: (id, updates) => request(`/admin/usuarios/${id}`, { method: 'PUT', body: JSON.stringify(updates) }),
@@ -408,7 +409,6 @@ export const api = {
     verUsosCodigoCanje: (id) => request(`/admin/codigos-canje/${id}/usos`),
   },
 };
-
 
 
 

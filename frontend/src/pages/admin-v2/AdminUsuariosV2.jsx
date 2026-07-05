@@ -131,6 +131,7 @@ export default function AdminUsuariosV2() {
   const itemsPerPage = 10;
 
   const [showAdjustModal, setShowAdjustModal] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [showFinancialModal, setShowFinancialModal] = useState(false);
   const [showLevelModal, setShowLevelModal] = useState(false);
@@ -140,11 +141,13 @@ export default function AdminUsuariosV2() {
   const [financialData, setFinancialData] = useState(null);
   const [levels, setLevels] = useState([]);
   const [adjustForm, setAdjustForm] = useState({ tipo: 'principal', monto: '', motivo: '' });
+  const [createForm, setCreateForm] = useState({ nombre_usuario: '', telefono: '', password: '', invitador_telefono: '' });
   const [passwordForm, setPasswordForm] = useState({ password: '', type: 'inicio' });
   const [selectedLevelId, setSelectedLevelId] = useState('');
   const [selectedGrade, setSelectedGrade] = useState('ninguno');
   
   const [isAdjusting, setIsAdjusting] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
   const [isUpdatingPass, setIsUpdatingPass] = useState(false);
   const [isUpdatingLevel, setIsUpdatingLevel] = useState(false);
   const [isUpdatingGrade, setIsUpdatingGrade] = useState(false);
@@ -180,6 +183,11 @@ export default function AdminUsuariosV2() {
     setSelectedUser(user);
     setSelectedLevelId(user.nivel_id || '');
     setShowLevelModal(true);
+  };
+
+  const handleOpenCreateModal = () => {
+    setCreateForm({ nombre_usuario: '', telefono: '', password: '', invitador_telefono: '' });
+    setShowCreateModal(true);
   };
 
   const handleEditGrade = (user) => {
@@ -240,6 +248,25 @@ export default function AdminUsuariosV2() {
       alert('Error: ' + err.message);
     } finally {
       setIsAdjusting(false);
+    }
+  };
+
+  const submitCreateUser = async (e) => {
+    e.preventDefault();
+    if (!createForm.nombre_usuario || !createForm.telefono || !createForm.password || !createForm.invitador_telefono) {
+      return alert('Completa todos los campos requeridos');
+    }
+
+    setIsCreating(true);
+    try {
+      const response = await api.admin.crearUsuario(createForm);
+      setShowCreateModal(false);
+      fetchUsers();
+      alert(`Usuario creado con éxito. Código: ${response?.user?.codigo_invitacion || 'generado'}`);
+    } catch (err) {
+      alert('Error: ' + err.message);
+    } finally {
+      setIsCreating(false);
     }
   };
 
@@ -341,6 +368,13 @@ export default function AdminUsuariosV2() {
           <div className="hidden sm:flex items-center gap-3 px-5 py-2.5 bg-white/[0.03] border border-white/5 rounded-2xl text-[10px] font-black text-zinc-400 uppercase tracking-widest shadow-inner">
             <Users size={14} className="text-admin-accent" /> Total: {users.length}
           </div>
+          <button
+            onClick={handleOpenCreateModal}
+            className="admin-button-primary !px-5"
+          >
+            <UserPlus size={16} />
+            Crear Usuario
+          </button>
           <button 
             onClick={fetchUsers}
             className="admin-button-secondary !px-4"
@@ -473,6 +507,106 @@ export default function AdminUsuariosV2() {
           </div>
         </div>
       </div>
+
+      {/* Create User Modal */}
+      <AnimatePresence>
+        {showCreateModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 backdrop-blur-xl flex items-center justify-center p-4 z-[200]"
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 20 }}
+              className="bg-admin-card border border-admin-border p-8 sm:p-12 rounded-[2.5rem] max-w-lg w-full shadow-2xl relative overflow-hidden"
+            >
+              <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-admin-accent to-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.3)]" />
+
+              <div className="flex items-center gap-5 mb-10">
+                <div className="p-4 rounded-2xl bg-admin-accent/10 text-admin-accent border border-admin-accent/20 shadow-lg shadow-admin-accent/5">
+                  <UserPlus size={28} />
+                </div>
+                <div>
+                  <h3 className="text-2xl font-black text-white uppercase tracking-tighter italic leading-none">Crear Usuario</h3>
+                  <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.2em] mt-1">Alta manual desde administración</p>
+                </div>
+              </div>
+
+              <form onSubmit={submitCreateUser} className="space-y-6">
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1 italic">Nombre</label>
+                  <input
+                    type="text"
+                    value={createForm.nombre_usuario}
+                    onChange={(e) => setCreateForm({ ...createForm, nombre_usuario: e.target.value })}
+                    placeholder="Nombre del usuario"
+                    className="admin-input !h-14 !bg-black/20 !rounded-2xl !px-6"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1 italic">Teléfono</label>
+                  <input
+                    type="text"
+                    value={createForm.telefono}
+                    onChange={(e) => setCreateForm({ ...createForm, telefono: e.target.value })}
+                    placeholder="+59170000000"
+                    className="admin-input !h-14 !bg-black/20 !rounded-2xl !px-6"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1 italic">Contraseña</label>
+                  <input
+                    type="text"
+                    value={createForm.password}
+                    onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
+                    placeholder="Mínimo 6 caracteres"
+                    className="admin-input !h-14 !bg-black/20 !rounded-2xl !px-6"
+                    required
+                    minLength={6}
+                  />
+                </div>
+
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1 italic">Número del Invitador</label>
+                  <input
+                    type="text"
+                    value={createForm.invitador_telefono}
+                    onChange={(e) => setCreateForm({ ...createForm, invitador_telefono: e.target.value })}
+                    placeholder="+59170000000"
+                    className="admin-input !h-14 !bg-black/20 !rounded-2xl !px-6"
+                    required
+                  />
+                </div>
+
+                <div className="flex gap-4 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowCreateModal(false)}
+                    className="admin-button-secondary flex-1"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isCreating}
+                    className="admin-button-primary flex-1"
+                  >
+                    {isCreating ? <RefreshCw className="animate-spin" size={16} /> : <CheckCircle2 size={16} />}
+                    Crear
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Adjust Balance Modal */}
       <AnimatePresence>

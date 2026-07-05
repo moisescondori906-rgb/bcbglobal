@@ -3,13 +3,13 @@ import { v4 as uuidv4 } from 'uuid';
 import bcrypt from 'bcryptjs';
 import redis from '../../services/redisService.mjs';
 import { 
-  getUsers, getLevels, findUserById, updateUser, 
+  getUsers, getLevels, findUserById, updateUser, createUser,
   getGlobalContent, getPublicContent, approveLevelPurchase, rejectRetiro, approveRetiro,
   peruTime, distributeInvestmentCommissions, refreshGlobalContent, refreshPublicContent, 
   invalidateLevelsCache, preloadLevels, syncLevels,
   getMensajesGlobales, createMensajeGlobal, deleteMensajeGlobal,
-  getDailyWithdrawalSummary, getDailyOperatorSummary,
-  giveTicketsPorAscensoInvitado
+  getDailyWithdrawalSummary, getDailyOperatorSummary, findUserByTelefono,
+  giveTicketsPorAscensoInvitado, giveTicketsPorRegistro, getCanonicalTelefono
 } from '../../services/dbService.mjs';
 import {
   sendToAdmin,
@@ -96,6 +96,72 @@ router.get('/usuarios', asyncHandler(async (req, res) => {
     };
   });
   res.json(filtered);
+}));
+
+router.post('/usuarios', asyncHandler(async (req, res) => {
+  const nombre = String(req.body?.nombre_usuario || req.body?.nombre || '').trim();
+  const telefonoInput = String(req.body?.telefono || '').trim();
+  const password = String(req.body?.password || '').trim();
+  const invitadorTelefono = String(req.body?.invitador_telefono || req.body?.telefono_invitador || '').trim();
+
+  if (!nombre || !telefonoInput || !password || !invitadorTelefono) {
+    return res.status(400).json({ error: 'Nombre, teléfono, contraseña y número del invitador son obligatorios.' });
+  }
+
+  if (password.length < 6) {
+    return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres.' });
+  }
+
+  const telefono = getCanonicalTelefono(telefonoInput);
+  const invitador = await findUserByTelefono(invitadorTelefono);
+
+  if (!invitador) {
+    return res.status(404).json({ error: 'No se encontró el usuario invitador con ese número.' });
+  }
+
+  const existingUser = await findUserByTelefono(telefono);
+  if (existingUser) {
+    return res.status(409).json({ error: 'Ya existe un usuario registrado con ese número.' });
+  }
+
+  const levels = await getLevels();
+  const initialLevel = levels.find(l => {
+    const codigo = String(l.codigo || '').toLowerCase();
+    return codigo === 'internar' || codigo === 'pasantia' || String(l.id) === 'l1';
+  });
+
+  if (!initialLevel) {
+    return res.status(500).json({ error: 'No se encontró el nivel inicial para nuevos usuarios.' });
+  }
+
+  let invitationCode = '';
+  do {
+    invitationCode = Math.random().toString(36).slice(2, 10).toUpperCase();
+  } while (await queryOne(`SELECT id FROM usuarios WHERE codigo_invitacion = ?`, [invitationCode]));
+
+  const user = await createUser({
+    id: uuidv4(),
+    telefono,
+    nombre_usuario: nombre,
+    nombre_real: nombre,
+    password_hash: await bcrypt.hash(password, 10),
+    codigo_invitacion: invitationCode,
+    invitado_por: invitador.id,
+    nivel_id: initialLevel.id,
+    rol: 'usuario',
+    tickets_ruleta: 0
+  });
+
+  try {
+    await giveTicketsPorRegistro(user.id);
+  } catch (ticketErr) {
+    logger.error(`[ADMIN-CREATE-USER] Error al otorgar ticket de registro a ${user.id}: ${ticketErr.message}`);
+  }
+
+  res.status(201).json({
+    ok: true,
+    user: sanitizeUser(user, levels)
+  });
 }));
 
 router.get('/usuarios/search', asyncHandler(async (req, res) => {
