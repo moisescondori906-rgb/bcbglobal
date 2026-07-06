@@ -306,17 +306,32 @@ router.post('/bank-account', asyncHandler(async (req, res) => {
 }));
 
 router.post('/change-fund-password', asyncHandler(async (req, res) => {
-  const { password_fondo, confirm_password_fondo } = req.body;
+  const { password_fondo, confirm_password_fondo, password_nueva, password_actual } = req.body;
+  
+  // Handle both naming conventions
+  const newPassword = password_fondo || password_nueva;
+  const confirmPassword = confirm_password_fondo || password_nueva; // Frontend confirms with the same field twice
 
-  if (!password_fondo || password_fondo.length < 6) {
+  if (!newPassword || newPassword.length < 6) {
     return res.status(400).json({ error: 'La contraseña de fondos debe tener al menos 6 caracteres.' });
   }
-  if (password_fondo !== confirm_password_fondo) {
-    return res.status(400).json({ error: 'Las contraseñas no coinciden.' });
+
+  // Get current user's fund password hash
+  const currentUser = await queryOne(`SELECT password_fondo_hash FROM usuarios WHERE id = ?`, [req.user.id]);
+  
+  // If user already has a fund password, verify the current one
+  if (currentUser?.password_fondo_hash) {
+    if (!password_actual) {
+      return res.status(400).json({ error: 'Debes ingresar la contraseña de fondos actual.' });
+    }
+    const isMatch = await bcrypt.compare(password_actual, currentUser.password_fondo_hash);
+    if (!isMatch) {
+      return res.status(400).json({ error: 'La contraseña de fondos actual es incorrecta.' });
+    }
   }
 
   const salt = await bcrypt.genSalt(10);
-  const hash = await bcrypt.hash(password_fondo, salt);
+  const hash = await bcrypt.hash(newPassword, salt);
 
   await query(`UPDATE usuarios SET password_fondo_hash = ? WHERE id = ?`, [hash, req.user.id]);
 

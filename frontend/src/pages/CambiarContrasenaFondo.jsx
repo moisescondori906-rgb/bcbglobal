@@ -32,7 +32,11 @@ export default function CambiarContrasenaFondo() {
     }
     setLoading(true);
     try {
-      const body = { password_nueva: nueva };
+      const body = { 
+        password_nueva: nueva, 
+        password_fondo: nueva, 
+        confirm_password_fondo: nueva2 
+      };
       if (tieneFondo) body.password_actual = actual;
       await api.users.changeFundPassword(body);
       await refreshUser?.();
