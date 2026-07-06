@@ -24,6 +24,21 @@ import {
 import { api } from '../../lib/api';
 import { formatCurrency, formatDate } from '../../utils/format';
 
+const normalizeWithdrawalStatus = (estado) => {
+  const value = String(estado || '').trim().toLowerCase();
+  if (['pagado', 'aceptado', 'aprobado'].includes(value)) return 'pagado';
+  if (['rechazado', 'rechazada'].includes(value)) return 'rechazado';
+  if (['verificando', 'pendiente', 'pendiente_patrocinador'].includes(value)) return 'pendiente';
+  return value || 'pendiente';
+};
+
+const getWithdrawalStatusLabel = (estado) => {
+  const normalized = normalizeWithdrawalStatus(estado);
+  if (normalized === 'pagado') return 'pagado';
+  if (normalized === 'rechazado') return 'rechazado';
+  return 'verificando';
+};
+
 export default function AdminRetirosV2() {
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -95,10 +110,11 @@ export default function AdminRetirosV2() {
   };
 
   const filteredList = list.filter(r => {
+    const normalizedStatus = normalizeWithdrawalStatus(r.estado);
     const matchesSearch = r.nombre_usuario?.toLowerCase().includes(searchTerm.toLowerCase()) || 
                           r.id.toString().includes(searchTerm) ||
                           r.telefono?.includes(searchTerm);
-    const matchesStatus = filterStatus === 'all' || r.estado === filterStatus;
+    const matchesStatus = filterStatus === 'all' || normalizedStatus === filterStatus;
     return matchesSearch && matchesStatus;
   });
 
@@ -210,6 +226,11 @@ export default function AdminRetirosV2() {
             ))
           ) : paginatedList.length > 0 ? (
             paginatedList.map((r, index) => (
+              (() => {
+                const normalizedStatus = normalizeWithdrawalStatus(r.estado);
+                const statusLabel = getWithdrawalStatusLabel(r.estado);
+                const isPending = normalizedStatus === 'pendiente';
+                return (
               <motion.div
                 key={r.id}
                 initial={{ opacity: 0, scale: 0.9, y: 20 }}
@@ -218,12 +239,12 @@ export default function AdminRetirosV2() {
                 transition={{ delay: index * 0.05, duration: 0.4 }}
                 className="admin-card p-8 flex flex-col justify-between group hover:border-rose-500/40 hover:shadow-admin-glow transition-all duration-500 relative"
               >
-                <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br ${r.estado === 'pagado' ? 'from-emerald-500 to-teal-500' : 'from-rose-500 to-orange-500'} opacity-[0.03] rounded-bl-full blur-2xl group-hover:opacity-[0.08] transition-opacity duration-700`} />
+                <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br ${normalizedStatus === 'pagado' ? 'from-emerald-500 to-teal-500' : 'from-rose-500 to-orange-500'} opacity-[0.03] rounded-bl-full blur-2xl group-hover:opacity-[0.08] transition-opacity duration-700`} />
 
                 <div className="space-y-8 relative z-10">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex items-center gap-4 min-w-0">
-                      <div className={`w-14 h-14 rounded-2xl flex items-center justify-center font-black text-white shadow-xl border border-white/10 shrink-0 transition-transform group-hover:scale-110 duration-500 ${r.estado === 'pagado' ? 'bg-emerald-600' : r.estado === 'rechazado' ? 'bg-rose-600' : 'bg-zinc-800'}`}>
+                      <div className={`w-14 h-14 rounded-2xl flex items-center justify-center font-black text-white shadow-xl border border-white/10 shrink-0 transition-transform group-hover:scale-110 duration-500 ${normalizedStatus === 'pagado' ? 'bg-emerald-600' : normalizedStatus === 'rechazado' ? 'bg-rose-600' : 'bg-zinc-800'}`}>
                         {r.nombre_usuario?.charAt(0).toUpperCase()}
                       </div>
                       <div className="min-w-0">
@@ -232,11 +253,11 @@ export default function AdminRetirosV2() {
                       </div>
                     </div>
                     <span className={`admin-badge shrink-0 ${
-                      r.estado === 'pagado' ? 'admin-badge-success' :
-                      r.estado === 'rechazado' ? 'admin-badge-error' :
+                      normalizedStatus === 'pagado' ? 'admin-badge-success' :
+                      normalizedStatus === 'rechazado' ? 'admin-badge-error' :
                       'admin-badge-warning'
                     }`}>
-                      {r.estado}
+                      {statusLabel}
                     </span>
                   </div>
 
@@ -286,7 +307,7 @@ export default function AdminRetirosV2() {
                 </div>
 
                 <div className="mt-10 space-y-5 relative z-10">
-                  {r.estado === 'pendiente' && (
+                  {isPending && (
                     <div className="flex flex-col gap-3">
                       {r.estado_operativo !== 'tomado' ? (
                         <button 
@@ -326,6 +347,8 @@ export default function AdminRetirosV2() {
                   </div>
                 </div>
               </motion.div>
+                );
+              })()
             ))
           ) : (
             <div className="col-span-full py-32 flex flex-col items-center justify-center opacity-20 gap-8">
