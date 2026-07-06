@@ -914,7 +914,7 @@ export async function requestWithdrawal(userId, { monto, tipo_billetera, tarjeta
     // 1. LOCK USUARIO: Previene condiciones de carrera en saldo
     const balanceField = tipo_billetera === 'comisiones' ? 'saldo_comisiones' : 'saldo_principal';
     const [userRows] = await conn.query(
-      `SELECT id, ${balanceField} as balance, nivel_id FROM usuarios WHERE id = ? FOR UPDATE`, 
+      `SELECT id, ${balanceField} as balance, nivel_id, invitado_por FROM usuarios WHERE id = ? FOR UPDATE`, 
       [userId]
     );
     const user = userRows[0];
@@ -2897,7 +2897,7 @@ export async function aprobarRetiroPorPatrocinador(retiroId, patrocinadorId) {
     }
     
     // 4. Verificar que el retiro está en estado correcto
-    const estadosValidos = ['Pendiente_Patrocinador'];
+    const estadosValidos = ['Pendiente_Patrocinador', 'verificando', 'Verificando'];
     if (!estadosValidos.includes(retiro.estado)) {
       throw new Error('El retiro no está en estado Verificando por patrocinador');
     }
@@ -3123,7 +3123,15 @@ export async function getRetirosPendientesPatrocinador(patrocinadorId) {
     LEFT JOIN niveles n ON u.nivel_id = n.id
     WHERE u.invitado_por = ?
       AND LOWER(COALESCE(n.codigo, '')) IN ('internar', 'pasantia')
-      AND r.estado = 'Pendiente_Patrocinador'
+      AND (
+        r.estado = 'Pendiente_Patrocinador'
+        OR (
+          r.estado IN ('Verificando', 'verificando')
+          AND r.patrocinador_id IS NULL
+          AND COALESCE(r.aprobado_por_patrocinador, 0) = 0
+          AND (r.estado_patrocinador IS NULL OR r.estado_patrocinador = 'Verificando')
+        )
+      )
       AND (r.estado_patrocinador IS NULL OR r.estado_patrocinador = 'Verificando')
     ORDER BY r.created_at DESC
   `, [patrocinadorId]);
