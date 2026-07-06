@@ -12,7 +12,6 @@ import { attachRequestUser } from '../../utils/middleware/requestContext.mjs';
 import { dynamicControlMiddleware } from '../../utils/middleware/dynamicControl.mjs';
 import { 
   sendToRetiros, 
-  sendToAdmin, 
   sendToTelegramUser,
   formatRetiroMessage 
 } from '../../services/telegramBot.mjs';
@@ -20,6 +19,7 @@ import logger from '../../utils/logger.mjs';
 import redis from '../../services/redisService.mjs';
 import { asyncHandler } from '../../utils/asyncHandler.mjs';
 import { uploadImageBuffer } from '../../utils/fileStorage.mjs';
+import { validateRequiredWithdrawalQrImage } from '../../utils/withdrawalRules.mjs';
 
 const router = Router();
 
@@ -116,46 +116,49 @@ router.post('/', withdrawRateLimit, dynamicControlMiddleware('withdrawal'), asyn
   const opStatus = await canWithdraw(user.id);
   if (!opStatus.ok) return res.status(403).json({ error: opStatus.message });
 
-  // 4. Procesar comprobante QR opcional
+  // 4. Procesar comprobante QR obligatorio
   let finalComprobanteUrl = null;
   let imageBuffer = null;
 
-  if (comprobante_url) {
-    const dataUrlMatch = comprobante_url.match(/^data:(image\/[a-zA-Z0-9-.+]+);base64,(.*)$/);
-    // #region debug-point A:withdraw-request-parse
-    reportWithdrawalQrDebug('A', 'withdrawals.mjs:114', '[DEBUG] Withdrawal comprobante parse attempt', {
-      hasMatch: !!dataUrlMatch,
-      mimeType: dataUrlMatch?.[1] || null
+  const qrValidation = validateRequiredWithdrawalQrImage(comprobante_url);
+  if (!qrValidation.ok) {
+    return res.status(400).json({ error: qrValidation.message });
+  }
+
+  const dataUrlMatch = comprobante_url.match(/^data:(image\/[a-zA-Z0-9-.+]+);base64,(.*)$/);
+  // #region debug-point A:withdraw-request-parse
+  reportWithdrawalQrDebug('A', 'withdrawals.mjs:114', '[DEBUG] Withdrawal comprobante parse attempt', {
+    hasMatch: !!dataUrlMatch,
+    mimeType: dataUrlMatch?.[1] || null
+  });
+  // #endregion
+  if (!dataUrlMatch) {
+    return res.status(400).json({ error: 'El comprobante QR debe ser una imagen válida.' });
+  }
+
+  const mimeType = dataUrlMatch[1];
+  const base64Data = dataUrlMatch[2];
+  imageBuffer = Buffer.from(base64Data, 'base64');
+  const ext = `.${mimeType.split('/')[1]}` || '.jpg';
+
+  try {
+    const uploaded = await uploadImageBuffer(imageBuffer, { folder: 'comprobantes', ext });
+    finalComprobanteUrl = uploaded.secure_url;
+    // #region debug-point B:withdraw-upload-result
+    reportWithdrawalQrDebug('B', 'withdrawals.mjs:129', '[DEBUG] Withdrawal comprobante uploaded', {
+      uploadedUrl: finalComprobanteUrl,
+      bufferBytes: imageBuffer.length,
+      extension: ext
     });
     // #endregion
-    if (!dataUrlMatch) {
-      return res.status(400).json({ error: 'El comprobante QR debe ser una imagen válida.' });
-    }
-
-    const mimeType = dataUrlMatch[1];
-    const base64Data = dataUrlMatch[2];
-    imageBuffer = Buffer.from(base64Data, 'base64');
-    const ext = `.${mimeType.split('/')[1]}` || '.jpg';
-
-    try {
-      const uploaded = await uploadImageBuffer(imageBuffer, { folder: 'comprobantes', ext });
-      finalComprobanteUrl = uploaded.secure_url;
-      // #region debug-point B:withdraw-upload-result
-      reportWithdrawalQrDebug('B', 'withdrawals.mjs:129', '[DEBUG] Withdrawal comprobante uploaded', {
-        uploadedUrl: finalComprobanteUrl,
-        bufferBytes: imageBuffer.length,
-        extension: ext
-      });
-      // #endregion
-    } catch (err) {
-      // #region debug-point B:withdraw-upload-error
-      reportWithdrawalQrDebug('B', 'withdrawals.mjs:136', '[DEBUG] Withdrawal comprobante upload failed', {
-        error: err?.message || String(err)
-      });
-      // #endregion
-      logger.error(`[WITHDRAW] Error guardando comprobante QR: ${err.message}`);
-      return res.status(500).json({ error: 'No se pudo guardar el comprobante QR.' });
-    }
+  } catch (err) {
+    // #region debug-point B:withdraw-upload-error
+    reportWithdrawalQrDebug('B', 'withdrawals.mjs:136', '[DEBUG] Withdrawal comprobante upload failed', {
+      error: err?.message || String(err)
+    });
+    // #endregion
+    logger.error(`[WITHDRAW] Error guardando comprobante QR: ${err.message}`);
+    return res.status(500).json({ error: 'No se pudo guardar el comprobante QR.' });
   }
 
   // 5. Ejecución Blindaje en Service
@@ -240,9 +243,8 @@ router.post('/', withdrawRateLimit, dynamicControlMiddleware('withdrawal'), asyn
     // Mensaje para el usuario
     res.json({ success: true, message: 'Tu solicitud fue enviada a tu patrocinador para su aprobación.' });
   } else {
-    // Si no es Pasantía, enviar a los grupos de retiros y admins
+    // Las solicitudes siguen registrándose en la web/admin, pero ya no se envían al grupo de administración de Telegram.
     sendToRetiros(message, notifyOptions);
-    sendToAdmin(message, notifyOptions);
     res.json({ success: true, message: 'Retiro solicitado con éxito.' });
   }
 }));

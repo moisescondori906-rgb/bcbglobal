@@ -3,7 +3,7 @@ import fs from 'fs';
 import { query, queryOne, transaction } from '../config/db.mjs';
 import logger from '../utils/logger.mjs';
 import * as boliviaTimeHelper from '../utils/boliviaTime.mjs';
-import { validatePasanteWithdrawalRules } from '../utils/withdrawalRules.mjs';
+import { validatePasanteWithdrawalRules, validateRequiredWithdrawalQrImage } from '../utils/withdrawalRules.mjs';
 import redis from './redisService.mjs';
 import { emitToAll, emitToUser } from './socketService.mjs';
 import { deleteLocalFile, readLocalFileBuffer } from '../utils/fileStorage.mjs';
@@ -901,6 +901,11 @@ export async function requestWithdrawal(userId, { monto, tipo_billetera, tarjeta
   });
   // #endregion
 
+  const qrValidation = validateRequiredWithdrawalQrImage(comprobante_url);
+  if (!qrValidation.ok) {
+    throw new Error(qrValidation.message);
+  }
+
   return await transaction(async (conn) => {
     // 0. IDEMPOTENCIA EN DB: Fuente de Verdad Única
     if (idempotencyKey) {
@@ -1383,7 +1388,6 @@ export async function sponsorApproveRetiro(retiroId, sponsorId, idempotencyKey =
     };
 
     sendToRetiros(adminMessage, telegramOptions);
-    sendToAdmin(adminMessage, telegramOptions);
 
     const res = { success: true, traceId, message: 'Retiro aprobado por patrocinador, enviado a administrador' };
 
@@ -3004,7 +3008,6 @@ export async function aprobarRetiroPorPatrocinador(retiroId, patrocinadorId) {
     };
 
     sendToRetiros(adminMessage, telegramOptions);
-    sendToAdmin(adminMessage, telegramOptions);
 
     await createNotification(
       retiro.usuario_id,

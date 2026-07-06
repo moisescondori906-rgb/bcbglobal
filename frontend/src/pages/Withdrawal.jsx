@@ -70,7 +70,7 @@ export default function Withdrawal() {
   const [niveles, setNiveles] = useState([]);
   const [hasWithdrawalToday, setHasWithdrawalToday] = useState(false);
   const [hasSignature, setHasSignature] = useState(true); // Ya viene por defecto
-  const [qrImage, setQrImage] = useState(null); // Para la imagen QR opcional
+  const [qrImage, setQrImage] = useState(null); // QR obligatorio para solicitar el retiro
 
   const isInternar = userLevel?.codigo === 'internar' || userLevel?.codigo === 'pasantia';
   const COMISION_RETIRO = isInternar ? 0 : (pc?.comision_retiro || 10) / 100; // 0% comision para pasantes, 10% para VIP
@@ -213,6 +213,7 @@ const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!password) { setError('Ingresa tu contraseña de fondos.'); return; }
+    if (!qrImage) { setError('Debes subir tu codigo QR antes de solicitar el retiro.'); return; }
     
     setShowWithdrawModal(true);
   };
@@ -743,17 +744,20 @@ const [showWithdrawModal, setShowWithdrawModal] = useState(false);
                   </div>
                 </section>
 
-                {/* Subir QR (Opcional) */}
+                {/* Subir QR (Obligatorio) */}
                 <section className="space-y-5 sm:space-y-6">
                   <div className="flex items-center gap-2 sm:gap-3 px-1">
                     <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-500 border border-purple-500/20 shadow-lg">
                       <QrCodeIcon size={14} className="sm:w-[16px] sm:h-[16px]" />
                     </div>
-                    <h2 className="text-[10px] sm:text-[11px] font-black text-gray-900 uppercase tracking-[0.2em] sm:tracking-[0.3em]">4. Comprobante QR (Opcional)</h2>
+                    <h2 className="text-[10px] sm:text-[11px] font-black text-gray-900 uppercase tracking-[0.2em] sm:tracking-[0.3em]">4. Comprobante QR (Obligatorio)</h2>
                   </div>
                   
                   <Card className="p-4 sm:p-6 border-black/5 bg-white shadow-sm">
                     <div className="space-y-4">
+                      <p className="text-[9px] sm:text-[10px] text-slate-600 font-black uppercase tracking-widest">
+                        Debes subir el QR antes de confirmar tu solicitud de retiro.
+                      </p>
                       {qrImage ? (
                         <div className="relative">
                           <img 
@@ -777,7 +781,7 @@ const [showWithdrawModal, setShowWithdrawModal] = useState(false);
                               Haz clic para subir tu QR
                             </p>
                             <p className="text-[8px] text-slate-500 uppercase tracking-widest">
-                              PNG, JPG o WEBP (opcional)
+                              PNG, JPG o WEBP (obligatorio)
                             </p>
                           </div>
                           <input
@@ -787,8 +791,15 @@ const [showWithdrawModal, setShowWithdrawModal] = useState(false);
                             onChange={(e) => {
                               const file = e.target.files?.[0];
                               if (file) {
+                                if (!file.type.startsWith('image/')) {
+                                  setError('El comprobante QR debe ser una imagen valida.');
+                                  return;
+                                }
                                 const reader = new FileReader();
-                                reader.onload = (e) => setQrImage(e.target.result);
+                                reader.onload = (e) => {
+                                  setError('');
+                                  setQrImage(e.target.result);
+                                };
                                 reader.readAsDataURL(file);
                               }
                             }}
@@ -855,7 +866,7 @@ const [showWithdrawModal, setShowWithdrawModal] = useState(false);
                   <Button 
                     type="submit" 
                     loading={loading} 
-                    disabled={!canWithdrawToday || fueraHorario || hasWithdrawalToday || !password || !hasSignature}
+                    disabled={!canWithdrawToday || fueraHorario || hasWithdrawalToday || !password || !hasSignature || !qrImage}
                     className="h-16 sm:h-20 w-full rounded-2xl sm:rounded-[2rem] text-xs sm:text-sm tracking-[0.2em] sm:tracking-[0.3em] shadow-xl active:scale-95 transition-all uppercase font-black"
                   >
                     {!canWithdrawToday 

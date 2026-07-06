@@ -32,3 +32,14 @@ export function validatePasanteWithdrawalRules({
 
   return { ok: true, amount: requiredAmount };
 }
+
+export function validateRequiredWithdrawalQrImage(comprobanteUrl) {
+  if (typeof comprobanteUrl !== 'string' || !comprobanteUrl.trim()) {
+    return {
+      ok: false,
+      message: 'Debes subir tu codigo QR antes de solicitar el retiro.'
+    };
+  }
+
+  return { ok: true };
+}
