@@ -305,7 +305,7 @@ router.post('/bank-account', asyncHandler(async (req, res) => {
   });
 }));
 
-router.post('/fund-password', asyncHandler(async (req, res) => {
+router.post('/change-fund-password', asyncHandler(async (req, res) => {
   const { password_fondo, confirm_password_fondo } = req.body;
 
   if (!password_fondo || password_fondo.length < 6) {

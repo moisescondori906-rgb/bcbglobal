@@ -15,7 +15,7 @@ import logger, { createModuleLogger } from './utils/logger.mjs';
 import { errorHandler } from './handlers/errorHandler.mjs';
 import { initTelegramHandlers } from './services/telegramInitializer.mjs';
 import { query } from './config/db.mjs';
-import { syncLevels, preloadLevels, preloadConfig, boliviaTime, peruTime } from './services/dbService.mjs';
+import { syncLevels, preloadLevels, preloadConfig, boliviaTime, peruTime, startPendingWithdrawalsExpiryService } from './services/dbService.mjs';
 
 // Función para obtener la fecha y hora actual en Bolivia
 export function getBoliviaNow() {
@@ -329,6 +329,12 @@ async function startServer() {
       console.log('[UPLOAD CLEANUP] service scheduled');
     } catch (error) {
       console.warn('[UPLOAD CLEANUP] failed:', error.message);
+    }
+    try {
+      startPendingWithdrawalsExpiryService();
+      console.log('[WITHDRAW AUTO EXPIRE] service scheduled');
+    } catch (error) {
+      console.warn('[WITHDRAW AUTO EXPIRE] failed:', error.message);
     }
     preloadLevels().catch(e => console.warn(`[CACHE-LEVELS] Falló: ${e.message}`));
     preloadConfig().catch(e => console.warn(`[CACHE-CONFIG] Falló: ${e.message}`));
