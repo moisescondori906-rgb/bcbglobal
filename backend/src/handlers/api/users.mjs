@@ -331,7 +331,7 @@ router.post('/bank-account', asyncHandler(async (req, res) => {
   });
 }));
 
-router.post('/change-fund-password', asyncHandler(async (req, res) => {
+const upsertFundPasswordHandler = asyncHandler(async (req, res) => {
   const { password_fondo, confirm_password_fondo, password_nueva, password_actual } = req.body;
   
   // Handle both naming conventions
@@ -404,7 +404,10 @@ router.post('/change-fund-password', asyncHandler(async (req, res) => {
   // #endregion
 
   res.json({ success: true, message: 'Contraseña de fondos configurada correctamente.' });
-}));
+});
+
+router.post('/change-fund-password', upsertFundPasswordHandler);
+router.post('/fund-password', upsertFundPasswordHandler);
 
 router.get('/security-status', asyncHandler(async (req, res) => {
   const user = await queryOne(`SELECT password_fondo_hash FROM usuarios WHERE id = ?`, [req.user.id]);

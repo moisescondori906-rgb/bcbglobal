@@ -234,7 +234,7 @@ export const api = {
     changePassword: (data) => request('/users/change-password', { method: 'POST', body: JSON.stringify(data) }),
     changeFundPassword: (data) => request('/users/change-fund-password', { method: 'POST', body: JSON.stringify(data) }),
     securityStatus: () => request('/users/security-status'),
-    setFundPassword: (data) => request('/users/fund-password', { method: 'POST', body: JSON.stringify(data) }),
+    setFundPassword: (data) => request('/users/change-fund-password', { method: 'POST', body: JSON.stringify(data) }),
     createBankAccount: (data) => request('/users/bank-account', { method: 'POST', body: JSON.stringify(data) }),
     getBankAccounts: () => request('/users/bank-accounts'),
     canjearCodigo: (codigo) => request('/users/canjear-codigo', { method: 'POST', body: JSON.stringify({ codigo }) }),
@@ -409,6 +409,5 @@ export const api = {
     verUsosCodigoCanje: (id) => request(`/admin/codigos-canje/${id}/usos`),
   },
 };
-
 
 
