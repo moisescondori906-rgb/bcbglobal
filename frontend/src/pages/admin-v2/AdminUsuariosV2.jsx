@@ -30,7 +30,7 @@ import {
 import { api } from '../../lib/api';
 import { formatCurrency, formatDate } from '../../lib/utils/format';
 
-const UserRow = ({ user, onEdit, onDelete, onToggleStatus, onToggleBlock, onResetPassword, onAdjustBalance, onViewFinancial, onResetDevice, onEditLevel, onEditGrade }) => (
+const UserRow = ({ user, onEdit, onDelete, onMoveSponsor, onToggleBlock, onResetPassword, onAdjustBalance, onViewFinancial, onResetDevice, onEditLevel, onEditGrade }) => (
   <motion.tr 
     initial={{ opacity: 0 }}
     animate={{ opacity: 1 }}
@@ -50,6 +50,18 @@ const UserRow = ({ user, onEdit, onDelete, onToggleStatus, onToggleBlock, onRese
           <div className="flex items-center gap-2 mt-1">
             <span className="text-[8px] font-black text-admin-accent uppercase tracking-widest bg-admin-accent/10 px-1.5 py-0.5 rounded border border-admin-accent/20">ID: {user.id}</span>
             <span className="text-[8px] font-bold text-zinc-600 uppercase tracking-widest">{formatDate(user.created_at)}</span>
+          </div>
+          <div className="mt-2 space-y-1">
+            <p className="text-[9px] font-bold text-zinc-400 truncate flex items-center gap-1.5">
+              <CreditCard size={10} className="text-zinc-600 shrink-0" />
+              {user.cuenta_bancaria_titular
+                ? `${user.cuenta_bancaria_titular} · ${user.cuenta_bancaria_banco || 'Banco'} · ${user.cuenta_bancaria_numero || 'Sin número'}`
+                : 'Sin cuenta bancaria registrada'}
+            </p>
+            <p className="text-[9px] font-bold text-zinc-500 truncate flex items-center gap-1.5">
+              <Target size={10} className="text-zinc-600 shrink-0" />
+              Invitador: {user.invitador_nombre || 'Sin invitador'} · Directos: {user.subordinados_directos || 0}
+            </p>
           </div>
         </div>
       </div>
@@ -108,6 +120,12 @@ const UserRow = ({ user, onEdit, onDelete, onToggleStatus, onToggleBlock, onRese
         <button onClick={() => onResetDevice(user)} className="p-2 rounded-lg bg-white/5 border border-white/5 text-amber-500 hover:bg-amber-500 hover:text-white transition-all shadow-sm" title="Device">
           <Smartphone size={14} />
         </button>
+        <button onClick={() => onEdit(user)} className="p-2 rounded-lg bg-white/5 border border-white/5 text-sky-400 hover:bg-sky-500 hover:text-white transition-all shadow-sm" title="Editar usuario">
+          <Edit3 size={14} />
+        </button>
+        <button onClick={() => onMoveSponsor(user)} className="p-2 rounded-lg bg-white/5 border border-white/5 text-cyan-400 hover:bg-cyan-500 hover:text-white transition-all shadow-sm" title="Mover subordinado">
+          <Target size={14} />
+        </button>
         <button onClick={() => onEditGrade(user)} className="p-2 rounded-lg bg-white/5 border border-white/5 text-violet-500 hover:bg-violet-500 hover:text-white transition-all shadow-sm" title="Grade">
           <Medal size={14} />
         </button>
@@ -116,6 +134,9 @@ const UserRow = ({ user, onEdit, onDelete, onToggleStatus, onToggleBlock, onRese
         </button>
         <button onClick={() => onResetPassword(user)} className="p-2 rounded-lg bg-white/5 border border-white/5 text-zinc-600 hover:bg-white/10 hover:text-zinc-200 transition-all shadow-sm" title="Password">
           <RefreshCw size={14} />
+        </button>
+        <button onClick={() => onDelete(user)} className="p-2 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-500 hover:bg-rose-500 hover:text-white transition-all shadow-sm" title="Eliminar usuario">
+          <Trash2 size={14} />
         </button>
       </div>
     </td>
@@ -136,6 +157,8 @@ export default function AdminUsuariosV2() {
   const [showFinancialModal, setShowFinancialModal] = useState(false);
   const [showLevelModal, setShowLevelModal] = useState(false);
   const [showGradeModal, setShowGradeModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showMoveSponsorModal, setShowMoveSponsorModal] = useState(false);
   
   const [selectedUser, setSelectedUser] = useState(null);
   const [financialData, setFinancialData] = useState(null);
@@ -143,6 +166,15 @@ export default function AdminUsuariosV2() {
   const [adjustForm, setAdjustForm] = useState({ tipo: 'principal', monto: '', motivo: '' });
   const [createForm, setCreateForm] = useState({ nombre_usuario: '', telefono: '', password: '', invitador_telefono: '' });
   const [passwordForm, setPasswordForm] = useState({ password: '', type: 'inicio' });
+  const [editForm, setEditForm] = useState({
+    nombre_usuario: '',
+    nombre_real: '',
+    nombre_titular_bancario: '',
+    cuenta_bancaria_id: '',
+    cuenta_bancaria_numero: '',
+    cuenta_bancaria_banco: ''
+  });
+  const [moveSponsorForm, setMoveSponsorForm] = useState({ nuevo_invitador: '' });
   const [selectedLevelId, setSelectedLevelId] = useState('');
   const [selectedGrade, setSelectedGrade] = useState('ninguno');
   
@@ -151,6 +183,8 @@ export default function AdminUsuariosV2() {
   const [isUpdatingPass, setIsUpdatingPass] = useState(false);
   const [isUpdatingLevel, setIsUpdatingLevel] = useState(false);
   const [isUpdatingGrade, setIsUpdatingGrade] = useState(false);
+  const [isUpdatingUser, setIsUpdatingUser] = useState(false);
+  const [isMovingSponsor, setIsMovingSponsor] = useState(false);
   const [loadingFinancial, setLoadingFinancial] = useState(false);
 
   useEffect(() => {
@@ -196,6 +230,25 @@ export default function AdminUsuariosV2() {
     setShowGradeModal(true);
   };
 
+  const handleEditUser = (user) => {
+    setSelectedUser(user);
+    setEditForm({
+      nombre_usuario: user.nombre_usuario || '',
+      nombre_real: user.nombre_real || user.nombre_usuario || '',
+      nombre_titular_bancario: user.cuenta_bancaria_titular || '',
+      cuenta_bancaria_id: user.cuenta_bancaria_id || '',
+      cuenta_bancaria_numero: user.cuenta_bancaria_numero || '',
+      cuenta_bancaria_banco: user.cuenta_bancaria_banco || ''
+    });
+    setShowEditModal(true);
+  };
+
+  const handleOpenMoveSponsor = (user) => {
+    setSelectedUser(user);
+    setMoveSponsorForm({ nuevo_invitador: user.invitador_telefono || '' });
+    setShowMoveSponsorModal(true);
+  };
+
   const submitGradeChange = async (e) => {
     e.preventDefault();
     setIsUpdatingGrade(true);
@@ -208,6 +261,56 @@ export default function AdminUsuariosV2() {
       alert('Error: ' + err.message);
     } finally {
       setIsUpdatingGrade(false);
+    }
+  };
+
+  const submitUserEdit = async (e) => {
+    e.preventDefault();
+    if (!editForm.nombre_usuario.trim()) return alert('El nombre de inicio no puede estar vacío');
+
+    setIsUpdatingUser(true);
+    try {
+      const payload = {
+        nombre_usuario: editForm.nombre_usuario.trim(),
+        nombre_real: (editForm.nombre_real || editForm.nombre_usuario).trim()
+      };
+
+      if (editForm.cuenta_bancaria_id && editForm.nombre_titular_bancario.trim()) {
+        payload.nombre_titular_bancario = editForm.nombre_titular_bancario.trim();
+        payload.cuenta_bancaria_id = editForm.cuenta_bancaria_id;
+      }
+
+      await api.admin.updateUsuario(selectedUser.id, payload);
+      setShowEditModal(false);
+      fetchUsers();
+      alert('Datos del usuario actualizados con éxito');
+    } catch (err) {
+      alert('Error: ' + err.message);
+    } finally {
+      setIsUpdatingUser(false);
+    }
+  };
+
+  const submitMoveSponsor = async (e) => {
+    e.preventDefault();
+    const nuevoInvitador = moveSponsorForm.nuevo_invitador.trim();
+    if (!nuevoInvitador) return alert('Debes indicar el teléfono o ID del nuevo invitador');
+
+    setIsMovingSponsor(true);
+    try {
+      const isUuidLike = /^[0-9a-fA-F-]{30,}$/.test(nuevoInvitador);
+      const payload = isUuidLike
+        ? { nuevo_invitador_id: nuevoInvitador }
+        : { nuevo_invitador_telefono: nuevoInvitador };
+
+      await api.admin.moverUsuarioInvitador(selectedUser.id, payload);
+      setShowMoveSponsorModal(false);
+      fetchUsers();
+      alert('Subordinado movido correctamente sin alterar su rama inferior');
+    } catch (err) {
+      alert('Error: ' + err.message);
+    } finally {
+      setIsMovingSponsor(false);
     }
   };
 
@@ -280,6 +383,21 @@ export default function AdminUsuariosV2() {
     }
   };
 
+  const handleDeleteUser = async (user) => {
+    const confirmed = confirm(
+      `¿Seguro que quieres eliminar a ${user.nombre_usuario}?\n\nEsta acción archivará al usuario, lo bloqueará, lo quitará del panel y moverá a sus subordinados directos al invitador superior sin tocar la rama inferior.`
+    );
+    if (!confirmed) return;
+
+    try {
+      await api.admin.eliminarUsuario(user.id);
+      fetchUsers();
+      alert('Usuario eliminado correctamente');
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
   const handleResetDevice = async (user) => {
     if (!confirm(`¿Seguro que quieres resetear la vinculación de dispositivo para ${user.nombre_usuario}? Esto permitirá que inicie sesión desde un nuevo celular.`)) return;
     try {
@@ -338,6 +456,9 @@ export default function AdminUsuariosV2() {
       (u.nombre_usuario || '').toLowerCase().includes(searchLower) || 
       (u.nombre_real || '').toLowerCase().includes(searchLower) ||
       (u.telefono || '').toLowerCase().includes(searchLower) ||
+      (u.cuenta_bancaria_numero || '').toLowerCase().includes(searchLower) ||
+      (u.cuenta_bancaria_titular || '').toLowerCase().includes(searchLower) ||
+      (u.invitador_nombre || '').toLowerCase().includes(searchLower) ||
       u.id.toString().includes(searchTerm);
     const matchesRole = filterRole === 'all' || u.rol === filterRole;
     return matchesSearch && matchesRole;
@@ -390,7 +511,7 @@ export default function AdminUsuariosV2() {
           <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-zinc-600 group-focus-within:text-admin-accent transition-colors" size={18} />
           <input 
             type="text" 
-            placeholder="Buscar por usuario, ID o teléfono..." 
+            placeholder="Buscar por usuario, ID, teléfono, titular o cuenta bancaria..." 
             className="admin-input !h-14 pl-14 !text-base !rounded-2xl shadow-inner"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -438,6 +559,9 @@ export default function AdminUsuariosV2() {
                   <UserRow 
                     key={user.id} 
                     user={user} 
+                    onEdit={handleEditUser}
+                    onDelete={handleDeleteUser}
+                    onMoveSponsor={handleOpenMoveSponsor}
                     onToggleBlock={handleToggleBlock}
                     onResetPassword={handleResetPassword}
                     onAdjustBalance={handleAdjustBalance}
@@ -600,6 +724,178 @@ export default function AdminUsuariosV2() {
                   >
                     {isCreating ? <RefreshCw className="animate-spin" size={16} /> : <CheckCircle2 size={16} />}
                     Crear
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Edit User Modal */}
+      <AnimatePresence>
+        {showEditModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 backdrop-blur-xl flex items-center justify-center p-4 z-[200]"
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 20 }}
+              className="bg-admin-card border border-admin-border p-8 sm:p-12 rounded-[2.5rem] max-w-xl w-full shadow-2xl relative overflow-hidden"
+            >
+              <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-sky-500 to-cyan-500 shadow-[0_0_15px_rgba(14,165,233,0.3)]" />
+
+              <div className="flex items-center gap-5 mb-10">
+                <div className="p-4 rounded-2xl bg-sky-500/10 text-sky-400 border border-sky-500/20 shadow-lg shadow-sky-500/5">
+                  <Edit3 size={28} />
+                </div>
+                <div>
+                  <h3 className="text-2xl font-black text-white uppercase tracking-tighter italic leading-none">Editar Usuario</h3>
+                  <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.2em] mt-1">{selectedUser?.nombre_usuario}</p>
+                </div>
+              </div>
+
+              <form onSubmit={submitUserEdit} className="space-y-6">
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1 italic">Nombre de Inicio</label>
+                  <input
+                    type="text"
+                    value={editForm.nombre_usuario}
+                    onChange={(e) => setEditForm({ ...editForm, nombre_usuario: e.target.value })}
+                    placeholder="Nombre visible de la cuenta"
+                    className="admin-input !h-14 !bg-black/20 !rounded-2xl !px-6"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1 italic">Nombre Real</label>
+                  <input
+                    type="text"
+                    value={editForm.nombre_real}
+                    onChange={(e) => setEditForm({ ...editForm, nombre_real: e.target.value })}
+                    placeholder="Nombre real del usuario"
+                    className="admin-input !h-14 !bg-black/20 !rounded-2xl !px-6"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1 italic">Titular de Cuenta Bancaria</label>
+                  <input
+                    type="text"
+                    value={editForm.nombre_titular_bancario}
+                    onChange={(e) => setEditForm({ ...editForm, nombre_titular_bancario: e.target.value })}
+                    placeholder={editForm.cuenta_bancaria_id ? 'Nombre del titular bancario' : 'Sin cuenta bancaria registrada'}
+                    className="admin-input !h-14 !bg-black/20 !rounded-2xl !px-6 disabled:opacity-40"
+                    disabled={!editForm.cuenta_bancaria_id}
+                  />
+                  {editForm.cuenta_bancaria_id ? (
+                    <p className="text-[8px] font-bold text-zinc-600 uppercase tracking-widest ml-2">
+                      {editForm.cuenta_bancaria_banco || 'Banco'} · {editForm.cuenta_bancaria_numero || 'Sin número'}
+                    </p>
+                  ) : (
+                    <p className="text-[8px] font-bold text-zinc-600 uppercase tracking-widest ml-2">
+                      Este usuario no tiene cuenta bancaria activa.
+                    </p>
+                  )}
+                </div>
+
+                <div className="flex gap-4 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowEditModal(false)}
+                    className="admin-button-secondary flex-1"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isUpdatingUser}
+                    className="admin-button-primary flex-1 !bg-sky-600 !shadow-sky-600/20"
+                  >
+                    {isUpdatingUser ? <RefreshCw className="animate-spin" size={16} /> : <CheckCircle2 size={16} />}
+                    Guardar
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Move Sponsor Modal */}
+      <AnimatePresence>
+        {showMoveSponsorModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 backdrop-blur-xl flex items-center justify-center p-4 z-[200]"
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 20 }}
+              className="bg-admin-card border border-admin-border p-8 sm:p-12 rounded-[2.5rem] max-w-xl w-full shadow-2xl relative overflow-hidden"
+            >
+              <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-cyan-500 to-teal-500 shadow-[0_0_15px_rgba(6,182,212,0.3)]" />
+
+              <div className="flex items-center gap-5 mb-10">
+                <div className="p-4 rounded-2xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 shadow-lg shadow-cyan-500/5">
+                  <Target size={28} />
+                </div>
+                <div>
+                  <h3 className="text-2xl font-black text-white uppercase tracking-tighter italic leading-none">Mover Subordinado</h3>
+                  <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.2em] mt-1">{selectedUser?.nombre_usuario}</p>
+                </div>
+              </div>
+
+              <form onSubmit={submitMoveSponsor} className="space-y-6">
+                <div className="p-5 rounded-[1.5rem] bg-white/[0.03] border border-white/5">
+                  <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Invitador actual</p>
+                  <p className="text-sm font-black text-white mt-2">{selectedUser?.invitador_nombre || 'Sin invitador'}</p>
+                  <p className="text-[10px] font-bold text-zinc-500 mt-1">{selectedUser?.invitador_telefono || 'Sin teléfono registrado'}</p>
+                </div>
+
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1 italic">Nuevo Invitador</label>
+                  <input
+                    type="text"
+                    value={moveSponsorForm.nuevo_invitador}
+                    onChange={(e) => setMoveSponsorForm({ nuevo_invitador: e.target.value })}
+                    placeholder="Ingresa teléfono o ID del nuevo invitador"
+                    className="admin-input !h-14 !bg-black/20 !rounded-2xl !px-6"
+                    required
+                  />
+                </div>
+
+                <div className="p-6 rounded-[1.5rem] bg-cyan-500/5 border border-cyan-500/10 flex items-start gap-4">
+                  <ShieldAlert className="text-cyan-400 shrink-0 mt-0.5" size={20} />
+                  <p className="text-[10px] font-bold text-cyan-300/90 uppercase tracking-tight leading-relaxed">
+                    Solo se moverá este usuario al nuevo invitador. Toda la rama que tiene debajo permanecerá intacta.
+                  </p>
+                </div>
+
+                <div className="flex gap-4 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowMoveSponsorModal(false)}
+                    className="admin-button-secondary flex-1"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isMovingSponsor}
+                    className="admin-button-primary flex-1 !bg-cyan-600 !shadow-cyan-600/20"
+                  >
+                    {isMovingSponsor ? <RefreshCw className="animate-spin" size={16} /> : <CheckCircle2 size={16} />}
+                    Mover
                   </button>
                 </div>
               </form>
@@ -998,4 +1294,3 @@ export default function AdminUsuariosV2() {
     </div>
   );
 }
-

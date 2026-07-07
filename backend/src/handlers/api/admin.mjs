@@ -17,7 +17,7 @@ import {
   formatRecargaMessageAprobada,
   formatRecargaMessageRechazada
 } from '../../services/telegramBot.mjs';
-import { query, queryOne, transaction } from '../../config/db.mjs';
+import { query, queryOne, transaction, columnExists } from '../../config/db.mjs';
 import { authenticate, requireAdmin } from '../../utils/middleware/auth.mjs';
 import { uploadVideoBuffer, uploadImageBuffer, uploadLocalVideo, uploadLocalImage } from '../../utils/fileStorage.mjs';
 import logger from '../../utils/logger.mjs';
@@ -48,6 +48,86 @@ function sanitizeUser(u, levels) {
     grado_colaborador: u.grado_colaborador || 'ninguno',
     salario_colaborador: Number(u.salario_colaborador || 0),
   };
+}
+
+function buildInClauseParams(values = []) {
+  return values.map(() => '?').join(',');
+}
+
+function httpError(message, status = 400) {
+  const err = new Error(message);
+  err.status = status;
+  return err;
+}
+
+async function decorateAdminUsers(users, levels) {
+  if (!Array.isArray(users) || users.length === 0) {
+    return [];
+  }
+
+  const userIds = users.map((u) => u.id);
+  const sponsorIds = [...new Set(users.map((u) => u.invitado_por).filter(Boolean))];
+
+  const bankAccounts = await query(
+    `SELECT id, usuario_id, nombre_banco, numero_cuenta, nombre_titular, created_at
+     FROM tarjetas_bancarias
+     WHERE activa = 1
+       AND usuario_id IN (${buildInClauseParams(userIds)})
+     ORDER BY created_at ASC`,
+    userIds
+  );
+
+  const bankAccountMap = new Map();
+  bankAccounts.forEach((account) => {
+    if (!bankAccountMap.has(account.usuario_id)) {
+      bankAccountMap.set(account.usuario_id, account);
+    }
+  });
+
+  const sponsorMap = new Map();
+  if (sponsorIds.length > 0) {
+    const sponsors = await query(
+      `SELECT id, nombre_usuario, telefono
+       FROM usuarios
+       WHERE id IN (${buildInClauseParams(sponsorIds)})`,
+      sponsorIds
+    );
+    sponsors.forEach((sponsor) => sponsorMap.set(sponsor.id, sponsor));
+  }
+
+  const directReportRows = await query(
+    `SELECT invitado_por, COUNT(*) AS total
+     FROM usuarios
+     WHERE invitado_por IN (${buildInClauseParams(userIds)})
+       AND COALESCE(status, 'active') <> 'deleted'
+     GROUP BY invitado_por`,
+    userIds
+  );
+
+  const directReportMap = new Map(
+    directReportRows.map((row) => [row.invitado_por, Number(row.total || 0)])
+  );
+
+  return users.map((u) => {
+    const sanitized = sanitizeUser(u, levels);
+    const bankAccount = bankAccountMap.get(u.id);
+    const sponsor = sponsorMap.get(u.invitado_por);
+
+    return {
+      ...sanitized,
+      saldo_principal: Number(u.saldo_principal || 0),
+      saldo_comisiones: Number(u.saldo_comisiones || 0),
+      activo: Number(u.activo || 0) === 1,
+      invitado_por: u.invitado_por || null,
+      invitador_nombre: sponsor?.nombre_usuario || null,
+      invitador_telefono: sponsor?.telefono || null,
+      subordinados_directos: directReportMap.get(u.id) || 0,
+      cuenta_bancaria_id: bankAccount?.id || null,
+      cuenta_bancaria_banco: bankAccount?.nombre_banco || null,
+      cuenta_bancaria_numero: bankAccount?.numero_cuenta || null,
+      cuenta_bancaria_titular: bankAccount?.nombre_titular || null
+    };
+  });
 }
 
 router.get('/stats', asyncHandler(async (req, res) => {
@@ -86,16 +166,14 @@ router.get('/compras-nivel', asyncHandler(async (req, res) => {
 }));
 
 router.get('/usuarios', asyncHandler(async (req, res) => {
-  const users = await query(`SELECT * FROM usuarios`);
+  const users = await query(`
+    SELECT *
+    FROM usuarios
+    WHERE COALESCE(status, 'active') <> 'deleted'
+    ORDER BY created_at DESC
+  `);
   const levels = await getLevels();
-  const filtered = users.map(u => {
-    const sanitized = sanitizeUser(u, levels);
-    return {
-      ...sanitized,
-      saldo_principal: Number(u.saldo_principal || 0),
-      saldo_comisiones: Number(u.saldo_comisiones || 0)
-    };
-  });
+  const filtered = await decorateAdminUsers(users, levels);
   res.json(filtered);
 }));
 
@@ -185,10 +263,13 @@ router.get('/usuarios/search', asyncHandler(async (req, res) => {
   // Search users
   const users = await query(`
     SELECT * FROM usuarios 
-    WHERE nombre_usuario LIKE ? 
-    OR telefono LIKE ? 
-    OR codigo_invitacion LIKE ? 
-    OR id LIKE ?
+    WHERE COALESCE(status, 'active') <> 'deleted'
+      AND (
+        nombre_usuario LIKE ? 
+        OR telefono LIKE ? 
+        OR codigo_invitacion LIKE ? 
+        OR id LIKE ?
+      )
   `, [searchTerm, searchTerm, searchTerm, searchTerm]);
   
   // Also check for bank account matches
@@ -200,7 +281,12 @@ router.get('/usuarios/search', asyncHandler(async (req, res) => {
   });
   
   if (userIdsFromAccounts.length > 0) {
-    const moreUsers = await query(`SELECT * FROM usuarios WHERE id IN (${userIdsFromAccounts.map(() => '?').join(',')})`, userIdsFromAccounts);
+    const moreUsers = await query(`
+      SELECT *
+      FROM usuarios
+      WHERE COALESCE(status, 'active') <> 'deleted'
+        AND id IN (${userIdsFromAccounts.map(() => '?').join(',')})
+    `, userIdsFromAccounts);
     moreUsers.forEach(u => {
       if (!users.find(x => x.id === u.id)) {
         users.push(u);
@@ -209,14 +295,7 @@ router.get('/usuarios/search', asyncHandler(async (req, res) => {
   }
   
   const levels = await getLevels();
-  const filtered = users.map(u => {
-    const sanitized = sanitizeUser(u, levels);
-    return {
-      ...sanitized,
-      saldo_principal: Number(u.saldo_principal || 0),
-      saldo_comisiones: Number(u.saldo_comisiones || 0)
-    };
-  });
+  const filtered = await decorateAdminUsers(users, levels);
   
   res.json(filtered);
 }));
@@ -842,6 +921,301 @@ router.post('/usuarios/:id/ajuste', asyncHandler(async (req, res) => {
     [uuidv4(), userId, tipo === 'comisiones' ? 'comisiones' : 'principal', monto, oldBalance, newBalance, motivo || 'Ajuste administrativo']);
 
   res.json({ ok: true, newBalance });
+}));
+
+router.put('/usuarios/:id', asyncHandler(async (req, res) => {
+  const userId = req.params.id;
+  const hasNombreUsuario = Object.prototype.hasOwnProperty.call(req.body || {}, 'nombre_usuario');
+  const hasNombreReal = Object.prototype.hasOwnProperty.call(req.body || {}, 'nombre_real');
+  const hasBankHolder = Object.prototype.hasOwnProperty.call(req.body || {}, 'nombre_titular_bancario');
+  const hasTipoLider = Object.prototype.hasOwnProperty.call(req.body || {}, 'tipo_lider');
+
+  const nombreUsuario = hasNombreUsuario ? String(req.body.nombre_usuario || '').trim() : undefined;
+  const nombreReal = hasNombreReal ? String(req.body.nombre_real || '').trim() : undefined;
+  const bankHolder = hasBankHolder ? String(req.body.nombre_titular_bancario || '').trim() : undefined;
+  const bankAccountId = String(req.body?.cuenta_bancaria_id || '').trim();
+  const tipoLider = hasTipoLider ? (req.body.tipo_lider ? String(req.body.tipo_lider).trim() : null) : undefined;
+
+  if (!hasNombreUsuario && !hasNombreReal && !hasBankHolder && !hasTipoLider) {
+    return res.status(400).json({ error: 'No se recibieron cambios para actualizar.' });
+  }
+
+  if (hasNombreUsuario && !nombreUsuario) {
+    return res.status(400).json({ error: 'El nombre de inicio no puede estar vacío.' });
+  }
+
+  if (hasNombreReal && !nombreReal) {
+    return res.status(400).json({ error: 'El nombre real no puede estar vacío.' });
+  }
+
+  if (hasBankHolder && !bankHolder) {
+    return res.status(400).json({ error: 'El titular de la cuenta bancaria no puede estar vacío.' });
+  }
+
+  const canUpdateTipoLider = hasTipoLider ? await columnExists('usuarios', 'tipo_lider') : false;
+  if (hasTipoLider && !canUpdateTipoLider) {
+    return res.status(400).json({ error: 'La columna tipo_lider no existe en esta base de datos.' });
+  }
+
+  await transaction(async (conn) => {
+    const [userRows] = await conn.query(
+      `SELECT id, nombre_usuario, nombre_real, status
+       FROM usuarios
+       WHERE id = ?
+       FOR UPDATE`,
+      [userId]
+    );
+
+    const targetUser = userRows[0];
+    if (!targetUser || String(targetUser.status || '').toLowerCase() === 'deleted') {
+      throw httpError('Usuario no encontrado', 404);
+    }
+
+    const userUpdates = [];
+    const userParams = [];
+
+    if (hasNombreUsuario) {
+      userUpdates.push('nombre_usuario = ?');
+      userParams.push(nombreUsuario);
+
+      if (!hasNombreReal) {
+        userUpdates.push('nombre_real = ?');
+        userParams.push(nombreUsuario);
+      }
+    }
+
+    if (hasNombreReal) {
+      userUpdates.push('nombre_real = ?');
+      userParams.push(nombreReal);
+    }
+
+    if (hasTipoLider) {
+      userUpdates.push('tipo_lider = ?');
+      userParams.push(tipoLider);
+    }
+
+    if (userUpdates.length > 0) {
+      await conn.query(
+        `UPDATE usuarios
+         SET ${userUpdates.join(', ')}
+         WHERE id = ?`,
+        [...userParams, userId]
+      );
+    }
+
+    if (hasBankHolder) {
+      const bankQuery = bankAccountId
+        ? `SELECT id
+           FROM tarjetas_bancarias
+           WHERE id = ? AND usuario_id = ? AND activa = 1
+           LIMIT 1
+           FOR UPDATE`
+        : `SELECT id
+           FROM tarjetas_bancarias
+           WHERE usuario_id = ? AND activa = 1
+           ORDER BY created_at ASC
+           LIMIT 1
+           FOR UPDATE`;
+
+      const bankParams = bankAccountId ? [bankAccountId, userId] : [userId];
+      const [bankRows] = await conn.query(bankQuery, bankParams);
+      const targetAccount = bankRows[0];
+
+      if (!targetAccount) {
+        throw httpError('El usuario no tiene una cuenta bancaria activa para editar.', 404);
+      }
+
+      await conn.query(
+        `UPDATE tarjetas_bancarias
+         SET nombre_titular = ?
+         WHERE id = ?`,
+        [bankHolder, targetAccount.id]
+      );
+    }
+  });
+
+  logger.info(`[ADMIN-ACTION] Usuario ${userId} actualizado por admin ${req.user.id}`);
+  if (hasTipoLider) {
+    await redis.del('admin:ranking:invitados');
+  }
+  res.json({ ok: true, message: 'Usuario actualizado correctamente.' });
+}));
+
+router.post('/usuarios/:id/reassign-sponsor', asyncHandler(async (req, res) => {
+  const userId = req.params.id;
+  const sponsorIdInput = String(req.body?.nuevo_invitador_id || '').trim();
+  const sponsorPhoneInput = String(req.body?.nuevo_invitador_telefono || '').trim();
+
+  if (!sponsorIdInput && !sponsorPhoneInput) {
+    return res.status(400).json({ error: 'Debes indicar el ID o el teléfono del nuevo invitador.' });
+  }
+
+  const result = await transaction(async (conn) => {
+    const [userRows] = await conn.query(
+      `SELECT id, nombre_usuario, invitado_por, status
+       FROM usuarios
+       WHERE id = ?
+       FOR UPDATE`,
+      [userId]
+    );
+
+    const targetUser = userRows[0];
+    if (!targetUser || String(targetUser.status || '').toLowerCase() === 'deleted') {
+      throw httpError('Usuario no encontrado', 404);
+    }
+
+    const sponsorLookupSql = sponsorIdInput
+      ? `SELECT id, nombre_usuario, telefono, bloqueado, status
+         FROM usuarios
+         WHERE id = ?
+         LIMIT 1
+         FOR UPDATE`
+      : `SELECT id, nombre_usuario, telefono, bloqueado, status
+         FROM usuarios
+         WHERE telefono = ?
+         LIMIT 1
+         FOR UPDATE`;
+
+    const sponsorLookupParam = sponsorIdInput || getCanonicalTelefono(sponsorPhoneInput);
+    const [sponsorRows] = await conn.query(sponsorLookupSql, [sponsorLookupParam]);
+    const newSponsor = sponsorRows[0];
+
+    if (!newSponsor || String(newSponsor.status || '').toLowerCase() === 'deleted') {
+      throw httpError('No se encontró al nuevo invitador.', 404);
+    }
+
+    if (String(newSponsor.id) === String(targetUser.id)) {
+      throw httpError('No puedes asignar al usuario como su propio invitador.', 400);
+    }
+
+    if (Number(newSponsor.bloqueado || 0) === 1) {
+      throw httpError('No puedes mover el subordinado a un invitador bloqueado.', 400);
+    }
+
+    const [cycleRows] = await conn.query(
+      `WITH RECURSIVE descendants AS (
+         SELECT id
+         FROM usuarios
+         WHERE invitado_por = ?
+         UNION ALL
+         SELECT u.id
+         FROM usuarios u
+         INNER JOIN descendants d ON u.invitado_por = d.id
+       )
+       SELECT id
+       FROM descendants
+       WHERE id = ?
+       LIMIT 1`,
+      [targetUser.id, newSponsor.id]
+    );
+
+    if (cycleRows.length > 0) {
+      throw httpError('No puedes mover este usuario debajo de un subordinado de su propia rama.', 400);
+    }
+
+    await conn.query(
+      `UPDATE usuarios
+       SET invitado_por = ?
+       WHERE id = ?`,
+      [newSponsor.id, targetUser.id]
+    );
+
+    return {
+      userId: targetUser.id,
+      userName: targetUser.nombre_usuario,
+      sponsorId: newSponsor.id,
+      sponsorName: newSponsor.nombre_usuario
+    };
+  });
+
+  await redis.del('admin:ranking:invitados');
+  logger.info(`[ADMIN-ACTION] Usuario ${result.userId} movido a invitador ${result.sponsorId} por admin ${req.user.id}`);
+  res.json({
+    ok: true,
+    message: `Subordinado movido correctamente a ${result.sponsorName}.`,
+    data: result
+  });
+}));
+
+router.delete('/usuarios/:id', asyncHandler(async (req, res) => {
+  const userId = req.params.id;
+
+  if (String(userId) === String(req.user.id)) {
+    return res.status(400).json({ error: 'No puedes eliminar tu propio usuario administrador.' });
+  }
+
+  const archivedPhone = `+999${String(Date.now()).slice(-8)}${Math.floor(Math.random() * 90 + 10)}`;
+  const archivedCode = `DEL${Date.now().toString(36).toUpperCase().slice(-6)}${String(userId).replace(/-/g, '').slice(-4).toUpperCase()}`;
+  const archivedName = `ELIMINADO ${String(userId).replace(/-/g, '').slice(-6).toUpperCase()}`;
+  const archivedPasswordHash = await bcrypt.hash(uuidv4(), 10);
+
+  const deletionResult = await transaction(async (conn) => {
+    const [userRows] = await conn.query(
+      `SELECT id, nombre_usuario, invitado_por, rol, status
+       FROM usuarios
+       WHERE id = ?
+       FOR UPDATE`,
+      [userId]
+    );
+
+    const targetUser = userRows[0];
+    if (!targetUser || String(targetUser.status || '').toLowerCase() === 'deleted') {
+      throw httpError('Usuario no encontrado', 404);
+    }
+
+    if (targetUser.rol && targetUser.rol !== 'usuario') {
+      throw httpError('No se puede eliminar este usuario porque tiene privilegios administrativos.', 400);
+    }
+
+    await conn.query(
+      `UPDATE usuarios
+       SET invitado_por = ?
+       WHERE invitado_por = ?`,
+      [targetUser.invitado_por || null, userId]
+    );
+
+    await conn.query(
+      `UPDATE tarjetas_bancarias
+       SET activa = 0
+       WHERE usuario_id = ?`,
+      [userId]
+    );
+
+    await conn.query(
+      `UPDATE usuarios
+       SET telefono = ?,
+           codigo_invitacion = ?,
+           nombre_usuario = ?,
+           nombre_real = 'Usuario eliminado',
+           bloqueado = 1,
+           activo = 0,
+           status = 'deleted',
+           telegram_user_id = NULL,
+           telegram_username = NULL,
+           last_device_id = NULL,
+           password_hash = ?,
+           password_fondo_hash = NULL
+       WHERE id = ?`,
+      [archivedPhone, archivedCode, archivedName, archivedPasswordHash, userId]
+    );
+
+    return {
+      userId,
+      userName: targetUser.nombre_usuario,
+      sponsorId: targetUser.invitado_por || null
+    };
+  });
+
+  const releaseResult = await releasePendingSponsorWithdrawals(userId, req.user.id);
+  await redis.del('admin:ranking:invitados');
+
+  logger.info(`[ADMIN-ACTION] Usuario ${deletionResult.userId} archivado como eliminado por admin ${req.user.id}`);
+  res.json({
+    ok: true,
+    message: 'Usuario eliminado correctamente.',
+    reubicados_al_superior: true,
+    released_pending_withdrawals: Number(releaseResult?.released || 0)
+  });
 }));
 
 // ========================

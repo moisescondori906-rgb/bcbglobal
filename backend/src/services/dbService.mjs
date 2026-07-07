@@ -554,7 +554,7 @@ export async function findUserById(id, tenantId = null) {
     if (now - cached.timestamp < USER_CACHE_TTL) return cached.data;
   }
 
-  let sql = `SELECT ${USER_FIELDS} FROM usuarios WHERE id = ?`;
+  let sql = `SELECT ${USER_FIELDS} FROM usuarios WHERE id = ? AND COALESCE(status, 'active') <> 'deleted'`;
   const params = [id];
 
   if (tenantId) {
@@ -643,7 +643,7 @@ export async function findUserByTelefono(telefono, tenantId = null) {
   if (variations.length === 0) return null;
 
   const placeholders = variations.map(() => '?').join(',');
-  let sql = `SELECT password_hash, ${USER_FIELDS} FROM usuarios WHERE telefono IN (${placeholders})`;
+  let sql = `SELECT password_hash, ${USER_FIELDS} FROM usuarios WHERE telefono IN (${placeholders}) AND COALESCE(status, 'active') <> 'deleted'`;
   const params = [...variations];
 
   if (tenantId) {
