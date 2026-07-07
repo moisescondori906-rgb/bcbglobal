@@ -1,3 +1,4 @@
+import fs from 'fs';
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import { v4 as uuidv4 } from 'uuid';
@@ -6,7 +7,7 @@ import {
   getMensajesGlobales, peruTime, getUserTeamReport,
   getEquipoPatrocinador, getRetirosPendientesPatrocinador,
   aprobarRetiroPorPatrocinador, rechazarRetiroPorPatrocinador,
-  getConteoRetirosPatrocinador
+  getConteoRetirosPatrocinador, getPasantiaWithdrawalPolicy
 } from '../../services/dbService.mjs';
 import { authenticate } from '../../utils/middleware/auth.mjs';
 import { attachRequestUser, DEMO_USER_ID } from '../../utils/middleware/requestContext.mjs';
@@ -18,6 +19,31 @@ const router = Router();
 
 router.use(authenticate);
 router.use(attachRequestUser);
+
+// #region debug-point A:fund-password-debug-reporter
+function reportFundPasswordDebug(hypothesisId, location, msg, data = {}) {
+  let debugUrl = 'http://127.0.0.1:7777/event';
+  let sessionId = 'fund-password-400';
+  try {
+    const envFile = fs.readFileSync('.dbg/fund-password-400.env', 'utf8');
+    debugUrl = envFile.match(/DEBUG_SERVER_URL=(.+)/)?.[1] || debugUrl;
+    sessionId = envFile.match(/DEBUG_SESSION_ID=(.+)/)?.[1] || sessionId;
+  } catch {}
+  fetch(debugUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      sessionId,
+      runId: 'pre-fix',
+      hypothesisId,
+      location,
+      msg: `[DEBUG] ${msg}`,
+      data,
+      ts: Date.now()
+    })
+  }).catch(() => {});
+}
+// #endregion
 
 function sanitizeUser(u, levels) {
   const safeLevels = Array.isArray(levels) ? levels : [];
@@ -312,20 +338,56 @@ router.post('/change-fund-password', asyncHandler(async (req, res) => {
   const newPassword = password_fondo || password_nueva;
   const confirmPassword = confirm_password_fondo || password_nueva; // Frontend confirms with the same field twice
 
+  // #region debug-point B:change-fund-password-entry
+  reportFundPasswordDebug('B', 'users.mjs:/change-fund-password:entry', 'payload recibido en change-fund-password', {
+    userId: req.user?.id || null,
+    hasPasswordFondo: !!password_fondo,
+    hasConfirmPasswordFondo: !!confirm_password_fondo,
+    hasPasswordNueva: !!password_nueva,
+    hasPasswordActual: !!password_actual,
+    newPasswordLength: newPassword?.length || 0,
+    confirmPasswordLength: confirmPassword?.length || 0
+  });
+  // #endregion
+
   if (!newPassword || newPassword.length < 6) {
+    // #region debug-point B:change-fund-password-short-password
+    reportFundPasswordDebug('B', 'users.mjs:/change-fund-password:short-password', 'rechazo por contraseña nueva inválida', {
+      userId: req.user?.id || null,
+      newPasswordLength: newPassword?.length || 0
+    });
+    // #endregion
     return res.status(400).json({ error: 'La contraseña de fondos debe tener al menos 6 caracteres.' });
   }
 
   // Get current user's fund password hash
   const currentUser = await queryOne(`SELECT password_fondo_hash FROM usuarios WHERE id = ?`, [req.user.id]);
+
+  // #region debug-point C:change-fund-password-user-state
+  reportFundPasswordDebug('C', 'users.mjs:/change-fund-password:user-state', 'estado actual de contraseña de fondos del usuario', {
+    userId: req.user?.id || null,
+    hasStoredFundPassword: !!currentUser?.password_fondo_hash,
+    hasPasswordActual: !!password_actual
+  });
+  // #endregion
   
   // If user already has a fund password, verify the current one
   if (currentUser?.password_fondo_hash) {
     if (!password_actual) {
+      // #region debug-point A:change-fund-password-missing-current
+      reportFundPasswordDebug('A', 'users.mjs:/change-fund-password:missing-current', 'rechazo por falta de contraseña actual', {
+        userId: req.user?.id || null
+      });
+      // #endregion
       return res.status(400).json({ error: 'Debes ingresar la contraseña de fondos actual.' });
     }
     const isMatch = await bcrypt.compare(password_actual, currentUser.password_fondo_hash);
     if (!isMatch) {
+      // #region debug-point A:change-fund-password-current-mismatch
+      reportFundPasswordDebug('A', 'users.mjs:/change-fund-password:current-mismatch', 'rechazo por contraseña actual incorrecta', {
+        userId: req.user?.id || null
+      });
+      // #endregion
       return res.status(400).json({ error: 'La contraseña de fondos actual es incorrecta.' });
     }
   }
@@ -334,6 +396,12 @@ router.post('/change-fund-password', asyncHandler(async (req, res) => {
   const hash = await bcrypt.hash(newPassword, salt);
 
   await query(`UPDATE usuarios SET password_fondo_hash = ? WHERE id = ?`, [hash, req.user.id]);
+
+  // #region debug-point D:change-fund-password-success
+  reportFundPasswordDebug('D', 'users.mjs:/change-fund-password:success', 'contraseña de fondos actualizada correctamente', {
+    userId: req.user?.id || null
+  });
+  // #endregion
 
   res.json({ success: true, message: 'Contraseña de fondos configurada correctamente.' });
 }));
@@ -469,13 +537,15 @@ router.get('/my-referrals', asyncHandler(async (req, res) => {
 router.get('/my-team', asyncHandler(async (req, res) => {
   const team = await getEquipoPatrocinador(req.user.id);
   const conteo = await getConteoRetirosPatrocinador(req.user.id);
+  const policy = await getPasantiaWithdrawalPolicy();
   res.json({
     team,
     limite_pasantia: {
       total_aprobados: conteo,
-      maximo: 15,
-      disponibles: 15 - conteo
-    }
+      maximo: policy.maxApprovals,
+      disponibles: Math.max(0, policy.maxApprovals - conteo)
+    },
+    politica_pasantia: policy
   });
 }));
 

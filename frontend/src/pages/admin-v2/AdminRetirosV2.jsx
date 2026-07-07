@@ -48,11 +48,17 @@ export default function AdminRetirosV2() {
   const [motivo, setMotivo] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [summary, setSummary] = useState(null);
+  const [policy, setPolicy] = useState({
+    modo_retiro_pasantia: 'sponsor_vip',
+    max_retiros_pasantia_vip: 15,
+  });
+  const [savingPolicy, setSavingPolicy] = useState(false);
   const itemsPerPage = 8;
 
   useEffect(() => {
     fetchRetiros();
     fetchSummary();
+    fetchPolicy();
   }, []);
 
   const fetchRetiros = async () => {
@@ -74,6 +80,34 @@ export default function AdminRetirosV2() {
       setSummary(data);
     } catch (err) {
       console.error('Error fetching daily summary:', err);
+    }
+  };
+
+  const fetchPolicy = async () => {
+    try {
+      const data = await api.get('/admin/config');
+      setPolicy({
+        modo_retiro_pasantia: data?.modo_retiro_pasantia || 'sponsor_vip',
+        max_retiros_pasantia_vip: Number(data?.max_retiros_pasantia_vip || 15),
+      });
+    } catch (err) {
+      console.error('Error fetching withdrawal policy:', err);
+    }
+  };
+
+  const savePolicy = async () => {
+    try {
+      setSavingPolicy(true);
+      await api.put('/admin/config', {
+        modo_retiro_pasantia: policy.modo_retiro_pasantia,
+        max_retiros_pasantia_vip: Number(policy.max_retiros_pasantia_vip || 15),
+      });
+      alert('Configuración de retiros de pasantía actualizada correctamente.');
+      await fetchPolicy();
+    } catch (err) {
+      alert(err.message || 'No se pudo guardar la configuración de retiros.');
+    } finally {
+      setSavingPolicy(false);
     }
   };
 
@@ -167,6 +201,99 @@ export default function AdminRetirosV2() {
           </div>
         </div>
       )}
+
+      <div className="admin-card p-8 sm:p-10 space-y-8">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          <div>
+            <h2 className="text-2xl font-black text-white uppercase tracking-tighter italic">Política de Pasantía</h2>
+            <p className="text-[10px] font-black text-admin-muted uppercase tracking-[0.25em] mt-2">
+              Controla cómo se procesan los retiros de usuarios pasantes desde hoy
+            </p>
+          </div>
+          <button
+            onClick={savePolicy}
+            disabled={savingPolicy}
+            className="admin-button-primary !h-12 !px-6 !rounded-2xl"
+          >
+            {savingPolicy ? 'Guardando...' : 'Guardar configuración'}
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+          {[
+            {
+              key: 'sponsor_vip',
+              title: 'Aprobación VIP',
+              description: 'Los retiros de pasantes pasan primero por su patrocinador VIP. Si el invitador es pasante, el retiro se bloquea.',
+              icon: ShieldCheck,
+              tone: 'text-admin-accent'
+            },
+            {
+              key: 'direct_admin',
+              title: 'Directo a Administración',
+              description: 'Los retiros de pasantes llegan directamente al panel administrativo y también a Telegram, sin depender del nivel del invitador.',
+              icon: Zap,
+              tone: 'text-emerald-400'
+            },
+            {
+              key: 'blocked',
+              title: 'Retiros Bloqueados',
+              description: 'Los usuarios de pasantía no pueden solicitar retiros. El backend responde con bloqueo total.',
+              icon: AlertTriangle,
+              tone: 'text-rose-400'
+            }
+          ].map((item) => {
+            const Icon = item.icon;
+            const active = policy.modo_retiro_pasantia === item.key;
+            return (
+              <button
+                key={item.key}
+                type="button"
+                onClick={() => setPolicy(prev => ({ ...prev, modo_retiro_pasantia: item.key }))}
+                className={`text-left admin-card p-6 transition-all duration-300 border ${active ? 'border-admin-accent/60 bg-white/[0.04]' : 'border-white/5 bg-white/[0.02]'}`}
+              >
+                <div className="flex items-center justify-between gap-4 mb-5">
+                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center bg-black/20 ${item.tone}`}>
+                    <Icon size={22} />
+                  </div>
+                  {active && <span className="admin-badge admin-badge-success">activo</span>}
+                </div>
+                <h3 className="text-lg font-black text-white uppercase tracking-tight">{item.title}</h3>
+                <p className="text-[11px] text-admin-muted leading-relaxed mt-3">{item.description}</p>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="admin-card p-6 border border-white/5 bg-black/20">
+            <label className="block text-[10px] font-black text-admin-muted uppercase tracking-[0.25em] mb-3">
+              Cupo máximo que puede autorizar un VIP
+            </label>
+            <input
+              type="number"
+              min="1"
+              className="admin-input !h-14 !rounded-2xl"
+              value={policy.max_retiros_pasantia_vip}
+              onChange={(e) => setPolicy(prev => ({ ...prev, max_retiros_pasantia_vip: Number(e.target.value || 1) }))}
+            />
+            <p className="text-[11px] text-admin-muted mt-3">
+              Este límite aplica cuando el modo activo es <strong>Aprobación VIP</strong>.
+            </p>
+          </div>
+
+          <div className="admin-card p-6 border border-white/5 bg-black/20">
+            <p className="text-[10px] font-black text-admin-muted uppercase tracking-[0.25em] mb-3">
+              Resultado operativo actual
+            </p>
+            <div className="space-y-3 text-[11px] text-zinc-300 leading-relaxed">
+              <p>Modo activo: <strong>{policy.modo_retiro_pasantia === 'sponsor_vip' ? 'Aprobación VIP' : policy.modo_retiro_pasantia === 'direct_admin' ? 'Directo a administración' : 'Retiros bloqueados'}</strong></p>
+              <p>Cupo VIP: <strong>{policy.max_retiros_pasantia_vip}</strong> pasantes autorizados</p>
+              <p>Telegram: <strong>las solicitudes directas a administración se envían al grupo de retiros y al grupo admin</strong></p>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* Header Section */}
       <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-8">

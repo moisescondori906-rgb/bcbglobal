@@ -31,6 +31,9 @@ export const publicContentDefaults = {
   telegram_global_enabled: true,
   telegram_recargas_enabled: true,
   telegram_retiros_enabled: true,
+  modo_retiro_pasantia: 'sponsor_vip',
+  max_retiros_pasantia_vip: 15,
+  max_dias_tareas_pasantia: 4,
   task_allowed_days: '1,2,3,4,5',
   /** Comisión de Retiro (porcentaje) */
   comision_retiro: 10,

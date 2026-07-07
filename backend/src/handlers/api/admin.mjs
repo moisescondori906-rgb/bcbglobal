@@ -9,6 +9,7 @@ import {
   invalidateLevelsCache, preloadLevels, syncLevels,
   getMensajesGlobales, createMensajeGlobal, deleteMensajeGlobal,
   getDailyWithdrawalSummary, getDailyOperatorSummary, findUserByTelefono,
+  releasePendingSponsorWithdrawals,
   giveTicketsPorAscensoInvitado, giveTicketsPorRegistro, getCanonicalTelefono
 } from '../../services/dbService.mjs';
 import {
@@ -1109,7 +1110,14 @@ router.post('/usuarios/:id/toggle-block', asyncHandler(async (req, res) => {
   
   const newStatus = user.bloqueado ? 0 : 1;
   await updateUser(req.params.id, { bloqueado: newStatus });
-  res.json({ ok: true, bloqueado: !!newStatus });
+
+  let released = 0;
+  if (newStatus) {
+    const releaseResult = await releasePendingSponsorWithdrawals(req.params.id, req.user.id);
+    released = Number(releaseResult?.released || 0);
+  }
+
+  res.json({ ok: true, bloqueado: !!newStatus, released_pending_withdrawals: released });
 }));
 
 router.post('/usuarios/:id/reset-password', asyncHandler(async (req, res) => {

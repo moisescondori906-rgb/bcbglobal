@@ -91,6 +91,9 @@ async function insertOperationalAudit(conn, {
 const DEFAULT_CONFIG = {
   task_allowed_days: '1,2,3,4,5',
   comision_retiro: 10,
+  modo_retiro_pasantia: 'sponsor_vip',
+  max_retiros_pasantia_vip: 15,
+  max_dias_tareas_pasantia: 4,
   horario_recarga: { enabled: true, hora_inicio: '10:00', hora_fin: '18:00', dias_semana: [1,2,3,4,5] },
   horario_retiro: { enabled: true, hora_inicio: '10:00', hora_fin: '18:00', dias_semana: [1,2,3,4,5] },
   restricciones_horario_activas: false,
@@ -105,6 +108,31 @@ const DEFAULT_CONFIG = {
   mensaje_niveles_superiores: 'Niveles disponibles solamente para líderes',
   nivel_minimo_lider: 4 // orden del nivel mínimo para acceder a niveles superiores (GLOBAL4 es orden 4)
 };
+
+function getPasantiaTaskLimitMessage(maxTaskDays) {
+  return `Ya completaste el máximo de ${maxTaskDays} días de tareas para Pasantía. Debes ascender a un nivel VIP para seguir realizando tareas.`;
+}
+
+async function getSponsorWithdrawalApprovalContext(sponsorId) {
+  if (!sponsorId) {
+    return { exists: false, isVipEligible: false, isBlocked: false, sponsor: null };
+  }
+
+  const sponsor = await queryOne(`
+    SELECT u.id, u.bloqueado, n.codigo AS nivel_codigo
+    FROM usuarios u
+    LEFT JOIN niveles n ON u.nivel_id = n.id
+    WHERE u.id = ?
+  `, [sponsorId]);
+
+  const sponsorLevelCode = String(sponsor?.nivel_codigo || '').toLowerCase();
+  return {
+    exists: !!sponsor,
+    isVipEligible: !!sponsor && !['internar', 'pasantia', ''].includes(sponsorLevelCode),
+    isBlocked: Number(sponsor?.bloqueado || 0) === 1,
+    sponsor
+  };
+}
 
 const DEFAULT_LEVELS = [
   { id: 'l1', codigo: 'internar', nombre: 'Interno', deposito: 0, num_tareas_diarias: 3, ganancia_tarea: 1.00, orden: 0, activo: 1 },
@@ -330,6 +358,18 @@ export async function canPerformTasks(userId, dateStr = peruTime.todayStr()) {
     
     const levels = await getLevels();
     const userLevel = levels.find(l => String(l.id) === String(user.nivel_id));
+    const userLevelCode = String(userLevel?.codigo || '').toLowerCase();
+
+    if (userLevel && ['internar', 'pasantia'].includes(userLevelCode)) {
+      const { maxTaskDays } = await getPasantiaWithdrawalPolicy();
+      const completedDays = await getCompletedInternshipDays(userId, Number(userLevel.num_tareas_diarias || 0));
+      if (completedDays >= maxTaskDays) {
+        return {
+          ok: false,
+          message: getPasantiaTaskLimitMessage(maxTaskDays)
+        };
+      }
+    }
 
     const levelRules = typeof status.reglas_niveles === 'string' 
       ? JSON.parse(status.reglas_niveles) 
@@ -424,22 +464,37 @@ export async function canWithdraw(userId, dateStr = peruTime.todayStr()) {
 
   // Validar límite de retiros de pasantía por patrocinador (MÓDULO 8)
   if (userLevel.codigo === 'internar' || userLevel.codigo === 'pasantia') {
+    const { mode, maxApprovals, maxTaskDays } = await getPasantiaWithdrawalPolicy();
     const diasPasantiaCompletos = await getCompletedInternshipDays(userId, Number(userLevel.num_tareas_diarias || 0));
-    if (diasPasantiaCompletos < 4) {
-      return { ok: false, message: `Debes completar los 4 dias de pasantia antes de solicitar tu retiro. Dias completados: ${diasPasantiaCompletos}/4.` };
+    if (diasPasantiaCompletos < maxTaskDays) {
+      return { ok: false, message: `Debes completar los ${maxTaskDays} dias de pasantia antes de solicitar tu retiro. Dias completados: ${diasPasantiaCompletos}/${maxTaskDays}.` };
     }
 
-    if (!user.invitado_por) {
-      return { ok: false, message: 'No puedes realizar retiros sin un patrocinador asignado.' };
+    if (mode === 'blocked') {
+      return { ok: false, message: 'Los retiros para usuarios de Pasantía están deshabilitados por administración en este momento.' };
     }
 
-    const limitePatrocinador = await queryOne(`
-      SELECT total_aprobados, maximo_por_patrocinador FROM limites_retiros_pasantia
-      WHERE patrocinador_id = ?
-    `, [user.invitado_por]);
+    // Solo en este modo importa el nivel del invitador; en direct_admin todos pueden retirar.
+    if (mode === 'sponsor_vip') {
+      if (!user.invitado_por) {
+        return { ok: false, message: 'No puedes realizar retiros sin un patrocinador asignado.' };
+      }
 
-    if (limitePatrocinador && limitePatrocinador.total_aprobados >= limitePatrocinador.maximo_por_patrocinador) {
-      return { ok: false, message: 'Tu patrocinador ya alcanzó el límite de 15 retiros autorizados para usuarios de Pasantía.' };
+      const sponsorContext = await getSponsorWithdrawalApprovalContext(user.invitado_por);
+      if (!sponsorContext.exists || !sponsorContext.isVipEligible) {
+        return { ok: false, message: 'No puedes solicitar el retiro debido a que tu invitador es pasante y no puede autorizar retiros hasta que sea de nivel VIP.' };
+      }
+
+      if (!sponsorContext.isBlocked) {
+        const limitePatrocinador = await queryOne(`
+          SELECT total_aprobados, maximo_por_patrocinador FROM limites_retiros_pasantia
+          WHERE patrocinador_id = ?
+        `, [user.invitado_por]);
+
+        if (limitePatrocinador && Number(limitePatrocinador.total_aprobados || 0) >= maxApprovals) {
+          return { ok: false, message: `Tu patrocinador ya alcanzó el límite de ${maxApprovals} retiros autorizados para usuarios de Pasantía.` };
+        }
+      }
     }
   }
 
@@ -803,6 +858,26 @@ export async function completeTask(userId, taskId, idempotencyKey = null) {
     const level = levelRows[0];
     if (!level) throw new Error('Configuración de nivel no encontrada');
 
+    const levelCode = String(level?.codigo || '').toLowerCase();
+    if (['internar', 'pasantia'].includes(levelCode)) {
+      const { maxTaskDays } = await getPasantiaWithdrawalPolicy();
+      const [daysRows] = await conn.query(
+        `SELECT COUNT(*) as total
+         FROM (
+           SELECT fecha_dia
+           FROM actividad_tareas
+           WHERE usuario_id = ?
+           GROUP BY fecha_dia
+           HAVING COUNT(*) >= ?
+         ) dias_completos`,
+        [userId, Number(level.num_tareas_diarias || 0)]
+      );
+      const completedDays = Number(daysRows[0]?.total || 0);
+      if (completedDays >= maxTaskDays) {
+        throw new Error(getPasantiaTaskLimitMessage(maxTaskDays));
+      }
+    }
+
     if (todayCount >= Number(level.num_tareas_diarias)) {
       throw new Error(`Límite diario alcanzado (${level.num_tareas_diarias} tareas).`);
     }
@@ -953,6 +1028,8 @@ export async function requestWithdrawal(userId, { monto, tipo_billetera, tarjeta
 
     const levelCode = String(level?.codigo || '').toLowerCase();
     const isPasante = levelCode === 'internar' || levelCode === 'pasantia';
+    const pasantiaPolicy = isPasante ? await getPasantiaWithdrawalPolicy() : null;
+    let requiresSponsorApproval = false;
     let montoFinal = m;
     if (isPasante) {
       const completedInternshipDays = await getCompletedInternshipDays(userId, Number(level.num_tareas_diarias || 0));
@@ -960,11 +1037,18 @@ export async function requestWithdrawal(userId, { monto, tipo_billetera, tarjeta
         requestedAmount: m,
         balance: oldBalance,
         completedInternshipDays,
-        requiredInternshipDays: 4,
+        requiredInternshipDays: pasantiaPolicy.maxTaskDays,
         requiredAmount: 10
       });
       if (!pasanteValidation.ok) {
         throw new Error(pasanteValidation.message);
+      }
+      if (pasantiaPolicy.mode === 'blocked') {
+        throw new Error('Los retiros para usuarios de Pasantía están deshabilitados por administración en este momento.');
+      }
+      if (pasantiaPolicy.mode === 'sponsor_vip' && user.invitado_por) {
+        const sponsorContext = await getSponsorWithdrawalApprovalContext(user.invitado_por);
+        requiresSponsorApproval = sponsorContext.exists && sponsorContext.isVipEligible && !sponsorContext.isBlocked;
       }
       montoFinal = pasanteValidation.amount;
     } else {
@@ -1008,7 +1092,9 @@ export async function requestWithdrawal(userId, { monto, tipo_billetera, tarjeta
 
     // Se guardan columnas detalladas de comisión para auditoría v12.1.0
     // Check if user is pasante to set correct state
-    const initialState = isPasante && user.invitado_por ? 'Pendiente_Patrocinador' : 'Verificando';
+    const initialState = requiresSponsorApproval
+      ? 'Pendiente_Patrocinador'
+      : 'Verificando';
     // #region debug-point B:dbservice-before-insert
     reportWithdrawalQrDebug('B', 'dbService.mjs:922', '[DEBUG] requestWithdrawal before insert', {
       retiroId,
@@ -1058,7 +1144,13 @@ export async function requestWithdrawal(userId, { monto, tipo_billetera, tarjeta
 
     userCache.delete(userId);
 
-    const res = { success: true, retiroId, traceId, message: 'Retiro procesado correctamente. Por favor, verifica que el QR coincida con el número de cuenta, de lo contrario el retiro será rechazado.' };
+    const res = {
+      success: true,
+      retiroId,
+      traceId,
+      requiresSponsorApproval,
+      message: 'Retiro procesado correctamente. Por favor, verifica que el QR coincida con el número de cuenta, de lo contrario el retiro será rechazado.'
+    };
 
     // 7. REGISTRAR IDEMPOTENCIA EN DB (Final de la transacción)
     if (idempotencyKey) {
@@ -1308,14 +1400,18 @@ export async function sponsorApproveRetiro(retiroId, sponsorId, idempotencyKey =
       [sponsorId]
     );
     const limite = limiteRows[0];
-    if (limite.total_aprobados >= limite.maximo_por_patrocinador) {
-      throw new Error('Ya alcanzaste el límite de 15 retiros autorizados para usuarios de Pasantía');
+    const { maxApprovals } = await getPasantiaWithdrawalPolicy();
+    if (Number(limite.total_aprobados || 0) >= maxApprovals) {
+      throw new Error(`Ya alcanzaste el límite de ${maxApprovals} retiros autorizados para usuarios de Pasantía`);
     }
 
     // 3. Incrementar contador
     await conn.query(
-      `UPDATE limites_retiros_pasantia SET total_aprobados = total_aprobados + 1 WHERE patrocinador_id = ?`,
-      [sponsorId]
+      `UPDATE limites_retiros_pasantia
+       SET total_aprobados = total_aprobados + 1,
+           maximo_por_patrocinador = ?
+       WHERE patrocinador_id = ?`,
+      [maxApprovals, sponsorId]
     );
 
     // 4. Actualizar retiro
@@ -1387,7 +1483,17 @@ export async function sponsorApproveRetiro(retiroId, sponsorId, idempotencyKey =
       ...(qrBuffer ? { photo: qrBuffer } : {})
     };
 
-    sendToRetiros(adminMessage, telegramOptions);
+    void Promise.allSettled([
+      sendToRetiros(adminMessage, telegramOptions),
+      sendToAdmin(adminMessage, telegramOptions)
+    ]).then((results) => {
+      results.forEach((result, index) => {
+        const target = index === 0 ? 'retiros' : 'admin';
+        if (result.status === 'rejected') {
+          logger.error(`[WITHDRAW_SPONSOR_APPROVE] Falló envío a ${target} para retiro ${retiro.id}: ${result.reason?.message || result.reason}`);
+        }
+      });
+    });
 
     const res = { success: true, traceId, message: 'Retiro aprobado por patrocinador, enviado a administrador' };
 
@@ -2080,6 +2186,22 @@ export async function refreshGlobalContent(newContent = null) {
 
 export async function getPublicContent() {
   return getGlobalContent();
+}
+
+export function normalizePasantiaWithdrawalMode(value) {
+  const mode = String(value || '').trim().toLowerCase();
+  if (mode === 'direct_admin') return 'direct_admin';
+  if (mode === 'blocked') return 'blocked';
+  return 'sponsor_vip';
+}
+
+export async function getPasantiaWithdrawalPolicy() {
+  const config = await getGlobalContent();
+  return {
+    mode: normalizePasantiaWithdrawalMode(config?.modo_retiro_pasantia),
+    maxApprovals: Math.max(1, Number(config?.max_retiros_pasantia_vip || 15)),
+    maxTaskDays: Math.max(1, Number(config?.max_dias_tareas_pasantia || 4))
+  };
 }
 
 export async function refreshPublicContent(newContent = null) {
@@ -2868,8 +2990,49 @@ export async function getConteoRetirosPatrocinador(patrocinadorId) {
  */
 export async function patrocinadorTieneCupo(patrocinadorId) {
   const conteo = await getConteoRetirosPatrocinador(patrocinadorId);
-  const maximo = 15;
+  const { maxApprovals: maximo } = await getPasantiaWithdrawalPolicy();
   return conteo < maximo;
+}
+
+export async function releasePendingSponsorWithdrawals(patrocinadorId, procesadoPor = null) {
+  return await transaction(async (conn) => {
+    const [retiroRows] = await conn.query(`
+      SELECT r.id, r.usuario_id, r.estado
+      FROM retiros r
+      JOIN usuarios u ON u.id = r.usuario_id
+      WHERE u.invitado_por = ?
+        AND r.estado = 'Pendiente_Patrocinador'
+        AND (r.estado_patrocinador IS NULL OR r.estado_patrocinador = 'Verificando')
+      FOR UPDATE
+    `, [patrocinadorId]);
+
+    if (retiroRows.length === 0) {
+      return { released: 0, retiros: [] };
+    }
+
+    for (const retiro of retiroRows) {
+      const traceId = uuidv4();
+
+      await conn.query(
+        `UPDATE retiros
+         SET estado = 'Verificando'
+         WHERE id = ?`,
+        [retiro.id]
+      );
+
+      await insertOperationalAudit(conn, {
+        traceId,
+        usuarioId: retiro.usuario_id,
+        operacion: 'retiro_liberado_por_bloqueo_patrocinador',
+        estadoAnterior: retiro.estado,
+        estadoNuevo: 'Verificando',
+        metadata: { retiroId: retiro.id, patrocinadorId, razon: 'patrocinador_bloqueado' },
+        procesadoPor: procesadoPor || patrocinadorId
+      });
+    }
+
+    return { released: retiroRows.length, retiros: retiroRows.map((retiro) => retiro.id) };
+  });
 }
 
 /**
@@ -2916,8 +3079,9 @@ export async function aprobarRetiroPorPatrocinador(retiroId, patrocinadorId) {
     let limite = limiteRows[0];
     let totalAprobados = limite?.total_aprobados || 0;
     
-    if (totalAprobados >= 15) {
-      throw new Error('Tu patrocinador ya alcanzó el límite de 15 retiros autorizados para usuarios de Pasantía');
+    const { maxApprovals } = await getPasantiaWithdrawalPolicy();
+    if (totalAprobados >= maxApprovals) {
+      throw new Error(`Tu patrocinador ya alcanzó el límite de ${maxApprovals} retiros autorizados para usuarios de Pasantía`);
     }
     
     // 6. Actualizar el conteo del patrocinador
@@ -2925,15 +3089,15 @@ export async function aprobarRetiroPorPatrocinador(retiroId, patrocinadorId) {
     if (limite) {
       await conn.query(`
         UPDATE limites_retiros_pasantia 
-        SET total_aprobados = ?, updated_at = NOW()
+        SET total_aprobados = ?, maximo_por_patrocinador = ?, updated_at = NOW()
         WHERE patrocinador_id = ?
-      `, [totalAprobados, patrocinadorId]);
+      `, [totalAprobados, maxApprovals, patrocinadorId]);
     } else {
       const limiteId = uuidv4();
       await conn.query(`
         INSERT INTO limites_retiros_pasantia (id, patrocinador_id, total_aprobados, maximo_por_patrocinador)
-        VALUES (?, ?, ?, 15)
-      `, [limiteId, patrocinadorId, totalAprobados]);
+        VALUES (?, ?, ?, ?)
+      `, [limiteId, patrocinadorId, totalAprobados, maxApprovals]);
     }
     
     // 7. Actualizar el retiro
@@ -3007,7 +3171,17 @@ export async function aprobarRetiroPorPatrocinador(retiroId, patrocinadorId) {
       ...(qrBuffer ? { photo: qrBuffer } : {})
     };
 
-    sendToRetiros(adminMessage, telegramOptions);
+    void Promise.allSettled([
+      sendToRetiros(adminMessage, telegramOptions),
+      sendToAdmin(adminMessage, telegramOptions)
+    ]).then((results) => {
+      results.forEach((result, index) => {
+        const target = index === 0 ? 'retiros' : 'admin';
+        if (result.status === 'rejected') {
+          logger.error(`[WITHDRAW_SPONSOR_APPROVE_LEGACY] Falló envío a ${target} para retiro ${retiro.id}: ${result.reason?.message || result.reason}`);
+        }
+      });
+    });
 
     await createNotification(
       retiro.usuario_id,

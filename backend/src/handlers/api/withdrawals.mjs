@@ -13,6 +13,7 @@ import { dynamicControlMiddleware } from '../../utils/middleware/dynamicControl.
 import { 
   sendToRetiros, 
   sendToTelegramUser,
+  sendToAdmin,
   formatRetiroMessage 
 } from '../../services/telegramBot.mjs';
 import logger from '../../utils/logger.mjs';
@@ -41,6 +42,27 @@ const reportWithdrawalQrDebug = (hypothesisId, location, msg, data = {}) => {
 // Rate Limit Config: 5 intentos de retiro por minuto
 const WITHDRAW_RATE_LIMIT = 5;
 const RATE_LIMIT_WINDOW = 60;
+
+function normalizePasantiaMode(value) {
+  const mode = String(value || '').trim().toLowerCase();
+  if (mode === 'direct_admin') return 'direct_admin';
+  if (mode === 'blocked') return 'blocked';
+  return 'sponsor_vip';
+}
+
+async function notifyWithdrawalAdmins(message, options, retiroId) {
+  const results = await Promise.allSettled([
+    sendToRetiros(message, options),
+    sendToAdmin(message, options)
+  ]);
+
+  results.forEach((result, index) => {
+    const target = index === 0 ? 'retiros' : 'admin';
+    if (result.status === 'rejected') {
+      logger.error(`[WITHDRAW][TELEGRAM] Falló envío a ${target} para retiro ${retiroId}: ${result.reason?.message || result.reason}`);
+    }
+  });
+}
 
 const withdrawRateLimit = async (req, res, next) => {
   const userId = req.requestUser?.id;
@@ -185,6 +207,7 @@ router.post('/', withdrawRateLimit, dynamicControlMiddleware('withdrawal'), asyn
   const config = await getGlobalContent();
   const niveles = await getLevels();
   const userLevel = niveles.find(l => String(l.id) === String(user.nivel_id));
+  const pasantiaMode = normalizePasantiaMode(config?.modo_retiro_pasantia);
 
   const message = formatRetiroMessage({
     id: result.retiroId,
@@ -220,33 +243,43 @@ router.post('/', withdrawRateLimit, dynamicControlMiddleware('withdrawal'), asyn
   // #endregion
 
   if (userLevelCode === 'internar' || userLevelCode === 'pasantia') {
-    // Si es Pasantía, enviar al patrocinador
-    if (user.invitado_por) {
-      const sponsor = await queryOne(`SELECT id, telegram_user_id FROM usuarios WHERE id = ?`, [user.invitado_por]);
-
-      // Siempre crear una notificación interna para el invitador.
-      await createNotification(
-        user.invitado_por,
-        'Aprobación de retiro requerida',
-        `${user.nombre_usuario} solicitó un retiro de ${m.toFixed(2)} Bs y necesita tu aprobación.`
-      );
-
-      if (sponsor && sponsor.telegram_user_id) {
-        sendToTelegramUser(sponsor.telegram_user_id, message, options); 
-        logger.info(`[TELEGRAM] Notificación de retiro Pasantía enviada a patrocinador ${sponsor.telegram_user_id}`);
-      } else {
-        logger.warn(`[TELEGRAM] Patrocinador de usuario ${user.id} no tiene Telegram ID o no fue encontrado. La solicitud queda pendiente para aprobación desde la web.`);
-      }
-    } else {
-      logger.warn(`[TELEGRAM] Usuario Pasantía ${user.id} sin patrocinador. La solicitud queda registrada sin escalar a admins.`);
+    if (pasantiaMode === 'blocked') {
+      return res.status(403).json({ error: 'Los retiros para usuarios de Pasantía están deshabilitados por administración en este momento.' });
     }
-    // Mensaje para el usuario
-    res.json({ success: true, message: 'Tu solicitud fue enviada a tu patrocinador para su aprobación.' });
-  } else {
-    // Las solicitudes siguen registrándose en la web/admin, pero ya no se envían al grupo de administración de Telegram.
-    sendToRetiros(message, notifyOptions);
-    res.json({ success: true, message: 'Retiro solicitado con éxito.' });
+
+    if (pasantiaMode === 'sponsor_vip' && result.requiresSponsorApproval) {
+      if (user.invitado_por) {
+        const sponsor = await queryOne(`SELECT id, telegram_user_id FROM usuarios WHERE id = ?`, [user.invitado_por]);
+
+        // Siempre crear una notificación interna para el invitador.
+        await createNotification(
+          user.invitado_por,
+          'Aprobación de retiro requerida',
+          `${user.nombre_usuario} solicitó un retiro de ${m.toFixed(2)} Bs y necesita tu aprobación.`
+        );
+
+        if (sponsor && sponsor.telegram_user_id) {
+          try {
+            await sendToTelegramUser(sponsor.telegram_user_id, message, notifyOptions);
+            logger.info(`[TELEGRAM] Notificación de retiro Pasantía enviada a patrocinador ${sponsor.telegram_user_id}`);
+          } catch (err) {
+            logger.error(`[TELEGRAM] Falló el envío del retiro ${result.retiroId} al patrocinador ${sponsor.telegram_user_id}: ${err.message}`);
+          }
+        } else {
+          logger.warn(`[TELEGRAM] Patrocinador de usuario ${user.id} no tiene Telegram ID o no fue encontrado. La solicitud queda pendiente para aprobación desde la web.`);
+        }
+      } else {
+        logger.warn(`[TELEGRAM] Usuario Pasantía ${user.id} sin patrocinador. La solicitud queda registrada sin escalar a admins.`);
+      }
+      return res.json({ success: true, message: 'Tu solicitud fue enviada a tu patrocinador para su aprobación.' });
+    }
+
+    await notifyWithdrawalAdmins(message, notifyOptions, result.retiroId);
+    return res.json({ success: true, message: 'Tu solicitud fue enviada directamente a administración para su revisión.' });
   }
+
+  await notifyWithdrawalAdmins(message, notifyOptions, result.retiroId);
+  res.json({ success: true, message: 'Retiro solicitado con éxito.' });
 }));
 
 export default router;

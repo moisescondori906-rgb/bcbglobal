@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import Layout from '../components/Layout';
@@ -12,12 +12,45 @@ import { Button } from '../components/ui/Button.jsx';
 export default function CambiarContrasenaFondo() {
   const navigate = useNavigate();
   const { user, refreshUser } = useAuth();
-  const tieneFondo = !!user?.tiene_password_fondo;
+  const [securityStatus, setSecurityStatus] = useState({
+    tiene_password_fondo: !!user?.tiene_password_fondo,
+    loading: true,
+  });
+  const tieneFondo = !!securityStatus.tiene_password_fondo;
   const [actual, setActual] = useState('');
   const [nueva, setNueva] = useState('');
   const [nueva2, setNueva2] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchSecurityStatus = async () => {
+      try {
+        const status = await api.users.securityStatus();
+        if (isMounted) {
+          setSecurityStatus({
+            tiene_password_fondo: !!status?.tiene_password_fondo,
+            loading: false,
+          });
+        }
+      } catch {
+        if (isMounted) {
+          setSecurityStatus({
+            tiene_password_fondo: !!user?.tiene_password_fondo,
+            loading: false,
+          });
+        }
+      }
+    };
+
+    fetchSecurityStatus();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user?.tiene_password_fondo]);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -84,6 +117,11 @@ export default function CambiarContrasenaFondo() {
           )}
           
           <Card variant="outline" className="p-6 space-y-5 bg-white/[0.02] border-white/5 rounded-[2.5rem]">
+            {securityStatus.loading && (
+              <div className="text-[10px] font-black uppercase tracking-widest text-center text-bcb-muted">
+                Verificando estado de seguridad...
+              </div>
+            )}
             {tieneFondo && (
               <div className="space-y-2">
                 <label className="text-[9px] font-black text-bcb-muted uppercase tracking-[0.2em] ml-2">Clave Actual del Fondo</label>
@@ -138,7 +176,7 @@ export default function CambiarContrasenaFondo() {
 
           <Button 
             type="submit" 
-            disabled={loading} 
+            disabled={loading || securityStatus.loading} 
             icon={Save}
             className="py-5 rounded-[1.8rem] bg-amber-600 hover:bg-amber-700 shadow-2xl shadow-amber-600/20"
           >
@@ -154,7 +192,6 @@ export default function CambiarContrasenaFondo() {
     </Layout>
   );
 }
-
 
 
 
