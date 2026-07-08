@@ -1198,15 +1198,75 @@ export async function approveLevelPurchase(compraId, adminId, idempotencyKey = n
     if (!user) throw new Error('Usuario asociado a la compra no encontrado');
 
     // 3. ACTUALIZACIÓN ATÓMICA
+    const previousLevelId = user.nivel_id;
     const [levels] = await conn.query(`SELECT * FROM niveles WHERE id = ? FOR UPDATE`, [compra.nivel_id]);
     const targetLevel = levels[0];
     if (!targetLevel) throw new Error('Nivel de destino inválido');
 
+    let refundAmount = 0;
+    let refundPurchaseId = null;
+    let previousLevelName = null;
+
+    if (previousLevelId && String(previousLevelId) !== String(targetLevel.id)) {
+      const [previousLevelRows] = await conn.query(`SELECT * FROM niveles WHERE id = ? LIMIT 1`, [previousLevelId]);
+      const previousLevel = previousLevelRows[0];
+      previousLevelName = previousLevel?.nombre || null;
+
+      const [previousPurchaseRows] = await conn.query(
+        `SELECT * FROM compras_nivel
+         WHERE usuario_id = ? AND nivel_id = ? AND estado = 'Aceptado' AND reembolsado = 0
+         ORDER BY procesado_at DESC, created_at DESC
+         LIMIT 1 FOR UPDATE`,
+        [compra.usuario_id, previousLevelId]
+      );
+      const previousPurchase = previousPurchaseRows[0];
+
+      if (previousPurchase) {
+        refundAmount = Number(previousPurchase.monto || 0);
+        refundPurchaseId = previousPurchase.id;
+      }
+    }
+
     const ticketsToAdd = Number(targetLevel.orden);
+    const oldCommissionBalance = Number(user.saldo_comisiones || 0);
+    const newCommissionBalance = Number((oldCommissionBalance + refundAmount).toFixed(2));
     await conn.query(
-      `UPDATE usuarios SET nivel_id = ?, tickets_ruleta = tickets_ruleta + ? WHERE id = ?`, 
-      [targetLevel.id, ticketsToAdd, compra.usuario_id]
+      `UPDATE usuarios SET nivel_id = ?, saldo_comisiones = ?, tickets_ruleta = tickets_ruleta + ? WHERE id = ?`, 
+      [targetLevel.id, newCommissionBalance, ticketsToAdd, compra.usuario_id]
     );
+
+    if (refundPurchaseId && refundAmount > 0) {
+      await conn.query(`UPDATE compras_nivel SET reembolsado = 1 WHERE id = ?`, [refundPurchaseId]);
+
+      const refundMovementId = uuidv4();
+      await conn.query(
+        `INSERT INTO movimientos_saldo (id, usuario_id, tipo_billetera, tipo_movimiento, monto, saldo_anterior, saldo_nuevo, referencia_id, descripcion)
+         VALUES (?, ?, 'comisiones', 'devolucion_nivel', ?, ?, ?, ?, ?)`,
+        [
+          refundMovementId,
+          compra.usuario_id,
+          refundAmount,
+          oldCommissionBalance,
+          newCommissionBalance,
+          refundPurchaseId,
+          `Devolución de inversión anterior${previousLevelName ? ` (${previousLevelName})` : ''} por ascenso de nivel`
+        ]
+      );
+
+      await conn.query(
+        `INSERT INTO auditoria_financiera (trace_id, usuario_id, operacion, billetera, monto, saldo_anterior, saldo_nuevo, referencia_id, metadata)
+         VALUES (?, ?, 'LEVEL_REFUND', 'comisiones', ?, ?, ?, ?, ?)`,
+        [
+          traceId,
+          compra.usuario_id,
+          refundAmount,
+          oldCommissionBalance,
+          newCommissionBalance,
+          refundPurchaseId,
+          JSON.stringify({ previous_level_id: previousLevelId, previous_level_name: previousLevelName, target_level_id: targetLevel.id, compra_id: compraId })
+        ]
+      );
+    }
 
     // 4. OTORGAR TICKETS AL INVITADOR USANDO EL SISTEMA AUTOMÁTICO
     let resultadoTickets = null;
@@ -1245,6 +1305,7 @@ export async function approveLevelPurchase(compraId, adminId, idempotencyKey = n
       success: true, 
       traceId, 
       message: `Ascenso a ${targetLevel.nombre} completado`, 
+      refundAmount,
       ticketsInvitador: resultadoTickets,
       usuarioId: compra.usuario_id,
       nivelId: targetLevel.id

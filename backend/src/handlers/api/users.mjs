@@ -105,7 +105,7 @@ router.get('/stats', asyncHandler(async (req, res) => {
     WHERE usuario_id = ? 
     AND DATE(fecha) = CURDATE() 
     AND monto > 0
-    AND tipo_movimiento IN ('tarea_completada', 'ganancia_tarea', 'comision_subordinado', 'comision_red', 'comision_inversion', 'comision_tarea', 'recompensa_invitacion', 'bono_invitado', 'premio_ruleta')
+    AND tipo_movimiento IN ('tarea_completada', 'ganancia_tarea', 'comision_subordinado', 'comision_red', 'comision_inversion', 'comision_tarea', 'devolucion_nivel', 'recompensa_invitacion', 'bono_invitado', 'premio_ruleta')
   `, [userId]);
 
   // 2. Ingresos Ayer
@@ -116,7 +116,7 @@ router.get('/stats', asyncHandler(async (req, res) => {
     WHERE usuario_id = ? 
     AND DATE(fecha) = DATE_SUB(CURDATE(), INTERVAL 1 DAY) 
     AND monto > 0
-    AND tipo_movimiento IN ('tarea_completada', 'ganancia_tarea', 'comision_subordinado', 'comision_red', 'comision_inversion', 'comision_tarea', 'recompensa_invitacion', 'bono_invitado', 'premio_ruleta')
+    AND tipo_movimiento IN ('tarea_completada', 'ganancia_tarea', 'comision_subordinado', 'comision_red', 'comision_inversion', 'comision_tarea', 'devolucion_nivel', 'recompensa_invitacion', 'bono_invitado', 'premio_ruleta')
   `, [userId]);
 
   // 3. Ingresos Semana
@@ -127,7 +127,7 @@ router.get('/stats', asyncHandler(async (req, res) => {
     WHERE usuario_id = ? 
     AND YEARWEEK(fecha, 1) = YEARWEEK(CURDATE(), 1) 
     AND monto > 0
-    AND tipo_movimiento IN ('tarea_completada', 'ganancia_tarea', 'comision_subordinado', 'comision_red', 'comision_inversion', 'comision_tarea', 'recompensa_invitacion', 'bono_invitado', 'premio_ruleta')
+    AND tipo_movimiento IN ('tarea_completada', 'ganancia_tarea', 'comision_subordinado', 'comision_red', 'comision_inversion', 'comision_tarea', 'devolucion_nivel', 'recompensa_invitacion', 'bono_invitado', 'premio_ruleta')
   `, [userId]);
 
   // 4. Ingresos Mes
@@ -139,7 +139,7 @@ router.get('/stats', asyncHandler(async (req, res) => {
     AND MONTH(fecha) = MONTH(CURDATE()) 
     AND YEAR(fecha) = YEAR(CURDATE()) 
     AND monto > 0
-    AND tipo_movimiento IN ('tarea_completada', 'ganancia_tarea', 'comision_subordinado', 'comision_red', 'comision_inversion', 'comision_tarea', 'recompensa_invitacion', 'bono_invitado', 'premio_ruleta')
+    AND tipo_movimiento IN ('tarea_completada', 'ganancia_tarea', 'comision_subordinado', 'comision_red', 'comision_inversion', 'comision_tarea', 'devolucion_nivel', 'recompensa_invitacion', 'bono_invitado', 'premio_ruleta')
   `, [userId]);
 
   // 5. Total Acumulado (Todas las ganancias históricas - Solo ingresos por actividad)
@@ -150,7 +150,7 @@ router.get('/stats', asyncHandler(async (req, res) => {
     FROM movimientos_saldo 
     WHERE usuario_id = ? 
     AND monto > 0
-    AND tipo_movimiento IN ('tarea_completada', 'ganancia_tarea', 'comision_subordinado', 'comision_red', 'comision_inversion', 'comision_tarea', 'recompensa_invitacion', 'bono_invitado', 'premio_ruleta')
+    AND tipo_movimiento IN ('tarea_completada', 'ganancia_tarea', 'comision_subordinado', 'comision_red', 'comision_inversion', 'comision_tarea', 'devolucion_nivel', 'recompensa_invitacion', 'bono_invitado', 'premio_ruleta')
   `, [userId]);
 
   // 6. Pie chart data (categorización de ingresos)
@@ -158,7 +158,7 @@ router.get('/stats', asyncHandler(async (req, res) => {
     SELECT 
       CASE 
         WHEN tipo_movimiento IN ('tarea_completada', 'ganancia_tarea') THEN 'Tareas'
-        WHEN tipo_movimiento IN ('comision_subordinado', 'comision_red', 'comision_inversion', 'comision_tarea') THEN 'Comisiones'
+        WHEN tipo_movimiento IN ('comision_subordinado', 'comision_red', 'comision_inversion', 'comision_tarea', 'devolucion_nivel') THEN 'Comisiones'
         WHEN tipo_movimiento IN ('recompensa_invitacion', 'bono_invitado') THEN 'Invitaciones'
         WHEN tipo_movimiento = 'premio_ruleta' THEN 'Ruleta'
         ELSE 'Otros'
@@ -167,7 +167,7 @@ router.get('/stats', asyncHandler(async (req, res) => {
     FROM movimientos_saldo 
     WHERE usuario_id = ? 
     AND monto > 0
-    AND tipo_movimiento IN ('tarea_completada', 'ganancia_tarea', 'comision_subordinado', 'comision_red', 'comision_inversion', 'comision_tarea', 'recompensa_invitacion', 'bono_invitado', 'premio_ruleta')
+    AND tipo_movimiento IN ('tarea_completada', 'ganancia_tarea', 'comision_subordinado', 'comision_red', 'comision_inversion', 'comision_tarea', 'devolucion_nivel', 'recompensa_invitacion', 'bono_invitado', 'premio_ruleta')
     GROUP BY name
   `, [userId]);
 
@@ -214,7 +214,7 @@ router.get('/earnings', asyncHandler(async (req, res) => {
   const statsHoy = await queryOne(`
     SELECT 
       COALESCE(SUM(CASE WHEN tipo_movimiento IN ('tarea_completada', 'ganancia_tarea') THEN monto ELSE 0 END), 0) as tareas_hoy,
-      COALESCE(SUM(CASE WHEN tipo_movimiento IN ('comision_subordinado', 'comision_red', 'comision_inversion', 'comision_tarea') THEN monto ELSE 0 END), 0) as comisiones_hoy
+      COALESCE(SUM(CASE WHEN tipo_movimiento IN ('comision_subordinado', 'comision_red', 'comision_inversion', 'comision_tarea', 'devolucion_nivel') THEN monto ELSE 0 END), 0) as comisiones_hoy
     FROM movimientos_saldo 
     WHERE usuario_id = ? AND DATE(fecha) = CURDATE() AND monto > 0
   `, [userId]);
@@ -223,7 +223,7 @@ router.get('/earnings', asyncHandler(async (req, res) => {
   const statsTotal = await queryOne(`
     SELECT 
       COALESCE(SUM(CASE WHEN tipo_movimiento IN ('tarea_completada', 'ganancia_tarea') THEN monto ELSE 0 END), 0) as tareas_total,
-      COALESCE(SUM(CASE WHEN tipo_movimiento IN ('comision_subordinado', 'comision_red', 'comision_inversion', 'comision_tarea') THEN monto ELSE 0 END), 0) as comisiones_total
+      COALESCE(SUM(CASE WHEN tipo_movimiento IN ('comision_subordinado', 'comision_red', 'comision_inversion', 'comision_tarea', 'devolucion_nivel') THEN monto ELSE 0 END), 0) as comisiones_total
     FROM movimientos_saldo 
     WHERE usuario_id = ? AND monto > 0
   `, [userId]);
