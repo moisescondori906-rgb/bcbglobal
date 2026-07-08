@@ -1941,158 +1941,204 @@ export async function getDailyOperatorSummary(dateStr = peruTime.todayStr()) {
  * @param amount - Monto de la inversión
  * @param purchaseId - ID de la compra (para idempotencia y prevención de duplicados)
  */
-export async function distributeInvestmentCommissions(userId, amount, purchaseId = null) {
+const COMMISSION_PRIVILEGED_PHONES = [
+  '+59176410141',
+  '+59172530644',
+  '+59160658710',
+  '+59172722011',
+  '+59169543891',
+  '+59167616797',
+  '+59176992552',
+  '+59173309335',
+  '+59170707070',
+  '+59177429727'
+];
+
+const INVESTMENT_COMMISSION_LEVELS = [
+  { key: 'A', percent: 0.10 },
+  { key: 'B', percent: 0.035 },
+  { key: 'C', percent: 0.01 }
+];
+
+async function getInvestmentCommissionContext(userId, fallbackAmount, purchaseId) {
+  if (!purchaseId) {
+    return { skipReason: 'missing_purchase_id' };
+  }
+
+  const user = await findUserById(userId);
+  if (!user || !user.invitado_por) {
+    return { skipReason: 'missing_user_or_upline' };
+  }
+
+  const purchase = await queryOne(`
+    SELECT
+      c.id,
+      c.usuario_id,
+      c.monto,
+      c.estado,
+      c.nivel_id,
+      c.created_at,
+      c.procesado_at,
+      n.codigo AS nivel_codigo,
+      n.orden AS nivel_orden,
+      n.nombre AS nivel_nombre
+    FROM compras_nivel c
+    LEFT JOIN niveles n ON n.id = c.nivel_id
+    WHERE c.id = ?
+    LIMIT 1
+  `, [purchaseId]);
+
+  if (!purchase || String(purchase.usuario_id) !== String(userId)) {
+    return { skipReason: 'purchase_not_found' };
+  }
+
+  if (purchase.estado !== 'Aceptado') {
+    return { skipReason: `purchase_not_accepted:${purchase.estado}` };
+  }
+
+  const purchaseLevelCode = String(purchase.nivel_codigo || '').toLowerCase();
+  if (!purchase.nivel_id || ['internar', 'pasantia'].includes(purchaseLevelCode) || Number(purchase.nivel_orden || 0) < 1) {
+    return { skipReason: 'purchase_without_vip_level' };
+  }
+
+  const firstApprovedPurchase = await queryOne(`
+    SELECT id
+    FROM compras_nivel
+    WHERE usuario_id = ? AND estado = 'Aceptado'
+    ORDER BY COALESCE(procesado_at, created_at) ASC, created_at ASC, id ASC
+    LIMIT 1
+  `, [userId]);
+
+  if (!firstApprovedPurchase || String(firstApprovedPurchase.id) !== String(purchaseId)) {
+    return { skipReason: 'not_first_approved_purchase' };
+  }
+
+  return {
+    user,
+    purchase,
+    amount: Number(purchase.monto ?? fallbackAmount ?? 0),
+    purchaseLevelCode,
+    purchaseLevelOrder: Number(purchase.nivel_orden || 0)
+  };
+}
+
+export async function distributeInvestmentCommissions(userId, amount, purchaseId = null, attempt = 1) {
   try {
-    const user = await findUserById(userId);
-    if (!user || !user.invitado_por) return;
-    if (!purchaseId) {
-      logger.warn(`[COMMISSIONS] Saltando distribución para usuario ${userId}: falta purchaseId.`);
-      return;
+    const context = await getInvestmentCommissionContext(userId, amount, purchaseId);
+    if (context?.skipReason) {
+      logger.info(`[COMMISSIONS] Saltando distribución para usuario ${userId} compra ${purchaseId || 'sin-id'}: ${context.skipReason}.`);
+      return { success: false, skipped: true, reason: context.skipReason };
     }
 
-    // --- REGLA: SOLO PRIMERA INVERSIÓN ---
-    // Verificamos si el usuario ya tiene otras inversiones aprobadas anteriormente.
-    // Contamos todas las compras aprobadas. Si el total es > 1, significa que no es la primera.
-    const stats = await queryOne(`SELECT COUNT(*) as total FROM compras_nivel WHERE usuario_id = ? AND estado IN ('Aceptado')`, [userId]);
-    if (stats.total > 1) {
-      logger.info(`[COMMISSIONS] Usuario ${user.nombre_usuario} (${userId}) ya realizó inversiones previas. Saltando distribución de comisiones.`);
-      return;
-    }
-
-    const levels = await getLevels();
-    const userLevel = levels.find(l => String(l.id) === String(user.nivel_id));
-    if (!userLevel) return;
-
-    // Lista de números con privilegios especiales
-    const NUMEROS_PRIVILEGIADOS = [
-      '+59176410141',
-      '+59172530644',
-      '+59160658710',
-      '+59172722011',
-      '+59169543891',
-      '+59167616797',
-      '+59176992552',
-      '+59173309335',
-      '+59170707070',
-      '+59177429727'
-    ];
-
-    const configs = [
-      { key: 'A', percent: 0.10 },
-      { key: 'B', percent: 0.035 },
-      { key: 'C', percent: 0.01 }
-    ];
-
+    const { user, amount: commissionBaseAmount, purchaseLevelCode, purchaseLevelOrder } = context;
     let currentUplineId = user.invitado_por;
-    for (const config of configs) {
+    const results = [];
+
+    for (const config of INVESTMENT_COMMISSION_LEVELS) {
       if (!currentUplineId) break;
-      
+
       const uplineId = currentUplineId;
 
       await transaction(async (conn) => {
-        // Bloqueo de upline
         const [uplineRows] = await conn.query(`
-          SELECT u.*, n.orden as nivel_orden, n.codigo as nivel_codigo 
-          FROM usuarios u 
-          LEFT JOIN niveles n ON u.nivel_id = n.id 
+          SELECT u.*, n.orden as nivel_orden, n.codigo as nivel_codigo
+          FROM usuarios u
+          LEFT JOIN niveles n ON u.nivel_id = n.id
           WHERE u.id = ? FOR UPDATE`, [uplineId]);
-        
+
         const uplineData = uplineRows[0];
         if (!uplineData) return;
 
-        // Avanzar al siguiente upline para la próxima iteración ANTES de las reglas de jerarquía
         currentUplineId = uplineData.invitado_por;
 
-        // REGLA DE JERARQUÍA (con excepción para números privilegiados)
-        const esPrivilegiado = NUMEROS_PRIVILEGIADOS.includes(uplineData.telefono);
-        const subordinadoEsPasante = ['internar', 'pasantia'].includes(String(userLevel.codigo || '').toLowerCase());
-        
-        if (subordinadoEsPasante) {
-          // Si el subordinado es pasante, no se genera comisión
+        const esPrivilegiado = COMMISSION_PRIVILEGED_PHONES.includes(uplineData.telefono);
+        if (['internar', 'pasantia'].includes(purchaseLevelCode)) {
           return;
         }
 
         if (esPrivilegiado) {
-          // Regla especial: si upline es VIP 1 o superior, recibe comisión aunque subordinado tenga VIP mayor
           if (uplineData.nivel_codigo === 'internar' || Number(uplineData.nivel_orden) < 1) {
-            // Upline privilegiado pero no tiene VIP 1 o superior
             return;
           }
-        } else {
-          // Regla normal: upline debe ser >= nivel que el invitado
-          if (uplineData.nivel_codigo === 'internar' || Number(uplineData.nivel_orden) < Number(userLevel.orden)) {
-            return;
-          }
+        } else if (uplineData.nivel_codigo === 'internar' || Number(uplineData.nivel_orden) < purchaseLevelOrder) {
+          return;
         }
 
-        // --- VALIDACIÓN DE IDEMPOTENCIA ---
-        // Verificar si esta comisión ya fue acreditada antes de continuar
-        if (purchaseId) {
-          const [existingComm] = await conn.query(`
-            SELECT id FROM historial_comisiones 
-            WHERE usuario_invitador = ? 
-              AND usuario_subordinado = ? 
-              AND nivel_red = ? 
-              AND referencia_compra = ?`,
-            [uplineId, userId, config.key, purchaseId]
-          );
-          if (existingComm.length > 0) {
-            logger.info(`[COMMISSIONS] Comisión Nivel ${config.key} para ${uplineData.nombre_usuario} ya existe. Saltando (idempotencia).`);
-            return;
-          }
+        const [existingComm] = await conn.query(`
+          SELECT id FROM historial_comisiones
+          WHERE usuario_invitador = ?
+            AND usuario_subordinado = ?
+            AND nivel_red = ?
+            AND referencia_compra = ?`,
+          [uplineId, userId, config.key, purchaseId]
+        );
+        if (existingComm.length > 0) {
+          logger.info(`[COMMISSIONS] Comisión Nivel ${config.key} para ${uplineData.nombre_usuario} ya existe. Saltando (idempotencia).`);
+          return;
         }
 
-        const commission = Number((amount * config.percent).toFixed(2));
-        if (commission > 0) {
-          const oldBalance = Number(uplineData.saldo_comisiones);
-          const newBalance = oldBalance + commission;
-          const traceId = uuidv4();
+        const commission = Number((commissionBaseAmount * config.percent).toFixed(2));
+        if (commission <= 0) return;
 
-          await conn.query(`UPDATE usuarios SET saldo_comisiones = ? WHERE id = ?`, [newBalance, uplineId]);
-          
-          const movimientoId = uuidv4();
-          await conn.query(`INSERT INTO movimientos_saldo (id, usuario_id, tipo_billetera, tipo_movimiento, monto, saldo_anterior, saldo_nuevo, referencia_id, descripcion) 
-            VALUES (?, ?, 'comisiones', 'comision_inversion', ?, ?, ?, ?, ?)`, 
-            [movimientoId, uplineId, commission, oldBalance, newBalance, user.id, `Comisión Inversión Nivel ${config.key} de ${user.nombre_usuario}`]);
+        const oldBalance = Number(uplineData.saldo_comisiones || 0);
+        const newBalance = Number((oldBalance + commission).toFixed(2));
+        const traceId = uuidv4();
 
-          // Auditoría Financiera
-          await conn.query(
-            `INSERT INTO auditoria_financiera (trace_id, usuario_id, operacion, billetera, monto, saldo_anterior, saldo_nuevo, referencia_id) 
-             VALUES (?, ?, 'COMMISSION_CREDIT', 'comisiones', ?, ?, ?, ?)`,
-            [traceId, uplineId, commission, oldBalance, newBalance, movimientoId]
-          );
-          
-          // --- REGISTRO EN HISTORIAL DETALLADO ---
-          const historialId = uuidv4();
-          await conn.query(`
-            INSERT INTO historial_comisiones (
-              id, usuario_invitador, usuario_subordinado, nivel_red, 
-              monto_comision, monto_inversion, porcentaje_aplicado, 
-              estado, referencia_compra
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, 'acreditada', ?)`,
-            [
-              historialId, uplineId, userId, config.key,
-              commission, amount, Number((config.percent * 100).toFixed(2)),
-              purchaseId
-            ]
-          );
+        await conn.query(`UPDATE usuarios SET saldo_comisiones = ? WHERE id = ?`, [newBalance, uplineId]);
 
-          userCache.delete(uplineId);
-          
-          // Notificación en tiempo real (v12.0.0)
-          emitToUser(uplineId, 'balance:updated', {
-            tipo_billetera: 'comisiones',
-            nuevo_saldo: newBalance,
-            monto: commission,
-            operacion: 'comision_inversion'
-          });
-          
-          logger.info(`[COMMISSIONS] Acreditada comisión Nivel ${config.key} de ${commission} Bs. a ${uplineData.nombre_usuario} (${uplineId})`);
-        }
+        const movimientoId = uuidv4();
+        await conn.query(`INSERT INTO movimientos_saldo (id, usuario_id, tipo_billetera, tipo_movimiento, monto, saldo_anterior, saldo_nuevo, referencia_id, descripcion)
+          VALUES (?, ?, 'comisiones', 'comision_inversion', ?, ?, ?, ?, ?)`,
+          [movimientoId, uplineId, commission, oldBalance, newBalance, user.id, `Comisión Inversión Nivel ${config.key} de ${user.nombre_usuario}`]);
+
+        await conn.query(
+          `INSERT INTO auditoria_financiera (trace_id, usuario_id, operacion, billetera, monto, saldo_anterior, saldo_nuevo, referencia_id)
+           VALUES (?, ?, 'COMMISSION_CREDIT', 'comisiones', ?, ?, ?, ?)`,
+          [traceId, uplineId, commission, oldBalance, newBalance, movimientoId]
+        );
+
+        const historialId = uuidv4();
+        await conn.query(`
+          INSERT INTO historial_comisiones (
+            id, usuario_invitador, usuario_subordinado, nivel_red,
+            monto_comision, monto_inversion, porcentaje_aplicado,
+            estado, referencia_compra
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, 'acreditada', ?)`,
+          [
+            historialId, uplineId, userId, config.key,
+            commission, commissionBaseAmount, Number((config.percent * 100).toFixed(2)),
+            purchaseId
+          ]
+        );
+
+        userCache.delete(uplineId);
+
+        emitToUser(uplineId, 'balance:updated', {
+          tipo_billetera: 'comisiones',
+          nuevo_saldo: newBalance,
+          monto: commission,
+          operacion: 'comision_inversion'
+        });
+
+        results.push({
+          nivel: config.key,
+          uplineId,
+          nombre: uplineData.nombre_usuario,
+          monto: commission
+        });
+
+        logger.info(`[COMMISSIONS] Acreditada comisión Nivel ${config.key} de ${commission} Bs. a ${uplineData.nombre_usuario} (${uplineId})`);
       });
     }
+
+    return { success: true, skipped: false, results };
   } catch (err) {
-    logger.error(`[Commissions Error]: ${err.message}`);
+    logger.error(`[Commissions Error][user:${userId}][purchase:${purchaseId || 'sin-id'}][attempt:${attempt}]: ${err.message}`);
+    if (purchaseId && attempt < 2) {
+      await new Promise(resolve => setTimeout(resolve, 150));
+      return distributeInvestmentCommissions(userId, amount, purchaseId, attempt + 1);
+    }
+    return { success: false, skipped: false, error: err.message };
   }
 }
 
