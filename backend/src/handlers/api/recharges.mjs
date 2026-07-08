@@ -48,8 +48,19 @@ router.post('/', asyncHandler(async (req, res) => {
       const currentDay = now.getDay();
       const currentTime = now.toTimeString().split(' ')[0];
 
-      const days = (qr.dias_semana || '0,1,2,3,4,5,6').split(',').map(Number);
-      if (!days.includes(currentDay) || currentTime < qr.hora_inicio || currentTime > qr.hora_fin) {
+      const days = String(qr.dias_semana || '0,1,2,3,4,5,6')
+        .split(',')
+        .map((value) => Number(String(value).trim()))
+        .filter((value) => Number.isInteger(value));
+
+      const isAllowedDay = days.length === 0 || days.includes(currentDay);
+      const isAllowedTime = peruTime.isTimeInWindow(
+        currentTime,
+        qr.hora_inicio || '00:00:00',
+        qr.hora_fin || '23:59:59'
+      );
+
+      if (!isAllowedDay || !isAllowedTime) {
         return res.status(403).json({ error: 'El punto de pago seleccionado no está disponible en este horario.' });
       }
     }
