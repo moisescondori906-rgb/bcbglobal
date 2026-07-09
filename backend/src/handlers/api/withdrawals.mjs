@@ -127,7 +127,9 @@ router.post('/', withdrawRateLimit, dynamicControlMiddleware('withdrawal'), asyn
   if (!userAuth.password_fondo_hash) return res.status(400).json({ error: 'Debes configurar tu contraseña de fondos antes de retirar.' });
   
   const passOk = await bcrypt.compare(password_fondo, userAuth.password_fondo_hash);
-  if (!passOk) return res.status(401).json({ error: 'Contraseña de fondos incorrecta.' });
+  if (!passOk) {
+    return res.status(400).json({ error: 'Contraseña de fondos incorrecta.' });
+  }
 
   // 2. Verificar cuenta bancaria
   if (!tarjeta_id) return res.status(400).json({ error: 'Debes registrar una cuenta bancaria antes de solicitar un retiro.' });

@@ -27,6 +27,20 @@ const inflightRequests = new Map();
 const staticCache = new Map();
 const CACHE_TTL = 30000; // 30 segundos para datos semi-estáticos
 
+function shouldClearSessionOn401(data = {}) {
+  const message = String(data?.error || '').toLowerCase();
+  const code = String(data?.code || '').toUpperCase();
+
+  if (code === 'SESSION_KICKED') return true;
+
+  return [
+    'no autorizado',
+    'token inválido o expirado',
+    'sesión inválida o usuario no encontrado',
+    'sesion invalida o usuario no encontrado'
+  ].some(fragment => message.includes(fragment));
+}
+
 async function request(url, options = {}, retries = 2) {
   const normalizedUrl = url.startsWith('/') ? url : `/${url}`;
   const method = options.method || 'GET';
@@ -127,7 +141,7 @@ async function request(url, options = {}, retries = 2) {
           data = { error: 'Error de conexión con el servidor.' };
         }
         
-        if (res.status === 401 && !isAuth) {
+        if (res.status === 401 && !isAuth && shouldClearSessionOn401(data)) {
           localStorage.removeItem('token');
           localStorage.removeItem('user');
         }
@@ -411,4 +425,3 @@ export const api = {
     verUsosCodigoCanje: (id) => request(`/admin/codigos-canje/${id}/usos`),
   },
 };
-
