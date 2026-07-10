@@ -19,12 +19,15 @@ export const asyncHandler = (fn) => (req, res, next) => {
       return next(err);
     }
 
+    const status = Number(err.status || 500);
+    const isClientError = status >= 400 && status < 500;
+
     return response.error(
       res, 
-      process.env.NODE_ENV === 'production' 
-        ? 'Error interno del servidor. El equipo técnico ha sido notificado.' 
-        : err.message, 
-      err.status || 500
+      (process.env.NODE_ENV === 'production' && !isClientError)
+        ? 'Error interno del servidor. El equipo técnico ha sido notificado.'
+        : err.message,
+      status
     );
   });
 };

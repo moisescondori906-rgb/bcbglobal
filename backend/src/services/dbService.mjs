@@ -967,6 +967,11 @@ export async function createLevelPurchase(userId, nivelId, monto, comprobanteUrl
 export async function requestWithdrawal(userId, { monto, tipo_billetera, tarjeta_id, idempotencyKey, comprobante_url = null }) {
   const traceId = uuidv4();
   const operacion = 'WITHDRAW_REQUEST';
+  const throwWithdrawalError = (message, status = 400) => {
+    const err = new Error(message);
+    err.status = status;
+    throw err;
+  };
   // #region debug-point B:dbservice-request-input
   reportWithdrawalQrDebug('B', 'dbService.mjs:826', '[DEBUG] requestWithdrawal input', {
     userId,
@@ -978,7 +983,7 @@ export async function requestWithdrawal(userId, { monto, tipo_billetera, tarjeta
 
   const qrValidation = validateRequiredWithdrawalQrImage(comprobante_url);
   if (!qrValidation.ok) {
-    throw new Error(qrValidation.message);
+    throwWithdrawalError(qrValidation.message, 400);
   }
 
   return await transaction(async (conn) => {
@@ -998,7 +1003,7 @@ export async function requestWithdrawal(userId, { monto, tipo_billetera, tarjeta
       [userId]
     );
     const user = userRows[0];
-    if (!user) throw new Error('Usuario no encontrado');
+    if (!user) throwWithdrawalError('Usuario no encontrado', 404);
 
     const m = Number(monto);
     const oldBalance = Number(user.balance);
@@ -1018,13 +1023,13 @@ export async function requestWithdrawal(userId, { monto, tipo_billetera, tarjeta
     logger.info(`[WITHDRAWAL DAILY LIMIT] usuario_id=${userId} fecha_dia=${withdrawalDateKey} ventana=${withdrawalWindow.startsAt}..${withdrawalWindow.endsAt} retiros_periodo=${retirosHoy}`);
     
     if (retirosHoy > 0) {
-      throw new Error(`Ya realizaste una solicitud de retiro en el periodo actual (${withdrawalDateKey}, hora Bolivia). Puedes volver a solicitar despues del reinicio diario de las 23:59.`);
+      throwWithdrawalError(`Ya realizaste una solicitud de retiro en el periodo actual (${withdrawalDateKey}, hora Bolivia). Puedes volver a solicitar despues del reinicio diario de las 23:59.`, 409);
     }
 
     // 3. VALIDAR MONTO POR NIVEL
     const [levelRows] = await conn.query('SELECT * FROM niveles WHERE id = ? FOR UPDATE', [user.nivel_id]);
     const level = levelRows[0];
-    if (!level) throw new Error('Nivel de usuario no encontrado');
+    if (!level) throwWithdrawalError('Nivel de usuario no encontrado', 400);
 
     const levelCode = String(level?.codigo || '').toLowerCase();
     const isPasante = levelCode === 'internar' || levelCode === 'pasantia';
@@ -1041,10 +1046,10 @@ export async function requestWithdrawal(userId, { monto, tipo_billetera, tarjeta
         requiredAmount: 10
       });
       if (!pasanteValidation.ok) {
-        throw new Error(pasanteValidation.message);
+        throwWithdrawalError(pasanteValidation.message, 400);
       }
       if (pasantiaPolicy.mode === 'blocked') {
-        throw new Error('Los retiros para usuarios de Pasantía están deshabilitados por administración en este momento.');
+        throwWithdrawalError('Los retiros para usuarios de Pasantía están deshabilitados por administración en este momento.', 403);
       }
       if (pasantiaPolicy.mode === 'sponsor_vip' && user.invitado_por) {
         const sponsorContext = await getSponsorWithdrawalApprovalContext(user.invitado_por);
@@ -1054,9 +1059,9 @@ export async function requestWithdrawal(userId, { monto, tipo_billetera, tarjeta
     } else {
       // Global 1 o superior: mínimo 20 Bs
       if (m < 20) {
-        throw new Error('Los retiros para niveles Global 1 en adelante deben ser de al menos 20 Bs.');
+        throwWithdrawalError('Los retiros para niveles Global 1 en adelante deben ser de al menos 20 Bs.', 400);
       }
-      if (oldBalance < m) throw new Error('Saldo insuficiente para realizar el retiro');
+      if (oldBalance < m) throwWithdrawalError('Saldo insuficiente para realizar el retiro', 400);
     }
 
     // 4. DESCONTAR SALDO (ACID)
@@ -1088,7 +1093,7 @@ export async function requestWithdrawal(userId, { monto, tipo_billetera, tarjeta
       `SELECT * FROM tarjetas_bancarias WHERE id = ? AND usuario_id = ? FOR UPDATE`, 
       [tarjeta_id, userId]
     );
-    if (tarjetas.length === 0) throw new Error('Tarjeta bancaria no válida o no pertenece al usuario');
+    if (tarjetas.length === 0) throwWithdrawalError('Tarjeta bancaria no válida o no pertenece al usuario', 400);
 
     // Se guardan columnas detalladas de comisión para auditoría v12.1.0
     // Check if user is pasante to set correct state
