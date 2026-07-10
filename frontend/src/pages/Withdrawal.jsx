@@ -145,9 +145,6 @@ const [showWithdrawModal, setShowWithdrawModal] = useState(false);
           const isInternLevel = ['internar', 'pasantia'].includes(String(foundLevel?.codigo || userLevel?.codigo || '').toLowerCase());
 
           const alreadyDone = Array.isArray(withdrawalsRes) && withdrawalsRes.some((w) => {
-            const estado = String(w?.estado || '').toLowerCase();
-            if (estado === 'rechazado') return false;
-
             if (isInternLevel) {
               return true;
             }
@@ -218,9 +215,6 @@ const [showWithdrawModal, setShowWithdrawModal] = useState(false);
     const isInternLevel = ['internar', 'pasantia'].includes(String(currentLevel?.codigo || '').toLowerCase());
 
     const alreadyDone = Array.isArray(withdrawalsRes) && withdrawalsRes.some((w) => {
-      const estado = String(w?.estado || '').toLowerCase();
-      if (estado === 'rechazado') return false;
-
       if (isInternLevel) {
         return true;
       }
