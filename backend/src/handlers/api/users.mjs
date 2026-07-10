@@ -93,6 +93,40 @@ router.post('/clear-security-alert', asyncHandler(async (req, res) => {
   res.json({ ok: true });
 }));
 
+router.post('/change-password', asyncHandler(async (req, res) => {
+  const { password_actual, password_nueva, confirm_password } = req.body || {};
+  const currentPassword = String(password_actual || '').trim();
+  const newPassword = String(password_nueva || '').trim();
+  const confirmPassword = String(confirm_password || password_nueva || '').trim();
+
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({ error: 'La contraseña actual y la nueva son obligatorias.' });
+  }
+
+  if (newPassword.length < 6) {
+    return res.status(400).json({ error: 'La nueva contraseña debe tener al menos 6 caracteres.' });
+  }
+
+  if (newPassword !== confirmPassword) {
+    return res.status(400).json({ error: 'La confirmación de contraseña no coincide.' });
+  }
+
+  const userAuth = await findUserWithAuthSecrets(req.user.id);
+  if (!userAuth?.id || !userAuth.password_hash) {
+    return res.status(404).json({ error: 'Usuario no encontrado.' });
+  }
+
+  const passwordOk = await bcrypt.compare(currentPassword, userAuth.password_hash);
+  if (!passwordOk) {
+    return res.status(400).json({ error: 'La contraseña actual es incorrecta.' });
+  }
+
+  const newHash = await bcrypt.hash(newPassword, 10);
+  await updateUser(req.user.id, { password_hash: newHash });
+
+  res.json({ success: true, message: 'Contraseña actualizada correctamente.' });
+}));
+
 router.get('/stats', asyncHandler(async (req, res) => {
   const userId = req.user.id;
   const user = req.requestUser;
