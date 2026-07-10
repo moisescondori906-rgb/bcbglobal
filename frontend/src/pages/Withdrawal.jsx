@@ -210,6 +210,28 @@ const [showWithdrawModal, setShowWithdrawModal] = useState(false);
     }
   }, [isInternar, monto]);
 
+  const getTodayWithdrawalStatus = async () => {
+    const withdrawalsRes = await api.withdrawals.list().catch(() => []);
+    const currentLevel = userLevel || niveles.find(l => String(l.id) === String(user?.nivel_id));
+    const boliviaNow = getBoliviaNow();
+    const todayStr = boliviaNow.getFullYear() + '-' + String(boliviaNow.getMonth() + 1).padStart(2, '0') + '-' + String(boliviaNow.getDate()).padStart(2, '0');
+    const isInternLevel = ['internar', 'pasantia'].includes(String(currentLevel?.codigo || '').toLowerCase());
+
+    const alreadyDone = Array.isArray(withdrawalsRes) && withdrawalsRes.some((w) => {
+      const estado = String(w?.estado || '').toLowerCase();
+      if (estado === 'rechazado') return false;
+
+      if (isInternLevel) {
+        return true;
+      }
+
+      const retiroDateKey = getBoliviaDateKeyFromValue(w?.fecha_dia) || getBoliviaDateKeyFromValue(w?.created_at);
+      return retiroDateKey === todayStr;
+    });
+
+    return { alreadyDone, currentLevel };
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!password) { setError('Ingresa tu contraseña de fondos.'); return; }
@@ -223,6 +245,17 @@ const [showWithdrawModal, setShowWithdrawModal] = useState(false);
     setLoading(true);
     setError('');
     try {
+      const { alreadyDone } = await getTodayWithdrawalStatus();
+      if (alreadyDone) {
+        setHasWithdrawalToday(true);
+        setError(
+          isInternar
+            ? 'Ya realizaste tu único retiro como pasante. Para seguir retirando, asciende a nivel global.'
+            : 'Ya realizaste una solicitud de retiro hoy. Puedes volver a retirar después del reinicio diario.'
+        );
+        return;
+      }
+
       const idempotencyKey = `withdraw_${user.id}_${Date.now()}_${Math.random().toString(36).substring(7)}`;
 
       const requestData = {
@@ -235,8 +268,12 @@ const [showWithdrawModal, setShowWithdrawModal] = useState(false);
       };
 
       await api.withdrawals.create(requestData);
+      setHasWithdrawalToday(true);
       navigate('/ganancias');
     } catch (err) {
+      if (err.status === 409) {
+        setHasWithdrawalToday(true);
+      }
       setError(err.message || 'Error al solicitar retiro');
     } finally {
       setLoading(false);
