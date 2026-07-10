@@ -28,6 +28,8 @@ const router = Router();
 router.use(authenticate);
 router.use(requireAdmin);
 
+const ALLOWED_BANKS = ['Yape', 'Yasta', 'Yo Lo Pago', 'Banco Union', 'Mercantil'];
+
 function sanitizeUser(u, levels) {
   const level = levels.find(l => String(l.id) === String(u.nivel_id));
   return {
@@ -928,15 +930,19 @@ router.put('/usuarios/:id', asyncHandler(async (req, res) => {
   const hasNombreUsuario = Object.prototype.hasOwnProperty.call(req.body || {}, 'nombre_usuario');
   const hasNombreReal = Object.prototype.hasOwnProperty.call(req.body || {}, 'nombre_real');
   const hasBankHolder = Object.prototype.hasOwnProperty.call(req.body || {}, 'nombre_titular_bancario');
+  const hasBankName = Object.prototype.hasOwnProperty.call(req.body || {}, 'nombre_banco_bancario');
+  const hasBankNumber = Object.prototype.hasOwnProperty.call(req.body || {}, 'numero_cuenta_bancaria');
   const hasTipoLider = Object.prototype.hasOwnProperty.call(req.body || {}, 'tipo_lider');
 
   const nombreUsuario = hasNombreUsuario ? String(req.body.nombre_usuario || '').trim() : undefined;
   const nombreReal = hasNombreReal ? String(req.body.nombre_real || '').trim() : undefined;
   const bankHolder = hasBankHolder ? String(req.body.nombre_titular_bancario || '').trim() : undefined;
+  const bankName = hasBankName ? String(req.body.nombre_banco_bancario || '').trim() : undefined;
+  const bankNumber = hasBankNumber ? String(req.body.numero_cuenta_bancaria || '').trim() : undefined;
   const bankAccountId = String(req.body?.cuenta_bancaria_id || '').trim();
   const tipoLider = hasTipoLider ? (req.body.tipo_lider ? String(req.body.tipo_lider).trim() : null) : undefined;
 
-  if (!hasNombreUsuario && !hasNombreReal && !hasBankHolder && !hasTipoLider) {
+  if (!hasNombreUsuario && !hasNombreReal && !hasBankHolder && !hasBankName && !hasBankNumber && !hasTipoLider) {
     return res.status(400).json({ error: 'No se recibieron cambios para actualizar.' });
   }
 
@@ -950,6 +956,18 @@ router.put('/usuarios/:id', asyncHandler(async (req, res) => {
 
   if (hasBankHolder && !bankHolder) {
     return res.status(400).json({ error: 'El titular de la cuenta bancaria no puede estar vacío.' });
+  }
+
+  if (hasBankName && !bankName) {
+    return res.status(400).json({ error: 'El banco de la cuenta bancaria no puede estar vacío.' });
+  }
+
+  if (hasBankName && !ALLOWED_BANKS.includes(bankName)) {
+    return res.status(400).json({ error: `Solo se permiten los siguientes bancos: ${ALLOWED_BANKS.join(', ')}` });
+  }
+
+  if (hasBankNumber && !bankNumber) {
+    return res.status(400).json({ error: 'El número de cuenta bancaria no puede estar vacío.' });
   }
 
   const canUpdateTipoLider = hasTipoLider ? await columnExists('usuarios', 'tipo_lider') : false;
@@ -1003,14 +1021,14 @@ router.put('/usuarios/:id', asyncHandler(async (req, res) => {
       );
     }
 
-    if (hasBankHolder) {
+    if (hasBankHolder || hasBankName || hasBankNumber) {
       const bankQuery = bankAccountId
-        ? `SELECT id
+        ? `SELECT id, nombre_banco, numero_cuenta, nombre_titular
            FROM tarjetas_bancarias
            WHERE id = ? AND usuario_id = ? AND activa = 1
            LIMIT 1
            FOR UPDATE`
-        : `SELECT id
+        : `SELECT id, nombre_banco, numero_cuenta, nombre_titular
            FROM tarjetas_bancarias
            WHERE usuario_id = ? AND activa = 1
            ORDER BY created_at ASC
@@ -1025,11 +1043,33 @@ router.put('/usuarios/:id', asyncHandler(async (req, res) => {
         throw httpError('El usuario no tiene una cuenta bancaria activa para editar.', 404);
       }
 
+      if (hasBankNumber) {
+        const [duplicateRows] = await conn.query(
+          `SELECT id
+           FROM tarjetas_bancarias
+           WHERE numero_cuenta = ?
+             AND id <> ?
+           LIMIT 1`,
+          [bankNumber, targetAccount.id]
+        );
+
+        if (duplicateRows[0]) {
+          throw httpError('Esta cuenta bancaria ya está registrada por otro usuario.', 409);
+        }
+      }
+
       await conn.query(
         `UPDATE tarjetas_bancarias
-         SET nombre_titular = ?
+         SET nombre_titular = ?,
+             nombre_banco = ?,
+             numero_cuenta = ?
          WHERE id = ?`,
-        [bankHolder, targetAccount.id]
+        [
+          hasBankHolder ? bankHolder : targetAccount.nombre_titular,
+          hasBankName ? bankName : targetAccount.nombre_banco,
+          hasBankNumber ? bankNumber : targetAccount.numero_cuenta,
+          targetAccount.id
+        ]
       );
     }
   });

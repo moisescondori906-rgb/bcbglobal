@@ -30,6 +30,8 @@ import {
 import { api } from '../../lib/api';
 import { formatCurrency, formatDate } from '../../lib/utils/format';
 
+const ALLOWED_BANKS = ['Yape', 'Yasta', 'Yo Lo Pago', 'Banco Union', 'Mercantil'];
+
 const UserRow = ({ user, onEdit, onDelete, onMoveSponsor, onToggleBlock, onResetPassword, onAdjustBalance, onViewFinancial, onResetDevice, onEditLevel, onEditGrade }) => (
   <motion.tr 
     initial={{ opacity: 0 }}
@@ -275,8 +277,20 @@ export default function AdminUsuariosV2() {
         nombre_real: (editForm.nombre_real || editForm.nombre_usuario).trim()
       };
 
-      if (editForm.cuenta_bancaria_id && editForm.nombre_titular_bancario.trim()) {
+      if (editForm.cuenta_bancaria_id) {
+        if (!editForm.nombre_titular_bancario.trim()) {
+          return alert('El titular bancario no puede estar vacío');
+        }
+        if (!editForm.cuenta_bancaria_banco.trim()) {
+          return alert('Debes seleccionar el banco');
+        }
+        if (!editForm.cuenta_bancaria_numero.trim()) {
+          return alert('El número de cuenta bancaria no puede estar vacío');
+        }
+
         payload.nombre_titular_bancario = editForm.nombre_titular_bancario.trim();
+        payload.nombre_banco_bancario = editForm.cuenta_bancaria_banco.trim();
+        payload.numero_cuenta_bancaria = editForm.cuenta_bancaria_numero.trim();
         payload.cuenta_bancaria_id = editForm.cuenta_bancaria_id;
       }
 
@@ -803,6 +817,36 @@ export default function AdminUsuariosV2() {
                       Este usuario no tiene cuenta bancaria activa.
                     </p>
                   )}
+                </div>
+
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1 italic">Banco Registrado</label>
+                  <select
+                    value={editForm.cuenta_bancaria_banco}
+                    onChange={(e) => setEditForm({ ...editForm, cuenta_bancaria_banco: e.target.value })}
+                    className="admin-input !h-14 !bg-black/20 !rounded-2xl !px-6 disabled:opacity-40"
+                    disabled={!editForm.cuenta_bancaria_id}
+                  >
+                    {!editForm.cuenta_bancaria_id && <option value="">Sin cuenta bancaria registrada</option>}
+                    {editForm.cuenta_bancaria_id && <option value="">Selecciona un banco</option>}
+                    {ALLOWED_BANKS.map((bank) => (
+                      <option key={bank} value={bank}>
+                        {bank}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1 italic">Número de Cuenta Bancaria</label>
+                  <input
+                    type="text"
+                    value={editForm.cuenta_bancaria_numero}
+                    onChange={(e) => setEditForm({ ...editForm, cuenta_bancaria_numero: e.target.value })}
+                    placeholder={editForm.cuenta_bancaria_id ? 'Número de cuenta bancaria' : 'Sin cuenta bancaria registrada'}
+                    className="admin-input !h-14 !bg-black/20 !rounded-2xl !px-6 disabled:opacity-40"
+                    disabled={!editForm.cuenta_bancaria_id}
+                  />
                 </div>
 
                 <div className="flex gap-4 pt-4">
