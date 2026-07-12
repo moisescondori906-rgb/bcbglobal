@@ -10,10 +10,10 @@ import { query, queryOne } from '../../config/db.mjs';
 import { authenticate } from '../../utils/middleware/auth.mjs';
 import { attachRequestUser } from '../../utils/middleware/requestContext.mjs';
 import { dynamicControlMiddleware } from '../../utils/middleware/dynamicControl.mjs';
+import { WITHDRAWAL_ALLOWED_AMOUNTS } from '../../utils/operationSchedules.mjs';
 import { 
   sendToRetiros, 
   sendToTelegramUser,
-  sendToAdmin,
   formatRetiroMessage 
 } from '../../services/telegramBot.mjs';
 import logger from '../../utils/logger.mjs';
@@ -52,12 +52,11 @@ function normalizePasantiaMode(value) {
 
 async function notifyWithdrawalAdmins(message, options, retiroId) {
   const results = await Promise.allSettled([
-    sendToRetiros(message, options),
-    sendToAdmin(message, options)
+    sendToRetiros(message, options)
   ]);
 
-  results.forEach((result, index) => {
-    const target = index === 0 ? 'retiros' : 'admin';
+  results.forEach((result) => {
+    const target = 'retiros';
     if (result.status === 'rejected') {
       logger.error(`[WITHDRAW][TELEGRAM] Falló envío a ${target} para retiro ${retiroId}: ${result.reason?.message || result.reason}`);
     }
@@ -89,10 +88,8 @@ const withdrawRateLimit = async (req, res, next) => {
 router.use(authenticate);
 router.use(attachRequestUser);
 
-const MONTOS_PERMITIDOS = [25, 100, 500, 1500, 5000, 10000];
-
 router.get('/montos', (req, res) => {
-  res.json(MONTOS_PERMITIDOS);
+  res.json(WITHDRAWAL_ALLOWED_AMOUNTS);
 });
 
 router.get('/', asyncHandler(async (req, res) => {

@@ -48,27 +48,30 @@ export const dynamicControlMiddleware = (operationType) => {
         });
       }
 
-      // 3. Validar Horarios de Operación
-      const scheduleStatus = await operationalControl.checkSchedule(operationType, region);
-      if (!scheduleStatus.allowed) {
-        // Excepción: Admin puede saltar horario
-        if (userRole === 'admin' && isOverride) {
+      // Los retiros dependen del nivel del usuario (VIP vs pasantía), por lo que
+      // el horario real se valida en la capa de negocio centralizada.
+      if (operationType !== 'withdrawal') {
+        const scheduleStatus = await operationalControl.checkSchedule(operationType, region);
+        if (!scheduleStatus.allowed) {
+          // Excepción: Admin puede saltar horario
+          if (userRole === 'admin' && isOverride) {
+            await operationalControl.logControlAction({
+              traceId, userId, operation: operationType, region,
+              result: 'override', reason: 'Admin Override Horario'
+            });
+            return next();
+          }
+
           await operationalControl.logControlAction({
             traceId, userId, operation: operationType, region,
-            result: 'override', reason: 'Admin Override Horario'
+            result: 'bloqueado', reason: scheduleStatus.reason
           });
-          return next();
+          return res.status(403).json({
+            error: scheduleStatus.reason,
+            code: 'OUT_OF_SCHEDULE',
+            traceId
+          });
         }
-
-        await operationalControl.logControlAction({
-          traceId, userId, operation: operationType, region,
-          result: 'bloqueado', reason: scheduleStatus.reason
-        });
-        return res.status(403).json({ 
-          error: scheduleStatus.reason, 
-          code: 'OUT_OF_SCHEDULE',
-          traceId 
-        });
       }
 
       // Todo OK: Proceder a la lógica de negocio

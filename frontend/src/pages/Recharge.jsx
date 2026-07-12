@@ -15,6 +15,7 @@ import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { cn } from '../lib/utils/cn';
+import { getRechargeSchedule } from '../lib/operationSchedules.js';
 
 export default function Recharge() {
   const { user } = useAuth();
@@ -51,14 +52,13 @@ export default function Recharge() {
           nivel_minimo_lider: data.nivel_minimo_lider ?? 4
         });
       }
-      if (data?.horario_recarga) {
-        const sched = isScheduleOpen(data.horario_recarga);
-        if (!sched.ok) {
-          setIsScheduleLocked(true);
-          setScheduleMsg(sched.message);
-        }
-      }
     }).catch(() => {});
+
+    const sched = isScheduleOpen(getRechargeSchedule());
+    if (!sched.ok) {
+      setIsScheduleLocked(true);
+      setScheduleMsg(sched.message);
+    }
   }, []);
 
   const handleLevelSelect = (level) => {
@@ -257,4 +257,3 @@ export default function Recharge() {
     </Layout>
   );
 }
-

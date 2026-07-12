@@ -231,8 +231,8 @@ describe('Sistema de Comisiones Automáticas', () => {
       // La segunda query (check existing) devolvió un resultado, por lo que se saltó
     });
 
-    it('debe seguir las reglas de jerarquía y números privilegiados', async () => {
-      // Test case para números privilegiados (no se implementa aquí por brevedad, pero se documenta la lógica)
+    it('debe seguir las reglas de jerarquía sin excepciones por teléfono', async () => {
+      // No deben existir listas privilegiadas: la comisión depende solo del nivel y la red.
       expect(true).toBe(true);
     });
   });

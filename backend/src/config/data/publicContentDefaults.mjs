@@ -8,14 +8,14 @@ export const publicContentDefaults = {
   conferencia_noticias: '',
   /** Si enabled=false, recargas/retiros sin restricción de horario. */
   horario_recarga: {
-    enabled: false,
-    dias_semana: [1, 2, 3, 4, 5, 6, 0],
+    enabled: true,
+    dias_semana: [1, 2, 3, 4, 5, 6],
     hora_inicio: '09:00',
-    hora_fin: '18:00',
+    hora_fin: '21:00',
   },
   horario_retiro: {
-    enabled: false,
-    dias_semana: [1, 2, 3, 4, 5, 6, 0],
+    enabled: true,
+    dias_semana: [1, 2, 3, 4, 5],
     hora_inicio: '09:00',
     hora_fin: '18:00',
   },

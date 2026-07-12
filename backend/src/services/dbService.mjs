@@ -4,6 +4,12 @@ import { query, queryOne, transaction } from '../config/db.mjs';
 import logger from '../utils/logger.mjs';
 import * as boliviaTimeHelper from '../utils/boliviaTime.mjs';
 import { validatePasanteWithdrawalRules, validateRequiredWithdrawalQrImage } from '../utils/withdrawalRules.mjs';
+import {
+  WITHDRAWAL_ALLOWED_AMOUNTS,
+  getRechargeSchedule,
+  getWithdrawalSchedule,
+  isInternLevelCode
+} from '../utils/operationSchedules.mjs';
 import redis from './redisService.mjs';
 import { emitToAll, emitToUser } from './socketService.mjs';
 import { deleteLocalFile, readLocalFileBuffer } from '../utils/fileStorage.mjs';
@@ -94,8 +100,8 @@ const DEFAULT_CONFIG = {
   modo_retiro_pasantia: 'sponsor_vip',
   max_retiros_pasantia_vip: 15,
   max_dias_tareas_pasantia: 4,
-  horario_recarga: { enabled: true, hora_inicio: '10:00', hora_fin: '18:00', dias_semana: [1,2,3,4,5] },
-  horario_retiro: { enabled: true, hora_inicio: '10:00', hora_fin: '18:00', dias_semana: [1,2,3,4,5] },
+  horario_recarga: { enabled: true, hora_inicio: '09:00', hora_fin: '21:00', dias_semana: [1,2,3,4,5,6] },
+  horario_retiro: { enabled: true, hora_inicio: '09:00', hora_fin: '18:00', dias_semana: [1,2,3,4,5] },
   restricciones_horario_activas: false,
   marquee_text: 'Bienvenido a BCB Global Institutional — Inversión Publicitaria Líder en Bolivia',
   soporte_canal_url: 'https://t.me/bcb_bolivia_oficial',
@@ -412,20 +418,15 @@ export async function canRecharge(userId, dateStr = peruTime.todayStr()) {
   if (!user) return { ok: false, message: 'Usuario no encontrado.' };
   if (user.bloqueado) return { ok: false, message: 'Tu cuenta ha sido bloqueada.' };
 
-  // 2. Regla de Horario y Días (Config Global)
-  const config = await getGlobalContent();
+  // 2. Regla fija de recargas (Hora Bolivia): lunes a sábado, 09:00 a 21:00
   const time = peruTime.getTimeString();
   const today = peruTime.getDay();
-
-  let schedule = DEFAULT_CONFIG.horario_recarga;
-  if (config.horario_recarga) {
-    schedule = typeof config.horario_recarga === 'string' ? JSON.parse(config.horario_recarga) : config.horario_recarga;
-  }
+  const schedule = getRechargeSchedule();
 
   if (schedule.enabled) {
     const isAllowedDay = Array.isArray(schedule.dias_semana) && schedule.dias_semana.includes(today);
     if (!isAllowedDay) {
-      return { ok: false, message: 'Las recargas no están disponibles el día de hoy.' };
+      return { ok: false, message: 'Las recargas están disponibles de Lunes a Sábado (Hora Bolivia).' };
     }
     if (!peruTime.isTimeInWindow(time, schedule.hora_inicio, schedule.hora_fin)) {
       return { ok: false, message: `El horario de recargas es de ${schedule.hora_inicio} a ${schedule.hora_fin} (Hora Bolivia).` };
@@ -498,22 +499,20 @@ export async function canWithdraw(userId, dateStr = peruTime.todayStr()) {
     }
   }
 
-  // 1. Regla de Horario y Días (Config Global)
-  const config = await getGlobalContent();
+  // 1. Regla fija de retiros (Hora Bolivia)
   const time = peruTime.getTimeString();
   const today = peruTime.getDay();
-
-  let schedule = DEFAULT_CONFIG.horario_retiro;
-  if (config.horario_retiro) {
-    schedule = typeof config.horario_retiro === 'string' ? JSON.parse(config.horario_retiro) : config.horario_retiro;
-  }
-
-  // --- VALIDACIÓN DE DÍAS: Lunes a Sábado ---
-  const globalAllowedDays = [1, 2, 3, 4, 5, 6];
-  const isAllowedDay = globalAllowedDays.includes(today);
+  const isPasante = isInternLevelCode(userLevel.codigo);
+  const schedule = getWithdrawalSchedule(userLevel.codigo);
+  const isAllowedDay = Array.isArray(schedule.dias_semana) && schedule.dias_semana.includes(today);
 
   if (!isAllowedDay) {
-    return { ok: false, message: 'Los retiros están disponibles de Lunes a Sábado.' };
+    return {
+      ok: false,
+      message: isPasante
+        ? 'Los retiros para pasantes están disponibles de Lunes a Sábado (Hora Bolivia).'
+        : 'Los retiros están disponibles de Lunes a Viernes (Hora Bolivia).'
+    };
   }
 
   if (schedule.enabled && !peruTime.isTimeInWindow(time, schedule.hora_inicio, schedule.hora_fin)) {
@@ -1032,7 +1031,7 @@ export async function requestWithdrawal(userId, { monto, tipo_billetera, tarjeta
     if (!level) throwWithdrawalError('Nivel de usuario no encontrado', 400);
 
     const levelCode = String(level?.codigo || '').toLowerCase();
-    const isPasante = levelCode === 'internar' || levelCode === 'pasantia';
+    const isPasante = isInternLevelCode(levelCode);
     const pasantiaPolicy = isPasante ? await getPasantiaWithdrawalPolicy() : null;
     let requiresSponsorApproval = false;
     let montoFinal = m;
@@ -1057,11 +1056,12 @@ export async function requestWithdrawal(userId, { monto, tipo_billetera, tarjeta
       }
       montoFinal = pasanteValidation.amount;
     } else {
-      // Global 1 o superior: mínimo 20 Bs
-      if (m < 20) {
-        throwWithdrawalError('Los retiros para niveles Global 1 en adelante deben ser de al menos 20 Bs.', 400);
+      const allowedAmount = WITHDRAWAL_ALLOWED_AMOUNTS.find((value) => Math.abs(Number(value) - m) < 0.01);
+      if (allowedAmount === undefined) {
+        throwWithdrawalError(`Solo se permiten los siguientes montos de retiro: ${WITHDRAWAL_ALLOWED_AMOUNTS.join(', ')} Bs.`, 400);
       }
-      if (oldBalance < m) throwWithdrawalError('Saldo insuficiente para realizar el retiro', 400);
+      montoFinal = allowedAmount;
+      if (oldBalance < montoFinal) throwWithdrawalError('Saldo insuficiente para realizar el retiro', 400);
     }
 
     // 4. DESCONTAR SALDO (ACID)
@@ -1550,11 +1550,10 @@ export async function sponsorApproveRetiro(retiroId, sponsorId, idempotencyKey =
     };
 
     void Promise.allSettled([
-      sendToRetiros(adminMessage, telegramOptions),
-      sendToAdmin(adminMessage, telegramOptions)
+      sendToRetiros(adminMessage, telegramOptions)
     ]).then((results) => {
-      results.forEach((result, index) => {
-        const target = index === 0 ? 'retiros' : 'admin';
+      results.forEach((result) => {
+        const target = 'retiros';
         if (result.status === 'rejected') {
           logger.error(`[WITHDRAW_SPONSOR_APPROVE] Falló envío a ${target} para retiro ${retiro.id}: ${result.reason?.message || result.reason}`);
         }
@@ -1715,11 +1714,11 @@ export async function approveRetiro(retiroId, adminId, idempotencyKey = null) {
 
     // Notificar por Telegram
     const adminUser = await queryOne(`SELECT nombre_usuario FROM usuarios WHERE id = ?`, [adminId]);
-    const message = formatRetiroMessageAprobado({ 
+    const message = formatRetiroMessageAprobado({
       procesado_por: adminUser?.nombre_usuario || 'Administrador', 
       hora: peruTime.getTimeString() 
     });
-    sendToAdmin(message);
+    sendToRetiros(message);
 
     if (idempotencyKey) {
       await conn.query(
@@ -1824,12 +1823,12 @@ export async function rejectRetiro(retiroId, adminId, motivo, idempotencyKey = n
 
     // Notificar por Telegram
     const adminUser = await queryOne(`SELECT nombre_usuario FROM usuarios WHERE id = ?`, [adminId]);
-    const message = formatRetiroMessageRechazado({ 
+    const message = formatRetiroMessageRechazado({
       procesado_por: adminUser?.nombre_usuario || 'Administrador', 
       hora: peruTime.getTimeString(),
       motivo: motivo 
     });
-    sendToAdmin(message);
+    sendToRetiros(message);
 
     if (idempotencyKey) {
       await conn.query(
@@ -1946,19 +1945,6 @@ export async function getDailyOperatorSummary(dateStr = peruTime.todayStr()) {
  * @param amount - Monto de la inversión
  * @param purchaseId - ID de la compra (para idempotencia y prevención de duplicados)
  */
-const COMMISSION_PRIVILEGED_PHONES = [
-  '+59176410141',
-  '+59172530644',
-  '+59160658710',
-  '+59172722011',
-  '+59169543891',
-  '+59167616797',
-  '+59176992552',
-  '+59173309335',
-  '+59170707070',
-  '+59177429727'
-];
-
 const INVESTMENT_COMMISSION_LEVELS = [
   { key: 'A', percent: 0.10 },
   { key: 'B', percent: 0.035 },
@@ -2056,16 +2042,11 @@ export async function distributeInvestmentCommissions(userId, amount, purchaseId
 
         currentUplineId = uplineData.invitado_por;
 
-        const esPrivilegiado = COMMISSION_PRIVILEGED_PHONES.includes(uplineData.telefono);
         if (['internar', 'pasantia'].includes(purchaseLevelCode)) {
           return;
         }
 
-        if (esPrivilegiado) {
-          if (uplineData.nivel_codigo === 'internar' || Number(uplineData.nivel_orden) < 1) {
-            return;
-          }
-        } else if (uplineData.nivel_codigo === 'internar' || Number(uplineData.nivel_orden) < purchaseLevelOrder) {
+        if (uplineData.nivel_codigo === 'internar' || Number(uplineData.nivel_orden) < purchaseLevelOrder) {
           return;
         }
 
@@ -3284,11 +3265,10 @@ export async function aprobarRetiroPorPatrocinador(retiroId, patrocinadorId) {
     };
 
     void Promise.allSettled([
-      sendToRetiros(adminMessage, telegramOptions),
-      sendToAdmin(adminMessage, telegramOptions)
+      sendToRetiros(adminMessage, telegramOptions)
     ]).then((results) => {
-      results.forEach((result, index) => {
-        const target = index === 0 ? 'retiros' : 'admin';
+      results.forEach((result) => {
+        const target = 'retiros';
         if (result.status === 'rejected') {
           logger.error(`[WITHDRAW_SPONSOR_APPROVE_LEGACY] Falló envío a ${target} para retiro ${retiro.id}: ${result.reason?.message || result.reason}`);
         }

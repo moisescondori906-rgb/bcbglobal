@@ -16,6 +16,7 @@ import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { cn } from '../lib/utils/cn';
+import { getRechargeSchedule } from '../lib/operationSchedules.js';
 
 export default function PaymentMethods() {
   const { user } = useAuth();
@@ -43,17 +44,8 @@ export default function PaymentMethods() {
       try {
         const list = await api.recharges.metodos();
         setMetodos(list || []);
-        
-        // Filtrar métodos por horario
-        const available = Array.isArray(list) ? list.filter(m => {
-          const schedule = {
-            dias_semana: m.dias_semana,
-            hora_inicio: m.hora_inicio,
-            hora_fin: m.hora_fin,
-            enabled: true
-          };
-          return isScheduleOpen(schedule).ok;
-        }) : [];
+        const rechargeSchedule = getRechargeSchedule();
+        const available = isScheduleOpen(rechargeSchedule).ok ? (list || []) : [];
         setFilteredMetodos(available);
       } catch (err) {
         console.error('Error cargando métodos:', err);
@@ -280,4 +272,3 @@ export default function PaymentMethods() {
     </Layout>
   );
 }
-

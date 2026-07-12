@@ -38,6 +38,11 @@ import { Button } from '../components/ui/Button.jsx';
 import { Badge } from '../components/ui/Badge.jsx';
 import { Input } from '../components/ui/Input.jsx';
 import { cn } from '../lib/utils/cn';
+import {
+  getWithdrawalSchedule,
+  isInternLevelCode,
+  WITHDRAWAL_ALLOWED_AMOUNTS
+} from '../lib/operationSchedules.js';
 
 function getBoliviaDateKeyFromValue(value) {
   if (!value) return null;
@@ -57,7 +62,7 @@ function getBoliviaDateKeyFromValue(value) {
 export default function Withdrawal() {
   const { user, refreshUser } = useAuth();
   const navigate = useNavigate();
-  const [montos, setMontos] = useState([25, 100, 500, 1500, 5000, 10000]);
+  const [montos, setMontos] = useState([...WITHDRAWAL_ALLOWED_AMOUNTS]);
   const [tarjetas, setTarjetas] = useState([]);
   const [tarjetaId, setTarjetaId] = useState('');
   const [tipoBilletera, setTipoBilletera] = useState('principal');
@@ -72,7 +77,7 @@ export default function Withdrawal() {
   const [hasSignature, setHasSignature] = useState(true); // Ya viene por defecto
   const [qrImage, setQrImage] = useState(null); // QR obligatorio para solicitar el retiro
 
-  const isInternar = userLevel?.codigo === 'internar' || userLevel?.codigo === 'pasantia';
+  const isInternar = isInternLevelCode(userLevel?.codigo);
   const COMISION_RETIRO = isInternar ? 0 : (pc?.comision_retiro || 10) / 100; // 0% comision para pasantes, 10% para VIP
   const montoRecibir = monto > 0 ? (monto * (1 - COMISION_RETIRO)).toFixed(2) : '0.00';
   const comisionMonto = monto > 0 ? (monto * COMISION_RETIRO).toFixed(2) : '0.00';
@@ -126,7 +131,7 @@ const [showWithdrawModal, setShowWithdrawModal] = useState(false);
             } else {
               const withdrawalAmounts = await api.withdrawals.montos().catch(() => null);
               if (isMounted) {
-                setMontos(withdrawalAmounts || [25, 100, 500, 1500, 5000, 10000]);
+                setMontos(Array.isArray(withdrawalAmounts) ? withdrawalAmounts.map(Number) : [...WITHDRAWAL_ALLOWED_AMOUNTS]);
               }
             }
           }
@@ -207,6 +212,13 @@ const [showWithdrawModal, setShowWithdrawModal] = useState(false);
     }
   }, [isInternar, monto]);
 
+  useEffect(() => {
+    if (isInternar) return;
+    if (monto > 0 && !montos.includes(monto)) {
+      setMonto(0);
+    }
+  }, [isInternar, monto, montos]);
+
   const getTodayWithdrawalStatus = async () => {
     const withdrawalsRes = await api.withdrawals.list().catch(() => []);
     const currentLevel = userLevel || niveles.find(l => String(l.id) === String(user?.nivel_id));
@@ -228,6 +240,7 @@ const [showWithdrawModal, setShowWithdrawModal] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!monto) { setError('Selecciona uno de los montos disponibles para retirar.'); return; }
     if (!password) { setError('Ingresa tu contraseña de fondos.'); return; }
     if (!qrImage) { setError('Debes subir tu codigo QR antes de solicitar el retiro.'); return; }
     
@@ -287,30 +300,8 @@ const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   const saldoPrincipal = user?.saldo_principal ?? 0;
   const saldoComisiones = user?.saldo_comisiones ?? 0;
   
-  let horarioRet;
-  let schedRet = { ok: true };
-  
-  if (userLevel && userLevel.retiro_horario_habilitado) {
-    const diasHabilitados = [];
-    let currentDay = userLevel.retiro_dia_inicio;
-    const endDay = userLevel.retiro_dia_fin;
-    if (currentDay <= endDay) {
-      for (let i = currentDay; i <= endDay; i++) diasHabilitados.push(i);
-    } else {
-      for (let i = currentDay; i <= 6; i++) diasHabilitados.push(i);
-      for (let i = 0; i <= endDay; i++) diasHabilitados.push(i);
-    }
-    horarioRet = {
-      enabled: true,
-      dias_semana: diasHabilitados,
-      hora_inicio: userLevel.retiro_hora_inicio?.substring(0, 5),
-      hora_fin: userLevel.retiro_hora_fin?.substring(0, 5)
-    };
-    schedRet = isScheduleOpen(horarioRet);
-  } else if (pc?.horario_retiro) {
-    horarioRet = pc.horario_retiro;
-    schedRet = isScheduleOpen(horarioRet);
-  }
+  const horarioRet = getWithdrawalSchedule(userLevel?.codigo);
+  const schedRet = isScheduleOpen(horarioRet);
 
   const fueraHorario = horarioRet?.enabled && !schedRet.ok;
   const msgHorario = !schedRet.ok ? schedRet.message : '';
@@ -319,16 +310,11 @@ const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   const boliviaNow = getBoliviaNow();
   const today = boliviaNow.getDay(); // 0=Dom, 1=Lun, 2=Mar... 6=Sab
   
-  // Regla General: Lunes a Viernes (1-5) para todos los niveles
-  const globalAllowedDays = [1, 2, 3, 4, 5];
-
-  // La lógica de niveles específicos se anula para seguir la regla general de Lunes a Viernes
+  const globalAllowedDays = Array.isArray(horarioRet?.dias_semana) ? horarioRet.dias_semana : [];
   const isAllowedDay = globalAllowedDays.includes(today);
   const canWithdrawToday = isAllowedDay;
 
   const DAY_NAMES = { 0: 'Domingo', 1: 'Lunes', 2: 'Martes', 3: 'Miércoles', 4: 'Jueves', 5: 'Viernes', 6: 'Sábado' };
-  const globalAllowedNames = globalAllowedDays.map(d => DAY_NAMES[d]).join(', ');
-
   return (
     <Layout>
       <div className="min-h-screen bg-bcb-dark">
@@ -660,55 +646,31 @@ const [showWithdrawModal, setShowWithdrawModal] = useState(false);
                   </div>
                   
                   <div className="space-y-4">
-                    {isInternar ? (
-                      /* Para pasantes: monto fijo de 10 Bs, no editable */
-                      <div className="relative group">
-                        <div className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400 font-black text-lg">Bs</div>
-                        <input
-                          type="text"
-                          value="10"
-                          disabled
-                          className="w-full h-16 pl-14 pr-6 rounded-2xl border-2 border-slate-200 bg-slate-50 text-lg font-black text-slate-700 outline-none cursor-not-allowed shadow-sm"
-                        />
-                        <div className="absolute right-4 top-1/2 -translate-y-1/2">
-                          <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest bg-slate-100 px-3 py-1 rounded-full">
-                            Monto Fijo
-                          </span>
-                        </div>
-                      </div>
-                    ) : (
-                      /* Para otros usuarios: monto editable */
-                      <>
-                        <div className="relative group">
-                          <div className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400 font-black text-lg">Bs</div>
-                          <input
-                            type="number"
-                            value={monto || ''}
-                            onChange={(e) => setMonto(Number(e.target.value))}
-                            placeholder="Ingresa la cantidad"
-                            className="w-full h-16 pl-14 pr-6 rounded-2xl border-2 border-slate-100 bg-white text-lg font-black text-black outline-none focus:border-bcb-primary/30 transition-all shadow-sm"
-                          />
-                        </div>
+                    <div className="grid grid-cols-3 gap-2.5 sm:gap-3">
+                      {montos.map(m => (
+                        <button
+                          key={m}
+                          type="button"
+                          onClick={() => setMonto(m)}
+                          className={cn(
+                            "h-12 sm:h-16 rounded-xl sm:rounded-[1.5rem] border text-[10px] sm:text-[11px] font-black uppercase tracking-widest transition-all duration-300",
+                            monto === m
+                              ? "bg-bcb-primary border-bcb-primary text-white shadow-lg sm:shadow-[0_15px_30px_rgba(220,38,38,0.2)] scale-[1.05]"
+                              : "bg-white border-black/5 text-bcb-muted hover:bg-black/5 shadow-sm"
+                          )}
+                        >
+                          {m}
+                        </button>
+                      ))}
+                    </div>
 
-                        <div className="grid grid-cols-3 gap-2.5 sm:gap-3">
-                          {montos.map(m => (
-                            <button
-                              key={m}
-                              type="button"
-                              onClick={() => setMonto(m)}
-                              className={cn(
-                                "h-12 sm:h-16 rounded-xl sm:rounded-[1.5rem] border text-[10px] sm:text-[11px] font-black uppercase tracking-widest transition-all duration-300",
-                                monto === m 
-                                  ? "bg-bcb-primary border-bcb-primary text-white shadow-lg sm:shadow-[0_15px_30px_rgba(220,38,38,0.2)] scale-[1.05]" 
-                                  : "bg-white border-black/5 text-bcb-muted hover:bg-black/5 shadow-sm"
-                              )}
-                            >
-                              {m}
-                            </button>
-                          ))}
-                        </div>
-                      </>
-                    )}
+                    <Card className="p-4 border-black/5 bg-slate-50">
+                      <p className="text-[9px] sm:text-[10px] font-black text-slate-600 uppercase tracking-widest">
+                        {isInternar
+                          ? 'Los retiros de pasantía son fijos y solo pueden hacerse con el botón de 10 Bs.'
+                          : 'Selecciona uno de los montos fijos habilitados para retiro.'}
+                      </p>
+                    </Card>
 
                     {/* Resumen de Comisión */}
                     <AnimatePresence>
@@ -897,7 +859,7 @@ const [showWithdrawModal, setShowWithdrawModal] = useState(false);
                   <Button 
                     type="submit" 
                     loading={loading} 
-                    disabled={!canWithdrawToday || fueraHorario || hasWithdrawalToday || !password || !hasSignature || !qrImage}
+                    disabled={!canWithdrawToday || fueraHorario || hasWithdrawalToday || !monto || !password || !hasSignature || !qrImage}
                     className="h-16 sm:h-20 w-full rounded-2xl sm:rounded-[2rem] text-xs sm:text-sm tracking-[0.2em] sm:tracking-[0.3em] shadow-xl active:scale-95 transition-all uppercase font-black"
                   >
                     {!canWithdrawToday 

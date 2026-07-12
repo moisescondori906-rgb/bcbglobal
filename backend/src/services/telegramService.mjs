@@ -171,6 +171,186 @@ function generateCSV(data, filename, type = 'qrs') {
   return filePath;
 }
 
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function formatBoliviaDateTime(value) {
+  if (!value) return 'Sin hora';
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return String(value);
+  return parsed.toLocaleString('es-BO', {
+    timeZone: 'America/La_Paz',
+    hour12: false
+  });
+}
+
+async function getDailyOperationsReportData(dateStr = peruTime.todayStr()) {
+  const recargas = await query(`
+    SELECT
+      c.id,
+      c.monto,
+      COALESCE(c.procesado_at, c.created_at) AS fecha_operacion,
+      u.nombre_usuario,
+      u.telefono,
+      n.nombre AS nivel_nombre
+    FROM compras_nivel c
+    LEFT JOIN usuarios u ON u.id = c.usuario_id
+    LEFT JOIN niveles n ON n.id = c.nivel_id
+    WHERE DATE(COALESCE(c.procesado_at, c.created_at)) = ?
+      AND c.estado = 'Aceptado'
+    ORDER BY COALESCE(c.procesado_at, c.created_at) ASC, c.created_at ASC, c.id ASC
+  `, [dateStr]);
+
+  const vipRetiros = await query(`
+    SELECT
+      r.id,
+      r.monto,
+      r.monto_neto,
+      COALESCE(r.procesado_at, r.created_at) AS fecha_operacion,
+      u.nombre_usuario,
+      u.telefono,
+      n.nombre AS nivel_nombre,
+      n.codigo AS nivel_codigo
+    FROM retiros r
+    LEFT JOIN usuarios u ON u.id = r.usuario_id
+    LEFT JOIN niveles n ON n.id = u.nivel_id
+    WHERE r.fecha_dia = ?
+      AND r.estado = 'Aceptado'
+      AND COALESCE(LOWER(n.codigo), '') NOT IN ('internar', 'pasantia')
+    ORDER BY COALESCE(r.procesado_at, r.created_at) ASC, r.created_at ASC, r.id ASC
+  `, [dateStr]);
+
+  const pasantiaRetiros = await query(`
+    SELECT
+      r.id,
+      r.monto,
+      r.monto_neto,
+      COALESCE(r.procesado_at, r.created_at) AS fecha_operacion,
+      u.nombre_usuario,
+      u.telefono,
+      n.nombre AS nivel_nombre,
+      n.codigo AS nivel_codigo
+    FROM retiros r
+    LEFT JOIN usuarios u ON u.id = r.usuario_id
+    LEFT JOIN niveles n ON n.id = u.nivel_id
+    WHERE r.fecha_dia = ?
+      AND r.estado = 'Aceptado'
+      AND COALESCE(LOWER(n.codigo), '') IN ('internar', 'pasantia')
+    ORDER BY COALESCE(r.procesado_at, r.created_at) ASC, r.created_at ASC, r.id ASC
+  `, [dateStr]);
+
+  const sumField = (items, field) => items.reduce((total, item) => total + Number(item?.[field] || 0), 0);
+
+  return {
+    fecha: dateStr,
+    recargas,
+    vipRetiros,
+    pasantiaRetiros,
+    totals: {
+      recargasCantidad: recargas.length,
+      recargasMonto: sumField(recargas, 'monto'),
+      vipRetirosCantidad: vipRetiros.length,
+      vipRetirosMonto: sumField(vipRetiros, 'monto'),
+      vipRetirosNeto: sumField(vipRetiros, 'monto_neto'),
+      pasantiaRetirosCantidad: pasantiaRetiros.length,
+      pasantiaRetirosMonto: sumField(pasantiaRetiros, 'monto'),
+      pasantiaRetirosNeto: sumField(pasantiaRetiros, 'monto_neto')
+    }
+  };
+}
+
+async function sendChunkedTelegramSection(bot, chatId, title, lines, emptyMessage) {
+  if (!lines.length) {
+    await bot.sendMessage(chatId, `${title}\n<i>${emptyMessage}</i>`, { parse_mode: 'HTML' });
+    return;
+  }
+
+  let chunk = `${title}\n`;
+  let continuation = false;
+
+  for (const line of lines) {
+    const candidate = `${chunk}${line}\n`;
+    if (candidate.length > 3800) {
+      await bot.sendMessage(chatId, chunk.trimEnd(), { parse_mode: 'HTML' });
+      chunk = `${title}${continuation ? ' (continuación)' : ''}\n${line}\n`;
+      continuation = true;
+      continue;
+    }
+    chunk = candidate;
+  }
+
+  if (chunk.trim()) {
+    await bot.sendMessage(chatId, chunk.trimEnd(), { parse_mode: 'HTML' });
+  }
+}
+
+async function sendDailyOperationsReport(bot, chatId) {
+  try {
+    const report = await getDailyOperationsReportData();
+    const totals = report.totals;
+
+    const summaryMessage =
+      `📘 <b>INFORME DIARIO OPERATIVO</b>\n` +
+      `━━━━━━━━━━━━━━━━━━\n` +
+      `📅 <b>Fecha:</b> ${report.fecha}\n` +
+      `🕙 <b>Hora de corte:</b> 22:00 (Bolivia)\n\n` +
+      `💳 <b>Recargas realizadas:</b> ${totals.recargasCantidad}\n` +
+      `💰 <b>Total recargas:</b> ${totals.recargasMonto.toFixed(2)} Bs\n\n` +
+      `👑 <b>Retiros VIP realizados:</b> ${totals.vipRetirosCantidad}\n` +
+      `💰 <b>Total VIP solicitado:</b> ${totals.vipRetirosMonto.toFixed(2)} Bs\n` +
+      `✅ <b>Total VIP neto:</b> ${totals.vipRetirosNeto.toFixed(2)} Bs\n\n` +
+      `🎓 <b>Retiros pasantía realizados:</b> ${totals.pasantiaRetirosCantidad}\n` +
+      `💰 <b>Total pasantía solicitado:</b> ${totals.pasantiaRetirosMonto.toFixed(2)} Bs\n` +
+      `✅ <b>Total pasantía neto:</b> ${totals.pasantiaRetirosNeto.toFixed(2)} Bs`;
+
+    await bot.sendMessage(chatId, summaryMessage, { parse_mode: 'HTML' });
+
+    const recargaLines = report.recargas.map((item, index) =>
+      `${index + 1}. <b>${escapeHtml(item.nombre_usuario || 'Sin nombre')}</b> | <code>${escapeHtml(item.telefono || 'Sin teléfono')}</code> | ${escapeHtml(item.nivel_nombre || 'Sin nivel')} | <b>${Number(item.monto || 0).toFixed(2)} Bs</b> | ${escapeHtml(formatBoliviaDateTime(item.fecha_operacion))}`
+    );
+
+    const vipRetiroLines = report.vipRetiros.map((item, index) =>
+      `${index + 1}. <b>${escapeHtml(item.nombre_usuario || 'Sin nombre')}</b> | <code>${escapeHtml(item.telefono || 'Sin teléfono')}</code> | ${escapeHtml(item.nivel_nombre || 'VIP')} | Sol: <b>${Number(item.monto || 0).toFixed(2)} Bs</b> | Neto: <b>${Number(item.monto_neto || 0).toFixed(2)} Bs</b> | ${escapeHtml(formatBoliviaDateTime(item.fecha_operacion))}`
+    );
+
+    const pasantiaRetiroLines = report.pasantiaRetiros.map((item, index) =>
+      `${index + 1}. <b>${escapeHtml(item.nombre_usuario || 'Sin nombre')}</b> | <code>${escapeHtml(item.telefono || 'Sin teléfono')}</code> | ${escapeHtml(item.nivel_nombre || 'Pasantía')} | Sol: <b>${Number(item.monto || 0).toFixed(2)} Bs</b> | Neto: <b>${Number(item.monto_neto || 0).toFixed(2)} Bs</b> | ${escapeHtml(formatBoliviaDateTime(item.fecha_operacion))}`
+    );
+
+    await sendChunkedTelegramSection(
+      bot,
+      chatId,
+      '💳 <b>DETALLE DE RECARGAS ACEPTADAS</b>',
+      recargaLines,
+      'No se registraron recargas aceptadas en el corte de hoy.'
+    );
+
+    await sendChunkedTelegramSection(
+      bot,
+      chatId,
+      '👑 <b>DETALLE DE RETIROS VIP ACEPTADOS</b>',
+      vipRetiroLines,
+      'No se registraron retiros VIP aceptados en el corte de hoy.'
+    );
+
+    await sendChunkedTelegramSection(
+      bot,
+      chatId,
+      '🎓 <b>DETALLE DE RETIROS PASANTÍA ACEPTADOS</b>',
+      pasantiaRetiroLines,
+      'No se registraron retiros de pasantía aceptados en el corte de hoy.'
+    );
+  } catch (err) {
+    logger.error(`[TELEGRAM-DAILY-OPERATIONS] Error: ${err.message}`);
+  }
+}
+
 export async function setupTelegramLogic() {
   const bot = await setupAdminBot();
   const botRet = await setupRetirosBot();
@@ -1037,13 +1217,13 @@ Selecciona una opción:
     sendDailyOperatorReport(bot, secretariaChatId);
   }, null, true, 'America/La_Paz');
 
-  // Reporte diario de QR no pagados a las 22:00
+  // Informe diario operativo detallado a las 22:00 para el grupo admin
   new CronJob('0 22 * * *', () => {
-    logger.info('[CRON] Enviando reporte diario de QR no pagados (22:00 Bolivia)...');
+    logger.info('[CRON] Enviando informe diario operativo (22:00 Bolivia)...');
     if (adminChatId) {
-      sendDailyUnpaidQRReport(bot, adminChatId);
+      sendDailyOperationsReport(bot, adminChatId);
     } else {
-      sendDailyUnpaidQRReport(bot, secretariaChatId);
+      sendDailyOperationsReport(bot, secretariaChatId);
     }
   }, null, true, 'America/La_Paz');
 
@@ -1064,6 +1244,11 @@ Selecciona una opción:
   bot.onText(/\/qr_pendientes/, async (msg) => {
     const chatId = msg.chat.id;
     sendDailyUnpaidQRReport(bot, chatId);
+  });
+
+  bot.onText(/\/informe_diario/, async (msg) => {
+    const chatId = msg.chat.id;
+    sendDailyOperationsReport(bot, chatId);
   });
 
   registerBotListeners(bot, 'Admin');

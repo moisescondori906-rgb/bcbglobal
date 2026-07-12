@@ -6,7 +6,7 @@ import { fileURLToPath } from 'url';
 import { 
   getGlobalContent, getLevels, peruTime, canRecharge 
 } from '../../services/dbService.mjs';
-import { query, queryOne } from '../../config/db.mjs';
+import { query } from '../../config/db.mjs';
 import { authenticate } from '../../utils/middleware/auth.mjs';
 import { attachRequestUser } from '../../utils/middleware/requestContext.mjs';
 import { 
@@ -40,32 +40,6 @@ router.post('/', asyncHandler(async (req, res) => {
     return res.status(400).json({ error: 'Monto inválido' });
   }
 
-  // 0. Validar horario del QR seleccionado
-  if (metodo_qr_id) {
-    const qr = await queryOne(`SELECT dias_semana, hora_inicio, hora_fin FROM metodos_qr WHERE id = ? AND activo = 1`, [metodo_qr_id]);
-    if (qr) {
-      const now = peruTime.now();
-      const currentDay = now.getDay();
-      const currentTime = now.toTimeString().split(' ')[0];
-
-      const days = String(qr.dias_semana || '0,1,2,3,4,5,6')
-        .split(',')
-        .map((value) => Number(String(value).trim()))
-        .filter((value) => Number.isInteger(value));
-
-      const isAllowedDay = days.length === 0 || days.includes(currentDay);
-      const isAllowedTime = peruTime.isTimeInWindow(
-        currentTime,
-        qr.hora_inicio || '00:00:00',
-        qr.hora_fin || '23:59:59'
-      );
-
-      if (!isAllowedDay || !isAllowedTime) {
-        return res.status(403).json({ error: 'El punto de pago seleccionado no está disponible en este horario.' });
-      }
-    }
-  }
-
   // 1. VALIDACIÓN CENTRALIZADA (CALENDARIO) 
   const opStatus = await canRecharge(req.user.id);
   if (!opStatus.ok) {
@@ -75,7 +49,7 @@ router.post('/', asyncHandler(async (req, res) => {
   const todayStr = peruTime.todayStr();
   const countResult = await queryOne(`SELECT COUNT(*) as total FROM compras_nivel WHERE usuario_id = ? AND fecha_dia = ? AND estado != 'rechazada'`, [req.user.id, todayStr]);
   if (countResult && Number(countResult.total) >= 3) {
-    return res.status(429).json({ error: 'Límite de 3 solicitudes por día alcanzado (Hora Perú).' });
+    return res.status(429).json({ error: 'Límite de 3 solicitudes por día alcanzado (Hora Bolivia).' });
   }
 
   // 2. Procesar Comprobante (SOPORTE LOCAL v11.5.0)
