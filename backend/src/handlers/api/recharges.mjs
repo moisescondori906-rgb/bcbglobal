@@ -6,7 +6,7 @@ import { fileURLToPath } from 'url';
 import { 
   getGlobalContent, getLevels, peruTime, canRecharge 
 } from '../../services/dbService.mjs';
-import { query } from '../../config/db.mjs';
+import { query, queryOne } from '../../config/db.mjs';
 import { authenticate } from '../../utils/middleware/auth.mjs';
 import { attachRequestUser } from '../../utils/middleware/requestContext.mjs';
 import { 
