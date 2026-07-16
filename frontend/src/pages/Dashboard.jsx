@@ -33,6 +33,7 @@ import { displayLevelCode } from '../lib/displayLevel.js';
 import BannerCarousel from '../components/dashboard/BannerCarousel';
 import ActionGrid from '../components/dashboard/ActionGrid';
 import GuideSection from '../components/dashboard/GuideSection';
+import FloatingAnnouncements from '../components/dashboard/FloatingAnnouncements';
 import GlobalLoader from '../components/ui/GlobalLoader';
 import DownloadButton from '../components/DownloadButton';
 
@@ -52,6 +53,14 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [pc, setPc] = useState(null);
   const [comunicados, setComunicados] = useState([]);
+  const [dismissedAnnouncementIds, setDismissedAnnouncementIds] = useState(() => {
+    try {
+      const raw = sessionStorage.getItem('dismissed-home-announcements');
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  });
   const [showSupportMenu, setShowSupportMenu] = useState(false);
   const [securityAlert, setSecurityAlert] = useState(null);
   const isSunday = now.getDay() === 0;
@@ -61,6 +70,12 @@ export default function Dashboard() {
       setSecurityAlert(user.security_alert);
     }
   }, [user]);
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem('dismissed-home-announcements', JSON.stringify(dismissedAnnouncementIds));
+    } catch {}
+  }, [dismissedAnnouncementIds]);
 
   const handleClearAlert = async () => {
     try {
@@ -151,6 +166,11 @@ export default function Dashboard() {
   ];
 
   if (loading) return <GlobalLoader />;
+
+  const visibleAnnouncements = Array.isArray(comunicados)
+    ? comunicados.filter(item => item?.id && !dismissedAnnouncementIds.includes(item.id))
+    : [];
+
   return (
     <>
       <Layout>
@@ -454,6 +474,17 @@ export default function Dashboard() {
           {showSupportMenu ? <CloseIcon size={20} /> : <PlusIcon size={24} />}
         </motion.button>
       </div>
+
+      {visibleAnnouncements.length > 0 && (
+        <FloatingAnnouncements
+          announcements={visibleAnnouncements}
+          onClose={(closedId) => {
+            setDismissedAnnouncementIds(prev => (
+              closedId && !prev.includes(closedId) ? [...prev, closedId] : prev
+            ));
+          }}
+        />
+      )}
     </Layout>
     </>
   );

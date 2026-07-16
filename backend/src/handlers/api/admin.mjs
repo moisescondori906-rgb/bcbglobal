@@ -820,9 +820,9 @@ router.post('/home-announcements', uploadLocalImage.single('image'), asyncHandle
 
 router.patch('/home-announcements/:id', uploadLocalImage.single('image'), asyncHandler(async (req, res) => {
   const { titulo, mensaje, activo, orden } = req.body;
-  const existing = await queryOne(`SELECT imagen_public_id FROM comunicados_home WHERE id = ?`, [req.params.id]);
+  const existing = await queryOne(`SELECT imagen_url, imagen_public_id FROM comunicados_home WHERE id = ?`, [req.params.id]);
   
-  let imagen_url = req.body.imagen_url;
+  let imagen_url = req.body.imagen_url ?? existing?.imagen_url ?? null;
   let imagen_public_id = existing?.imagen_public_id;
 
   if (req.file) {
