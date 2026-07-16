@@ -86,11 +86,11 @@ export default function Announcements() {
 
                   <Card className="overflow-hidden border-none shadow-[0_30px_60px_-15px_rgba(0,0,0,0.1)] bg-white rounded-[2.5rem]">
                     {item.imagen_url && (
-                      <div className="relative aspect-video w-full overflow-hidden bg-slate-950">
+                      <div className="relative w-full overflow-hidden bg-slate-50 flex items-center justify-center">
                         <img 
                           src={api.getMediaUrl(item.imagen_url)} 
                           alt={item.titulo}
-                          className="w-full h-full object-contain p-4"
+                          className="block w-full h-auto max-h-[75vh] object-contain p-4"
                         />
                       </div>
                     )}

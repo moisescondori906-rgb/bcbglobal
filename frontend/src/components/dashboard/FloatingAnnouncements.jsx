@@ -69,16 +69,16 @@ function NotificationItem({ item, onRemove }) {
         <X size={20} strokeWidth={2.5} />
       </button>
 
-      {/* Imagen de Ancho Completo */}
-      <div className="relative w-full aspect-video overflow-hidden">
+      {/* Imagen adaptada al tamaño real sin recorte */}
+      <div className="relative w-full overflow-hidden bg-slate-50 flex items-center justify-center">
         {item.imagen_url ? (
           <img
             src={api.getMediaUrl(item.imagen_url)}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+            className="block w-full h-auto max-h-[60vh] object-contain"
             alt="Anuncio BCB"
           />
         ) : (
-          <div className="w-full h-full bg-gradient-to-br from-bcb-primary to-indigo-600 flex items-center justify-center text-white">
+          <div className="w-full aspect-video bg-gradient-to-br from-bcb-primary to-indigo-600 flex items-center justify-center text-white">
             <BellRing size={48} strokeWidth={1.5} className="animate-pulse" />
           </div>
         )}
