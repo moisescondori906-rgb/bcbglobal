@@ -56,7 +56,7 @@ function NotificationItem({ item, onRemove }) {
       exit={{ opacity: 0, scale: 0.95, y: 20, transition: { duration: 0.2 } }}
       className={cn(
         "pointer-events-auto relative w-full",
-        "bg-white rounded-[2.5rem] flex flex-col overflow-hidden",
+        "bg-white rounded-[2.5rem] flex max-h-[85vh] flex-col overflow-hidden",
         "shadow-[0_25px_60px_-15px_rgba(0,0,0,0.15)] border border-slate-100",
         "z-[100000] group"
       )}
@@ -70,11 +70,11 @@ function NotificationItem({ item, onRemove }) {
       </button>
 
       {/* Imagen adaptada al tamaño real sin recorte */}
-      <div className="relative w-full overflow-hidden bg-slate-50 flex items-center justify-center">
+      <div className="relative max-h-[52vh] w-full overflow-y-auto bg-slate-50 flex items-start justify-start">
         {item.imagen_url ? (
           <img
             src={api.getMediaUrl(item.imagen_url)}
-            className="block w-full h-auto max-h-[60vh] object-contain"
+            className="block w-full h-auto object-contain object-top"
             alt="Anuncio BCB"
           />
         ) : (
